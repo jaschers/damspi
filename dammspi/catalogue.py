@@ -15,7 +15,7 @@ np.seterr(divide='ignore')
 # don't print pandas warning
 pd.options.mode.chained_assignment = None  # default='warn'
 
-class ExtractBHCatalogue:
+class DataCollector:
     def __init__(self, sim_name, number_files):
         self.sim_name = sim_name
         self.number_files = number_files
@@ -26,13 +26,13 @@ class ExtractBHCatalogue:
         self.minimal_galaxy_mass = 10**10 * u.Msun / self.hubble_constant
         self.bh_mass_formation = 10**5 * u.Msun / self.hubble_constant
 
-    def get_halo_data(self, nsnap):
+    def galaxy_data(self, nsnap):
         """
-        query for EAGLE HALO data
+        query for EAGLE galaxy data
         """
         if nsnap == 28:
             query = f"SELECT \
-                        DES.GalaxyID as galaxy_root_id, \
+                        DES.GalaxyID as galaxy_id, \
                         DES.GroupID as group_id, \
                         DES.GroupNumber as group_number, \
                         DES.SubGroupNumber as subgroup_number, \
@@ -57,14 +57,21 @@ class ExtractBHCatalogue:
 
         # Execute query.
         con = sql.connect("dvd351", password="zqfARI55") # username, password
-        print("Loading halo data...")
-        # load halo data
-        data_halo = sql.execute_query(con, query)
-        print("Halo data successfully loaded!")
+        print("Loading galaxy data...")
+        # load galaxy data
+        data_galaxy = sql.execute_query(con, query)
+        print("galaxy data successfully loaded!")
         # put data into pandas table
-        table_halo = pd.DataFrame(data_halo)
+        table_galaxy = pd.DataFrame(data_galaxy)
+        
+        if nsnap == 28:
+            # load galaxy outlier
+            table_outlier = pd.read_csv(f"config/{self.sim_name}.csv")
+            outlier = table_outlier["galaxy_id"].values
+            # remove outlier from table
+            table_galaxy = table_galaxy[~table_galaxy["galaxy_id"].isin(outlier)].reset_index(drop = True)
 
-        return(table_halo)
+        return(table_galaxy)
 
     def read_dataset(self, itype, att, nsnap):
         """ Read a selected dataset, itype is the PartType and att is the attribute name. """
@@ -107,7 +114,7 @@ class ExtractBHCatalogue:
 
         return data
 
-    def get_bh_data(self, nsnap):
+    def bh_data(self, nsnap):
         print("Loading black hole data...")
         # extract BH values at z = 0
         # bh_mass = (self.read_dataset(itype = 5, att = "Mass", nsnap = 28) * u.g).to(u.M_sun).value
@@ -128,3 +135,30 @@ class ExtractBHCatalogue:
         table_bh = pd.DataFrame(data_bh, columns = ["BH ID", "group number", "subgroup number", "m [M_solar]", "coord x", "coord y", "coord z", "z_f", "n merger"]).reset_index(drop = True)
 
         return(table_bh)
+
+class CoordinateTransform:
+    def __init__(self, table_galaxy, table_bh):
+        self.table_galaxy = table_galaxy
+        self.group_number = self.table_galaxy["group_number"].values[0]
+        self.table_bh = table_bh[table_bh["group number"] == group_number]
+
+        # add galaxy root id to table
+        self.table_bh["galaxy ID"] = np.ones(len(self.table_bh)) * galaxy_id
+    
+    def centre_of_mass(self):
+        com = self.table_galaxy[["com_x", "com_y", "com_z"]].values[0] * 1e3 # convert to kpc
+        return(com)
+    
+    def spin_vector(self):
+        # spin vector of galaxy to rotate galaxy according to galactic plane
+        spin = self.table_galaxy[["spin_x", "spin_y", "spin_z"]].values[0]
+        # norm spin vector
+        spin = spin / np.linalg.norm(spin)
+        return(spin)
+
+    def bh_coord_gc(self):
+        # get galaxy centre
+        galaxy_centre = self.centre_of_mass()
+        # to be continued
+        # extract coordinates of BHs relative to galaxy centre
+        bh_coord_z0_gc = np.dstack((table_bh_z0["coord x"] - galaxy_centre[0], table_bh_z0["coord y"] - galaxy_centre[1], table_bh_z0["coord z"] - galaxy_centre[2]))[0]
