@@ -202,6 +202,27 @@ class BlackHolePlotter:
         # plt.show()
         plt.close()
 
-    def plot_bh_dist():
-        pass
+    def plot_bh_dist_total(self, path):
+        print(np.unique(self.table_bh["no_host"], return_counts = True))
+        exit()
+        parameters = ["m [M_solar]", "z_f", "d_GC [kpc]", "d_Sun [kpc]", "lat [rad]", "long [rad]", "r_sp [pc]", "rho(r_sp) [GeV/cm3]"]
+        log_parameters = ["m [M_solar]", "r_sp [pc]", "rho(r_sp) [GeV/cm3]"]
+        x_labels = [r"$m_\mathrm{BH}$ [$M_{\odot}$]", r"$z_f$", r"$d_\mathrm{GC}$ [kpc]", r"$d_\mathrm{Sun}$ [kpc]", r"latitude [rad]", r"longitude [rad]", "r_sp [pc]", r"$\rho(r_\mathrm{sp})$ [GeV/cm$^3$]"]
+        filenames = ["mass", "redshift", "distance_GC", "distance_Sun", "latitude", "longitude", "r_sp", "rho_sp"]
+        
+        for parameter, x_label, filename in zip(parameters, x_labels, filenames):
+            # plot galaxy mass distribution
+            data = self.table_bh[parameter].values
+            plt.figure(figsize = single_column_fig_size)
+            if parameter in log_parameters:
+                bins = np.logspace(np.log10(np.min(data)), np.log10(np.max(data)), 9)
+                plt.xscale("log")
+            else:
+                bins = 9
+            plt.hist(data, bins = bins, color = color_darkblue)
+            plt.xlabel(x_label)
+            plt.ylabel("Number of BHs")
+            plt.tight_layout()
+            plt.savefig(path + f"{filename}.pdf", dpi = 500)
+            plt.close()
 
