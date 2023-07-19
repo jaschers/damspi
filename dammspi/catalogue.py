@@ -118,9 +118,13 @@ class DataCollector:
         # Loop over each file and extract the PARTICLE data.
         for i in range(self.number_files):
             # f = h5py.File("./data/snap_028_z000p000.%i.hdf5"%i, "r")
-            f = h5py.File(f"/lfs/l7/hess/users/jaschers/eagle/data/{self.sim_name}/snapshot_{nsnap}_z{redshift_1}p{redshift_2}/snap_{nsnap}_z{redshift_1}p{redshift_2}.%i.hdf5"%i, "r")
+            f = h5py.File(f"data/{self.sim_name}/snapshot_{nsnap}_z{redshift_1}p{redshift_2}/snap_{nsnap}_z{redshift_1}p{redshift_2}.%i.hdf5"%i, "r")
 
-            tmp = f["PartType%i/%s"%(itype, att)][...]
+            # extract data of particle type itype but only if it is available
+            try:
+                tmp = f["PartType%i/%s"%(itype, att)][...]
+            except:
+                continue
             data.append(tmp)
 
             # Get conversion factors.
@@ -318,6 +322,8 @@ class DMMiniSpikesCalculator:
         self.hubble_constant = cosmo.H0.value / 100
         self.minimal_galaxy_mass = 10**10 * u.Msun / self.hubble_constant
         self.bh_mass_formation = 10**5 * u.Msun / self.hubble_constant
+        self.rho_0, self.r_s = self.nfw_fit()
+
 
     @staticmethod
     def redshift_to_scale_factor(redshift):
@@ -346,31 +352,10 @@ class DMMiniSpikesCalculator:
         """
         return np.linalg.norm(coord_1 - coord_2, axis = 1)
 
-    def query_galaxy_zf(self):
-        if self.no_host:
-            query = f"SELECT \
-                        DES.GroupID as group_id, \
-                        DES.GroupNumber as group_number, \
-                        DES.SubGroupNumber as subgroup_number, \
-                        DES.Redshift as z, \
-                        DES.Snapnum as nsnap, \
-                        DES.Mass as m, \
-                        DES.CentreOfMass_x as com_x, \
-                        DES.CentreOfMass_y as com_y, \
-                        DES.CentreOfMass_z as com_z, \
-                        DES.Image_face as img_face, \
-                        DES.Image_edge as img_edge, \
-                        DES.Image_box as img_box, \
-                        AP.ApertureSize as aperture_size, \
-                        AP.Mass_DM as m_dm_ap \
-                    FROM \
-                        {self.sim_name}_SubHalo as DES, \
-                        {self.sim_name}_Aperture as AP \
-                    WHERE \
-                        DES.Snapnum = {self.nsnap_closest} \
-                        and AP.GalaxyID = DES.GalaxyID \
-                        and DES.Spurious = 0"
-        else:
+    def query_galaxy_zf(self, subgroup_number_avail = True):
+        scale_factor = self.redshift_to_scale_factor(self.z_closest)
+        scale_factor = scale_factor * 1e3 # convert to kpc
+        if (self.no_host == False) or (subgroup_number_avail == True):
             query = f"SELECT \
                         DES.GroupID as group_id, \
                         DES.GroupNumber as group_number, \
@@ -395,12 +380,41 @@ class DMMiniSpikesCalculator:
                         and DES.SubGroupNumber = {self.subgroup_number} \
                         and AP.GalaxyID = DES.GalaxyID \
                         and DES.Spurious = 0"
+
+        else:
+            query = f"SELECT \
+                        DES.GroupID as group_id, \
+                        DES.GroupNumber as group_number, \
+                        DES.SubGroupNumber as subgroup_number, \
+                        DES.Redshift as z, \
+                        DES.Snapnum as nsnap, \
+                        DES.Mass as m, \
+                        DES.CentreOfMass_x as com_x, \
+                        DES.CentreOfMass_y as com_y, \
+                        DES.CentreOfMass_z as com_z, \
+                        DES.Image_face as img_face, \
+                        DES.Image_edge as img_edge, \
+                        DES.Image_box as img_box \
+                    FROM \
+                        {self.sim_name}_SubHalo as DES \
+                    WHERE \
+                        DES.Snapnum = {self.nsnap_closest} \
+                        and DES.Mass >= {self.bh_mass_formation.to(u.Msun).value} \
+                        and sqrt(square((DES.CentreOfMass_x * {scale_factor}) - {self.bh_coord[0]}) + square((DES.CentreOfMass_y * {scale_factor}) - {self.bh_coord[1]}) + square((DES.CentreOfMass_z * {scale_factor}) - {self.bh_coord[2]})) <= 1e3 \
+                        and DES.Spurious = 0"
         return(query)
 
-    @property
-    def table_galaxy_zf(self):
+#                         and square((DES.CentreOfMass_x * {scale_factor}) - {self.bh_coord[0]}) + square((DES.CentreOfMass_y * {scale_factor}) - {self.bh_coord[1]}) + square((DES.CentreOfMass_z * {scale_factor}) - {self.bh_coord[2]}) <= square(10) \
+
+
+    def get_table_galaxy_zf(self):
         # get query
-        query = self.query_galaxy_zf()
+        if self.no_host:
+            # if BH has no host galaxy, request galaxy data without aperture data (saves a lot of time)
+            query = self.query_galaxy_zf(subgroup_number_avail = False)
+        else:
+            # if BH has a host galaxy, request galaxy data with aperture data
+            query = self.query_galaxy_zf(subgroup_number_avail = True)
         # Execute query.
         con = sql.connect("dvd351", password="zqfARI55") # username, password
         # load galaxy data
@@ -425,10 +439,23 @@ class DMMiniSpikesCalculator:
             # select the galaxy closest to the BH
             table_galaxy_zf = table_galaxy_zf[table_galaxy_zf["distance BH [kpc]"] == np.min(distance_galaxies_bh)].reset_index(drop = True)
 
+            self.group_number = table_galaxy_zf["group_number"].values[0]
+            self.subgroup_number = table_galaxy_zf["subgroup_number"].values[0]
+
+            # request galaxy data with aperture data this time
+            query = self.query_galaxy_zf(subgroup_number_avail = True)
+
+            # Execute query.
+            con = sql.connect("dvd351", password="zqfARI55") # username, password
+            # load galaxy data
+            data_galaxy = sql.execute_query(con, query)
+            # put data into pandas table
+            table_galaxy_zf = pd.DataFrame(data_galaxy)
+
         # remove entries with m_dm_ap = 0 since it causes problems in the NFW fit
-        table_galaxy_zf = table_galaxy_zf[table_galaxy_zf["m_dm_ap"] != 0]
+        self.table_galaxy_zf = table_galaxy_zf[table_galaxy_zf["m_dm_ap"] != 0]
         
-        return(table_galaxy_zf)
+        return(self.table_galaxy_zf)
 
     @staticmethod
     def density_within_aperature(aperture, mass):
@@ -455,27 +482,8 @@ class DMMiniSpikesCalculator:
         predicted = self.nfw_profile_log((rho_0, r_s), r)
         return predicted
 
-    def nfw_fit(self, r, rho):
-        if hasattr(r, 'unit'):
-            r = r.to(u.kpc).value
-        if hasattr(rho, 'unit'):
-            rho = rho.to(u.Msun/u.kpc**3).value
-        model = Model(self.nfw_cost_function)
-        data = RealData(r, rho)
-        odr = ODR(data, model, beta0=[5e6, 40]) 
-
-        odr.set_job(fit_type=2)
-        output = odr.run()
-        popt = output.beta
-        rho_0, r_s = popt
-
-        rho_0 = rho_0 * u.Msun / u.kpc**3
-        r_s = r_s * u.kpc
-
-        return(rho_0, r_s)
-
-    def nfw_fit_para(self):
-        table_galaxy_zf = self.table_galaxy_zf
+    def nfw_fit(self):
+        table_galaxy_zf = self.get_table_galaxy_zf()
 
         # extract DM halo profile of halo in which BH formed at formation redshift
         ap_size = table_galaxy_zf["aperture_size"].to_numpy() * u.kpc
@@ -484,7 +492,21 @@ class DMMiniSpikesCalculator:
         # compute DM density profile of halo in which BH formed at formation redshift
         dm_rho_log = np.log(self.density_within_aperature(ap_size, ap_mass).value) * u.Msun / u.kpc**3
 
-        self.rho_0, self.r_s = self.nfw_fit(ap_size, dm_rho_log)
+        if hasattr(ap_size, 'unit'):
+            ap_size = ap_size.to(u.kpc).value
+        if hasattr(dm_rho_log, 'unit'):
+            dm_rho_log = dm_rho_log.to(u.Msun/u.kpc**3).value
+        model = Model(self.nfw_cost_function)
+        data = RealData(ap_size, dm_rho_log)
+        odr = ODR(data, model, beta0=[5e6, 40]) 
+
+        odr.set_job(fit_type=2)
+        output = odr.run()
+        popt = output.beta
+        rho_0, r_s = popt
+
+        self.rho_0 = rho_0 * u.Msun / u.kpc**3
+        self.r_s = r_s * u.kpc
 
         return(self.rho_0, self.r_s)
 
@@ -514,8 +536,7 @@ class DMMiniSpikesCalculator:
 
     @property
     def r_h(self):
-        rho_0, r_s = self.nfw_fit_para()
-        r_h = self.radius_gravitational_influence(rho_0, r_s, self.bh_mass_formation)
+        r_h = self.radius_gravitational_influence(self.rho_0, self.r_s, self.bh_mass_formation)
         return(r_h)
 
     @property
@@ -525,8 +546,7 @@ class DMMiniSpikesCalculator:
 
     @property
     def rho_at_r_sp(self):
-        rho_0, r_s = self.nfw_fit_para()
-        rho_at_r_sp = nfw_profile((rho_0, r_s), self.r_sp)
+        rho_at_r_sp = nfw_profile((self.rho_0, self.r_s), self.r_sp)
         return(rho_at_r_sp)
 
     def plot_nfw(self, path):
@@ -559,7 +579,5 @@ class DMMiniSpikesCalculator:
 
 
 # TO DO:
-# replace data path
 # replace username and password
 # add cosmological parameters into config file
-# add multiprocessing
