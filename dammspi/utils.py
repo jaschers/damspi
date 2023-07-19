@@ -1,5 +1,29 @@
 import numpy as np
 import astropy.units as u
+import argparse
+
+def parse_args():
+    script_descr="""
+    Extracts IMBH catalogue from EAGLE data
+    """
+
+    # Open argument parser
+    parser = argparse.ArgumentParser(description=script_descr)
+
+    # Define expected arguments
+    parser.add_argument("-sn", "--sim_name", type = str, required = False, default = "RefL0025N0376", metavar = "-", help = "Name of the EAGLE simulation, default: RefL0025N0376")
+    parser.add_argument("-nf", "--number_files", type = int, required = False, default = 16, metavar = "-", help = "Number of files for the particle data, default: 16")
+    parser.add_argument("-plt", "--plot", type = str, required = False, default = "n", metavar = "-", help = "Bool if plots for individual galaxies are saved (takes some time) [y, n], default: n")
+    parser.add_argument("-sa", "--save_animation", type = str, required = False, default = "n", metavar = "-", help = "Bool if animations for individual galaxies are saved (takes a long time) [y, n], default: n")
+
+    args = parser.parse_args()
+    print("####### Setup #######")
+    print(vars(args))
+
+    args.plot = convert_to_bool(args.plot)
+    args.save_animation = convert_to_bool(args.save_animation)
+
+    return args
 
 def convert_float_to_three_digit(number):
         three_digit_number = '{:06d}'.format(int(number * 1000))
@@ -39,3 +63,4 @@ def nfw_integral(r, rho_0, r_s):
 def M_bh_2(M_bh):
     y = (2 * M_bh).to(u.Msun)
     return(y)
+
