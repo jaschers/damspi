@@ -16,6 +16,8 @@ import numpy as np
 import requests
 from dammspi.utils import nfw_profile, nfw_integral, M_bh_2
 from astropy import units as u
+from astropy.coordinates import SkyCoord
+from scipy.stats import gaussian_kde
 
 # set matplotlib parameters for nice looking plots
 plt.rcParams.update({'font.size': 8}) # 8 (paper), 10 (poster)
@@ -24,6 +26,10 @@ plt.rc('font', family='Times New Roman')#, weight='normal', size=14)
 plt.rcParams['mathtext.fontset'] = 'cm'
 cm_conversion_factor = 1/2.54  # centimeters in inches
 single_column_fig_size = (8.85679 * cm_conversion_factor, 8.85679 * 3/4 * cm_conversion_factor)
+single_column_fig_size_legend = (8.85679 * cm_conversion_factor, 8.85679 * 3/4 * 7/6 * cm_conversion_factor)
+double_column_fig_size = (18.34621 * cm_conversion_factor, 18.34621 * 3/4 * cm_conversion_factor)
+double_column_squeezed_fig_size = (18.34621 * cm_conversion_factor, 18.34621 * 1/2 * cm_conversion_factor)
+markersize = 4
 
 cmap = LinearSegmentedColormap.from_list("", ['#FFF275', '#E83151', "#003049", "#171B1D"])
 color_black = "#171b1d"
@@ -31,6 +37,7 @@ color_red = "#e83151"
 color_red_presentation = "#F44D4D"
 color_darkblue = "#003049"
 color_lightblue = "#6c8ead"
+color_yellow = "#fca311"
 
 class GalaxyPlotter:
     def __init__(self, sim_name, table_galaxy, table_bh):
@@ -146,9 +153,9 @@ class BlackHolePlotter:
     def plot_bh_dist_galaxy(self, path):
         os.makedirs(path, exist_ok = True)
 
-        parameters = ["m [M_solar]", "z_f", "d_GC [kpc]", "d_Sun [kpc]", "lat [rad]", "long [rad]"]
-        x_labels = [r"$m_\mathrm{BH}$ [$M_{\odot}$]", r"$z_f$", r"$d_\mathrm{GC}$ [kpc]", r"$d_\mathrm{Sun}$ [kpc]", r"latitude [rad]", r"longitude [rad]"]
-        filenames = ["mass", "redshift", "distance_GC", "distance_Sun", "latitude", "longitude"]
+        parameters = ["m [M_solar]", "z_f", "d_GC [kpc]", "lat_GC [rad]", "long_GC [rad]", "d_Sun [kpc]", "lat_Sun [rad]", "long_Sun [rad]"]
+        x_labels = [r"$m_\mathrm{BH}$ [$M_{\odot}$]", r"$z_f$", r"$d_\mathrm{GC}$ [kpc]", r"$b_\mathrm{GC}$ [rad]", r"$l_\mathrm{GC}$ [rad]", r"$d_\mathrm{Sun}$ [kpc]", r"$b_\mathrm{Sun}$ [rad]", r"$l_\mathrm{Sun}$ [rad]"]
+        filenames = ["mass", "redshift", "distance_GC", "latitude_GC", "longitude_GC", "distance_Sun", "latitude_Sun", "longitude_Sun"]
         
         for parameter, x_label, filename in zip(parameters, x_labels, filenames):
             # plot galaxy mass distribution
@@ -202,16 +209,13 @@ class BlackHolePlotter:
         # plt.show()
         plt.close()
 
-    def plot_bh_dist_total(self, path):
-        print(np.unique(self.table_bh["no_host"], return_counts = True))
-        exit()
-        parameters = ["m [M_solar]", "z_f", "d_GC [kpc]", "d_Sun [kpc]", "lat [rad]", "long [rad]", "r_sp [pc]", "rho(r_sp) [GeV/cm3]"]
+    def plot_dist_total(self, path):
+        parameters = ["m [M_solar]", "z_f", "d_GC [kpc]", "lat_GC [rad]", "long_GC [rad]", "d_Sun [kpc]", "lat_Sun [rad]", "long_Sun [rad]", "r_sp [pc]", "rho(r_sp) [GeV/cm3]"]
         log_parameters = ["m [M_solar]", "r_sp [pc]", "rho(r_sp) [GeV/cm3]"]
-        x_labels = [r"$m_\mathrm{BH}$ [$M_{\odot}$]", r"$z_f$", r"$d_\mathrm{GC}$ [kpc]", r"$d_\mathrm{Sun}$ [kpc]", r"latitude [rad]", r"longitude [rad]", "r_sp [pc]", r"$\rho(r_\mathrm{sp})$ [GeV/cm$^3$]"]
-        filenames = ["mass", "redshift", "distance_GC", "distance_Sun", "latitude", "longitude", "r_sp", "rho_sp"]
+        x_labels = [r"$m_\mathrm{BH}$ [$M_{\odot}$]", r"$z_f$", r"$d_\mathrm{GC}$ [kpc]", r"$b_\mathrm{GC}$ [rad]", r"$l_\mathrm{GC}$ [rad]", r"$d_\mathrm{Sun}$ [kpc]", r"$b_\mathrm{Sun}$ [rad]", r"$l_\mathrm{Sun}$ [rad]", "r_sp [pc]", r"$\rho(r_\mathrm{sp})$ [GeV/cm$^3$]"]
+        filenames = ["mass", "redshift", "distance_gc", "latitude_GC", "longitude_GC", "distance_sun", "latitude_Sun", "longitude_Sun", "r_sp", "rho_sp"]
         
         for parameter, x_label, filename in zip(parameters, x_labels, filenames):
-            # plot galaxy mass distribution
             data = self.table_bh[parameter].values
             plt.figure(figsize = single_column_fig_size)
             if parameter in log_parameters:
@@ -225,4 +229,209 @@ class BlackHolePlotter:
             plt.tight_layout()
             plt.savefig(path + f"{filename}.pdf", dpi = 500)
             plt.close()
+
+            if parameter == "lat_GC [rad]" or parameter == "lat_Sun [rad]":
+                data = np.cos(data)
+                if parameter == "lat_GC [rad]":
+                    x_label = r"$\cos(b_\mathrm{GC})$"
+                    filename = "latitude_GC_cos"
+                if parameter == "lat_Sun [rad]":
+                    x_label = r"$\cos(b_\mathrm{Sun})$"
+                    filename = "latitude_Sun_cos"
+                plt.figure(figsize = single_column_fig_size)
+                bins = 9
+                plt.hist(data, bins = bins, color = color_darkblue)
+                plt.xlabel(x_label)
+                plt.ylabel("Number of BHs")
+                plt.tight_layout()
+                plt.savefig(path + f"{filename}.pdf", dpi = 500)
+                plt.close()
+
+    def plot_2d_map(self, lat, long, path):
+        coords = SkyCoord(long, lat, frame='galactic', unit='rad')
+
+        fig = plt.figure(figsize  = single_column_fig_size)
+        ax = fig.add_subplot(111, projection='aitoff')
+        ax.grid(True, alpha = 0.5)
+        ax.scatter(coords.l.wrap_at('180d').radian, coords.b.radian, color = color_darkblue, marker = 'o', s = markersize)
+        ax.set_xlabel('Longitude')
+        ax.set_ylabel('Latitude')
+        plt.tight_layout()
+        plt.savefig(path, dpi = 500)
+        plt.close()
+
+
+    def plot_2d_map_contours(self, lat, long, path):
+        # Extract coordinates
+        coords = SkyCoord(long, lat, frame='galactic', unit='rad')
+
+        # Calculate kernel density estimation
+        kde = gaussian_kde([coords.l.wrap_at('180d').radian, coords.b.radian])
+
+        # Define grid for evaluating KDE
+        x = np.linspace(-np.pi, np.pi, 100)
+        y = np.linspace(-np.pi / 2, np.pi / 2, 100)
+        X, Y = np.meshgrid(x, y)
+        positions = np.vstack([X.ravel(), Y.ravel()])
+
+        # Evaluate KDE at grid points
+        Z = np.reshape(kde(positions).T, X.shape)
+
+        # Plot the coordinates using Aitoff projection
+        fig = plt.figure(figsize  = double_column_fig_size)
+        ax = fig.add_subplot(111, projection='aitoff')
+        ax.grid(True, alpha = 0.5)
+
+        # Plot the density contours
+        levels = np.linspace(Z.min(), Z.max(), 10)
+        cont = ax.contour(X, Y, Z, levels=levels, cmap = cmap)
+
+        # Add colorbar
+        cbar = fig.colorbar(cont)
+
+        # Plot the points
+        ax.scatter(coords.l.wrap_at('180d').radian, coords.b.radian, color = color_darkblue, marker='o', s = markersize)
+
+        # Set labels and title
+        ax.set_xlabel('Galactic Longitude')
+        ax.set_ylabel('Galactic Latitude')
+        plt.tight_layout()
+        plt.savefig(path, dpi = 500)
+
+    def plot_cumulative_radial_distribution(self, distance, path):
+        plt.figure(figsize = single_column_fig_size)
+        plt.hist(distance, bins = 20, cumulative = True, density = True, color = color_darkblue)
+        plt.xlabel(r"$d_\mathrm{GC}$ [kpc]")
+        plt.ylabel(r"$N(<r) / N_\mathrm{tot}$")
+        plt.tight_layout()
+        plt.savefig(path, dpi = 500)
+        plt.close()
+
+    def cumulative_radial_distribution(self, distance, bins):
+        cumulative_hist = []
+        for bin in bins:
+            cumulative_hist.append(np.sum(distance < bin) / len(distance))
+        return cumulative_hist
+
+    def plot_cumulative_radial_distribution_mean(self, path):
+        distance = self.table_bh["d_GC [kpc]"].values
+        d_min, d_max = np.min(distance), np.max(distance)
+        bins = np.logspace(np.log10(d_min), np.log10(d_max), 20)
+
+        cumulative_hist_list = []
+        for galaxy_id in np.unique(self.table_bh["galaxy_id"].values):
+            distance_galaxy_id = distance[self.table_bh["galaxy_id"].values == galaxy_id]
+            cumulative_hist = self.cumulative_radial_distribution(distance_galaxy_id, bins)
+            cumulative_hist_list.append(cumulative_hist)
+        
+        cumulative_hist_mean = np.mean(cumulative_hist_list, axis = 0)
+        cumulative_hist_std = np.std(cumulative_hist_list, ddof = 1, axis = 0)
+        cumulative_hist_mean_error = cumulative_hist_std / np.sqrt(len(cumulative_hist_list))
+
+        plt.figure(figsize = single_column_fig_size)
+        plt.errorbar(bins, cumulative_hist_mean, yerr = cumulative_hist_mean_error, color = color_darkblue, linestyle = "", marker = ".")
+        plt.xlabel(r"$d_\mathrm{GC}$ [kpc]")
+        plt.ylabel(r"$N(<r) / N_\mathrm{tot}$")
+        plt.xscale("log")
+        plt.yscale("log")
+        plt.tight_layout()
+        plt.savefig(path, dpi = 500)
+        plt.close()
+
+    def parameter_distr_mean(self, parameter, bins):
+        hist_list = []
+        table_parameter = self.table_bh[parameter]
+        for galaxy_id in np.unique(self.table_bh["galaxy_id"].values):
+            data_galaxy_id = table_parameter[self.table_bh["galaxy_id"].values == galaxy_id]
+            hist, _ = np.histogram(data_galaxy_id, bins = bins)
+            hist_list.append(hist)
+        
+        hist_mean = np.mean(hist_list, axis = 0)
+        hist_std = np.std(hist_list, ddof = 1, axis = 0)
+        hist_mean_error = hist_std / np.sqrt(len(hist_list))
+
+        return hist_mean, hist_mean_error
+
+    def plot_dist_total_mean(self, path):
+        parameters = ["m [M_solar]", "z_f", "d_GC [kpc]", "lat_GC [rad]", "long_GC [rad]", "d_Sun [kpc]", "lat_Sun [rad]", "long_Sun [rad]", "r_sp [pc]", "rho(r_sp) [GeV/cm3]"]
+        units = ["$M_{\odot}$", "", "kpc", "rad", "rad", "kpc", "rad", "rad", "pc", "GeV/cm$^3$"]
+        log_parameters = ["m [M_solar]", "r_sp [pc]", "rho(r_sp) [GeV/cm3]"]
+        x_labels = [r"$m_\mathrm{BH}$ [$M_{\odot}$]", r"$z_f$", r"$d_\mathrm{GC}$ [kpc]", r"$b_\mathrm{GC}$ [rad]", r"$l_\mathrm{GC}$ [rad]", r"$d_\mathrm{Sun}$ [kpc]", r"$b_\mathrm{Sun}$ [rad]", r"$l_\mathrm{Sun}$ [rad]", "r_sp [pc]", r"$\rho(r_\mathrm{sp})$ [GeV/cm$^3$]"]
+        filenames = ["mass_mean", "redshift_mean", "distance_gc_mean", "latitude_GC_mean", "longitude_GC_mean", "distance_sun_mean", "latitude_Sun_mean", "longitude_Sun_mean", "r_sp_mean", "rho_sp_mean"]
+        
+        for parameter, unit, x_label, filename in zip(parameters, units, x_labels, filenames):
+            data = self.table_bh[parameter].values
+            data_mean = np.mean(data)
+            data_mean_error = np.std(data, ddof = 1) / np.sqrt(len(data))
+            data_median = np.median(data)
+            
+            plt.figure(figsize = single_column_fig_size)
+            if parameter in log_parameters:
+                bins = np.logspace(np.log10(np.min(data)), np.log10(np.max(data)), 9)
+                # bins_centre = np.sqrt(bins[1:] * bins[:-1])
+                # bin_width_left = bins_centre - bins[:-1]
+                # bin_width_right = bins[1:] - bins_centre    
+                # bins_width = np.vstack([bin_width_left, bin_width_right])
+                # print("bins_width", bins_width)
+                error_x_position = np.sqrt(bins[1:] * bins[:-1])
+                plt.xscale("log")
+                plt.yscale("log")
+            else:
+                bins = np.linspace(np.min(data), np.max(data), 9)
+                error_x_position = (bins[1:] + bins[:-1]) / 2
+
+            bins_centre = (bins[1:] + bins[:-1]) / 2
+            bins_width = bins[1:] - bins[:-1]
+            
+            hist_mean, hist_mean_error = self.parameter_distr_mean(parameter, bins)
+            plt.bar(bins_centre, hist_mean, width = bins_width, color = color_darkblue)
+            plt.errorbar(error_x_position, hist_mean, yerr = hist_mean_error, color = color_lightblue, linestyle = "")
+            plt.vlines(data_mean, ymin = 0, ymax = np.max(hist_mean) + np.max(hist_mean_error), color = color_yellow, linestyle = "dashed", label = r"$\mu$ = {0:.2e} $\pm$ {1:.2e} {2}".format(data_mean, data_mean_error, unit))
+            plt.vlines(data_median, ymin = 0, ymax = np.max(hist_mean) + np.max(hist_mean_error), color = color_yellow, linestyle = "solid", label = r"median = {0:.2e} {1}".format(data_median, unit))
+            plt.xlabel(x_label)
+            plt.ylabel("Number of BHs")
+            plt.legend()
+            plt.tight_layout()
+            plt.savefig(path + f"{filename}.pdf", dpi = 500)
+            plt.close()
+
+            # if parameter == "lat_GC [rad]" or parameter == "lat_Sun [rad]":
+            #     data = np.cos(data)
+            #     bins = np.linspace(np.min(data), np.max(data), 9)
+            #     hist_mean, hist_mean_error, hist_edges = self.parameter_distr_mean(parameter, bins)
+            #     if parameter == "lat_GC [rad]":
+            #         x_label = r"$\cos(b_\mathrm{GC})$"
+            #         filename = "latitude_GC_cos_mean"
+            #     if parameter == "lat_Sun [rad]":
+            #         x_label = r"$\cos(b_\mathrm{Sun})$"
+            #         filename = "latitude_Sun_cos_mean"
+            #     plt.figure(figsize = single_column_fig_size)
+            #     plt.errorbar(hist_edges[:-1], hist_mean, yerr = hist_mean_error, color = color_darkblue, linestyle = "", marker = ".")
+            #     plt.xlabel(x_label)
+            #     plt.ylabel("Number of BHs")
+            #     plt.tight_layout()
+            #     plt.savefig(path + f"{filename}.pdf", dpi = 500)
+            #     plt.close()
+
+    def plot_number_dist(self, path):
+        n = np.unique(self.table_bh["galaxy_id"].values, return_counts = True)[1]
+        hist, bins_edges = np.histogram(n, bins = 10)
+        bins_width = bins_edges[1:] - bins_edges[:-1]
+        bins_centre = (bins_edges[1:] + bins_edges[:-1]) / 2
+        hist_err = np.sqrt(hist)
+        n_mean = np.mean(n)
+        n_median = np.median(n)
+        n_mean_error = np.std(n, ddof = 1) / np.sqrt(len(n))
+        plt.figure(figsize = single_column_fig_size)
+        plt.bar(bins_centre, hist, width = bins_width, color = color_darkblue, yerr = hist_err, ecolor = color_lightblue)
+        plt.vlines(n_mean, ymin = 0, ymax = np.max(hist) + np.max(hist_err), color = color_yellow, linestyle = "dashed", label = r"$\mu$ = {0:.2f} $\pm$ {1:.2f}".format(n_mean, n_mean_error))
+        plt.vlines(n_median, ymin = 0, ymax = np.max(hist) + np.max(hist_err), color = color_yellow, linestyle = "solid", label = r"median = {0:.2f}".format(n_median))
+        plt.xlabel(r"$N_\mathrm{BH}$")
+        plt.ylabel(r"Number of galaxies with $N_\mathrm{BH}$")
+        plt.legend()
+        plt.tight_layout()
+        plt.savefig(path + "number_dist.pdf", dpi = 500)
+        plt.close()
+
+
 
