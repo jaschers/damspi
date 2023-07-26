@@ -42,34 +42,52 @@ class DataCollector:
         self.hubble_constant = cosmo.H0.value / 100
         self.minimal_galaxy_mass = 10**10 * u.Msun / self.hubble_constant
         self.bh_mass_formation = 10**5 * u.Msun / self.hubble_constant
+        self.stellar_mass_range = [10**(10.4), 10**(11.2)] #Msun
+        self.halo_mass_range = [10**(11.7), 10**(12.5)] #Msun
 
     def galaxy_data(self, nsnap):
         """
         Get the galaxy data for snapshot nsnap from the EAGLE simulations
         """
         query = f"SELECT \
-                    DES.GalaxyID as galaxy_id, \
-                    DES.GroupID as group_id, \
-                    DES.GroupNumber as group_number, \
-                    DES.SubGroupNumber as subgroup_number, \
-                    DES.Redshift as z, \
-                    DES.Snapnum as nsnap, \
-                    DES.Mass as m, \
-                    DES.CentreOfMass_x as com_x, \
-                    DES.CentreOfMass_y as com_y, \
-                    DES.CentreOfMass_z as com_z, \
-                    DES.Stars_Spin_x as spin_x, \
-                    DES.Stars_Spin_y as spin_y, \
-                    DES.Stars_Spin_z as spin_z, \
-                    DES.Image_face as img_face, \
-                    DES.Image_edge as img_edge, \
-                    DES.Image_box as img_box \
+                    SH.GalaxyID as galaxy_id, \
+                    SH.GroupID as group_id, \
+                    SH.GroupNumber as group_number, \
+                    SH.SubGroupNumber as subgroup_number, \
+                    SH.Redshift as z, \
+                    SH.Snapnum as nsnap, \
+                    SH.Mass as m, \
+                    SH.CentreOfPotential_x as cop_x, \
+                    SH.CentreOfPotential_y as cop_y, \
+                    SH.CentreOfPotential_z as cop_z, \
+                    SH.Stars_Spin_x as spin_x, \
+                    SH.Stars_Spin_y as spin_y, \
+                    SH.Stars_Spin_z as spin_z, \
+                    SH.Image_face as img_face, \
+                    SH.Image_edge as img_edge, \
+                    SH.Image_box as img_box \
                 FROM \
-                    {self.sim_name}_SubHalo as DES \
+                    {self.sim_name}_SubHalo as SH, \
+                    {self.sim_name}_FOF as FOF, \
+                    {self.sim_name}_Aperture as AP \
                 WHERE \
-                    DES.Snapnum = {nsnap} \
-                    and DES.Mass between 1.3e12 and 2.3e12 \
-                    and DES.Spurious = 0"
+                    SH.Snapnum = {nsnap} \
+                    and SH.SubGroupNumber = 0 \
+                    and FOF.Group_M_Crit200 between {self.halo_mass_range[0]} and {self.halo_mass_range[1]} \
+                    and AP.ApertureSize = 30 \
+                    and AP.Mass_Star between {self.stellar_mass_range[0]} and {self.stellar_mass_range[1]} \
+                    and sqrt(square(SH.CentreOfMass_x - SH.CentreOfPotential_x) + square(SH.CentreOfMass_y - SH.CentreOfPotential_y) + square(SH.CentreOfMass_z - SH.CentreOfPotential_y)) <= 0.07*FOF.Group_R_Crit200 \
+                    and FOF.GroupMass - SH.Mass < 0.1*FOF.GroupMass \
+                    and FOF.Snapnum = SH.Snapnum \
+                    and FOF.GroupID = SH.GroupID \
+                    and AP.GalaxyID = SH.GalaxyID \
+                    and SH.Spurious = 0"
+
+        # and FOF.GroupMass - DES.Mass < 0.1*FOF.GroupMass \
+        # and sqrt(square(DES.CentreOfPotential_x - FOF.GroupCentreOfPotential_x) + square(DES.CentreOfPotential_y - FOF.GroupCentreOfPotential_y) + square(DES.CentreOfPotential_z - FOF.GroupCentreOfPotential_y)) <= 0.3 \
+        # FOF.GroupCentreOfPotential_x as fof_cop_x, \
+        # FOF.GroupCentreOfPotential_y as fof_cop_y, \
+        # FOF.GroupCentreOfPotential_z as fof_cop_z \
 
         # Execute query.
         con = sql.connect("dvd351", password="zqfARI55") # username, password
@@ -183,7 +201,7 @@ class CoordinateTransformer:
 
         self.table_galaxy = table_galaxy
         self.galaxy_id = self.table_galaxy["galaxy_id"].values[0]
-        self.galaxy_centre = self.table_galaxy[["com_x", "com_y", "com_z"]].values[0] * 1e3 # convert to kpc
+        self.galaxy_centre = self.table_galaxy[["cop_x", "cop_y", "cop_z"]].values[0] * 1e3 # convert to kpc
         self.galaxy_spin = self.table_galaxy[["spin_x", "spin_y", "spin_z"]].values[0] 
         self.galaxy_spin = self.galaxy_spin / np.linalg.norm(self.galaxy_spin)
 
@@ -205,6 +223,19 @@ class CoordinateTransformer:
         """
         distance_gc = np.linalg.norm(self.bh_coord_gc, axis = 1)
         return(distance_gc)
+
+    @property
+    def bh_galactic_coord_gc(self):
+        """
+        get black hole coordinates in galactic coordinate system
+        """
+        r, lat, long = cartesian_to_spherical(
+            self.bh_coord_gc_rot[:,0], 
+            self.bh_coord_gc_rot[:,1], 
+            self.bh_coord_gc_rot[:,2]
+            )
+        r, lat, long = r.value, lat.value, long.value
+        return(r, lat, long)
 
     @staticmethod
     def rot_angle_x(vec):
@@ -269,7 +300,7 @@ class CoordinateTransformer:
         return(bh_coord_gc_rot_shifted)
 
     @property
-    def bh_galactic_coord(self):
+    def bh_galactic_coord_sun(self):
         """
         get black hole coordinates in galactic coordinate system
         """
@@ -363,9 +394,9 @@ class DMMiniSpikesCalculator:
                         DES.Redshift as z, \
                         DES.Snapnum as nsnap, \
                         DES.Mass as m, \
-                        DES.CentreOfMass_x as com_x, \
-                        DES.CentreOfMass_y as com_y, \
-                        DES.CentreOfMass_z as com_z, \
+                        DES.CentreOfPotential_x as cop_x, \
+                        DES.CentreOfPotential_y as cop_y, \
+                        DES.CentreOfPotential_z as cop_z, \
                         DES.Image_face as img_face, \
                         DES.Image_edge as img_edge, \
                         DES.Image_box as img_box, \
@@ -389,9 +420,9 @@ class DMMiniSpikesCalculator:
                         DES.Redshift as z, \
                         DES.Snapnum as nsnap, \
                         DES.Mass as m, \
-                        DES.CentreOfMass_x as com_x, \
-                        DES.CentreOfMass_y as com_y, \
-                        DES.CentreOfMass_z as com_z, \
+                        DES.CentreOfPotential_x as cop_x, \
+                        DES.CentreOfPotential_y as cop_y, \
+                        DES.CentreOfPotential_z as cop_z, \
                         DES.Image_face as img_face, \
                         DES.Image_edge as img_edge, \
                         DES.Image_box as img_box \
@@ -400,7 +431,7 @@ class DMMiniSpikesCalculator:
                     WHERE \
                         DES.Snapnum = {self.nsnap_closest} \
                         and DES.Mass >= {self.bh_mass_formation.to(u.Msun).value} \
-                        and sqrt(square((DES.CentreOfMass_x * {scale_factor}) - {self.bh_coord[0]}) + square((DES.CentreOfMass_y * {scale_factor}) - {self.bh_coord[1]}) + square((DES.CentreOfMass_z * {scale_factor}) - {self.bh_coord[2]})) <= 1e3 \
+                        and sqrt(square((DES.CentreOfMass_x * {scale_factor}) - {self.bh_coord[0]}) + square((DES.CentreOfMass_y * {scale_factor}) - {self.bh_coord[1]}) + square((DES.CentreOfMass_z * {scale_factor}) - {self.bh_coord[2]})) <= 2e3 \
                         and DES.Spurious = 0"
         return(query)
 
@@ -428,7 +459,7 @@ class DMMiniSpikesCalculator:
 
             # extract the coordinates of the galaxies at the redshift closest to BH formation redshift
             scale_factor = self.redshift_to_scale_factor(self.z_closest)
-            galaxy_coord = table_galaxy_zf[["com_x", "com_y", "com_z"]].to_numpy() * scale_factor * 1e3 # convert to kpc
+            galaxy_coord = table_galaxy_zf[["cop_x", "cop_y", "cop_z"]].to_numpy() * scale_factor * 1e3 # convert to kpc
 
             # calculate the distance of the galaxies to the BH
             distance_galaxies_bh = self.distance_two_points(galaxy_coord, self.bh_coord)
