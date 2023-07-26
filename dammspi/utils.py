@@ -1,6 +1,8 @@
 import numpy as np
 import astropy.units as u
 import argparse
+import eagleSqlTools as sql
+import pandas as pd
 
 def parse_args():
     script_descr="""
@@ -11,10 +13,16 @@ def parse_args():
     parser = argparse.ArgumentParser(description=script_descr)
 
     # Define expected arguments
-    parser.add_argument("-sn", "--sim_name", type = str, required = False, default = "RefL0025N0376", metavar = "-", help = "Name of the EAGLE simulation, default: RefL0025N0376")
-    parser.add_argument("-nf", "--number_files", type = int, required = False, default = 16, metavar = "-", help = "Number of files for the particle data, default: 16")
+    parser.add_argument("-sn", "--sim_name", type = str, required = False, default = "RefL0050N0752", metavar = "-", help = "Name of the EAGLE simulation, default: RefL0050N0752") # RefL0025N0376
+    parser.add_argument("-nf", "--number_files", type = int, required = False, default = 128, metavar = "-", help = "Number of files for the particle data, default: 128") # 16
     parser.add_argument("-plt", "--plot", type = str, required = False, default = "n", metavar = "-", help = "Bool if plots for individual galaxies are saved (takes some time) [y, n], default: n")
     parser.add_argument("-sa", "--save_animation", type = str, required = False, default = "n", metavar = "-", help = "Bool if animations for individual galaxies are saved (takes a long time) [y, n], default: n")
+    parser.add_argument("-mdm", "--m_dm", type = float, required = False, nargs = "+", default = 500, metavar = "-", help = "Mass of dark matter particle in GeV. Can be single value or mass range. If mass range is given, scaling can be specified by the mass_dm_scaling argument. Default: 500 GeV")
+    parser.add_argument("-mdms", "--m_dm_scaling", type = str, required = False, default = "linear", metavar = "-", help = "Scaling of dark matter particle mass. Can be linear or log. Default: linear")
+    parser.add_argument("-sv", "--sigma_v", type = float, required = False, nargs = "+", default = 1e-26, metavar = "-", help = "Dark matter (velocity weighted) annihilation cross section in cm^3/s. Can be single value or cross section range. If cross section range is given, scaling can be specified by the cross_section_scaling argument. Default: 1e-26 cm^3/s")
+    parser.add_argument("-svs", "--sigma_v_scaling", type = str, required = False, default = "log", metavar = "-", help = "Scaling of dark matter (velocity weighted) annihilation cross section. Can be linear or log. Default: log")
+    parser.add_argument("-c", "--channel", type = str, required = False, default = "b", metavar = "-", help = "Dark matter annihilation channel. Can be: 'V->e', 'V->mu', 'V->tau', 'W', 'WL', 'WT', 'Z', 'ZL', 'ZT', 'b', 'c', 'e', 'eL', 'eR', 'g', 'gamma', 'h', 'mu', 'muL', 'muR', 'nu_e', 'nu_mu', 'nu_tau', 'q', 't', 'tau', 'tauL', 'tauR'. Default: b")
+    parser.add_argument("-eth", "--E_th", type = float, required = False, default = 300, metavar = "-", help = "Lower energy threshold to calculate number of gamma rays per dark matter annihilation in GeV. Default: 300 GeV")
 
     args = parser.parse_args()
     print("####### Setup #######")
@@ -22,6 +30,23 @@ def parse_args():
 
     args.plot = convert_to_bool(args.plot)
     args.save_animation = convert_to_bool(args.save_animation)
+    args.E_th = args.E_th * u.GeV
+
+    if isinstance(args.m_dm, list):
+        if args.m_dm_scaling == 'linear':
+            args.m_dm = np.linspace(args.m_dm[0], args.m_dm[1], int(args.m_dm[2])) * u.GeV
+        elif args.m_dm_scaling == 'log':
+            args.m_dm = np.logspace(np.log10(args.m_dm[0]), np.log10(args.m_dm[1]), int(args.m_dm[2])) * u.GeV
+    else:
+        args.m_dm = args.m_dm * u.GeV
+
+    if isinstance(args.sigma_v, list):
+        if args.sigma_v_scaling == 'linear':
+            args.sigma_v = np.linspace(args.sigma_v[0], args.sigma_v[1], int(args.sigma_v[2])) * u.cm**3 / u.s
+        elif args.sigma_v_scaling == 'log':
+            args.sigma_v = np.logspace(np.log10(args.sigma_v[0]), np.log10(args.sigma_v[1]), int(args.sigma_v[2])) * u.cm**3 / u.s
+    else:
+        args.sigma_v = args.sigma_v * u.cm**3 / u.s
 
     return args
 
@@ -64,3 +89,69 @@ def M_bh_2(M_bh):
     y = (2 * M_bh).to(u.Msun)
     return(y)
 
+def rescaled_distance(r, m200):
+    r = r * (1e12 * u.Msun / m200)**(1/3)
+    return(r)
+
+def remove_distant_satellites(table_bh, nsnap, args):
+    group_number = table_bh['group number'].values[0]
+    subgroup_numbers = tuple(np.unique(table_bh['subgroup number'].values))
+
+    if len(subgroup_numbers) > 1:
+        r_min, r_max = 0.040 * u.Mpc, 0.300 * u.Mpc
+
+        query = f"SELECT \
+                    SH.GroupNumber as group_number, \
+                    SH.SubGroupNumber as subgroup_number, \
+                    SH.CentreOfPotential_x as cop_x, \
+                    SH.CentreOfPotential_y as cop_y, \
+                    SH.CentreOfPotential_z as cop_z, \
+                    FOF.Group_M_Crit200 as m200 \
+                FROM \
+                    {args.sim_name}_SubHalo as SH, \
+                    {args.sim_name}_FOF as FOF \
+                WHERE \
+                    SH.Snapnum = {nsnap} \
+                    and SH.GroupNumber = {group_number} \
+                    and SH.SubGroupNumber in {subgroup_numbers} \
+                    and FOF.Snapnum = SH.Snapnum \
+                    and FOF.GroupID = SH.GroupID \
+                    and SH.Spurious = 0"
+
+        # Execute query.
+        con = sql.connect("dvd351", password="zqfARI55") # username, password
+        # load galaxy data
+        data_galaxy = sql.execute_query(con, query)
+        table_galaxy = pd.DataFrame(data_galaxy)
+
+        host_galaxy = table_galaxy[table_galaxy['subgroup_number'] == 0]
+        host_cop = host_galaxy[['cop_x', 'cop_y', 'cop_z']].values[0] * u.Mpc
+
+        r = np.sqrt(
+            (table_galaxy['cop_x'].values * u.Mpc - host_cop[0])**2 + 
+            (table_galaxy['cop_y'].values * u.Mpc - host_cop[1])**2 + 
+            (table_galaxy['cop_z'].values * u.Mpc - host_cop[2])**2
+            )
+
+        m200 = table_galaxy['m200'].values * u.Msun
+
+        r_rescaled = rescaled_distance(r, m200)
+
+        table_galaxy['rescaled distance [Mpc]'] = r_rescaled.value
+
+        condition = (r_rescaled > r_min) & (r_rescaled < r_max)
+
+        table_close_satellites = table_galaxy[condition]
+
+        subgroup_numbers_close_satellites = np.unique(table_close_satellites['subgroup_number'].values)
+
+        # add host galaxy back to valid subgroup numbers
+        subgroup_numbers_valid = np.append(subgroup_numbers_close_satellites, 0)
+
+        table_bh = table_bh[table_bh['subgroup number'].isin(subgroup_numbers_valid)].reset_index(drop=True)
+        
+        return(table_bh)
+
+    else:
+        return(table_bh)
+    
