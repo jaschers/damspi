@@ -10,7 +10,7 @@ sys.path.append(module_dir)
 
 import dammspi.catalogue as dammcat
 import dammspi.plot as dammplot
-from dammspi.utils import convert_to_bool, parse_args
+from dammspi.utils import convert_to_bool, parse_args, remove_distant_satellites
 import argparse
 import numpy as np
 import pandas as pd
@@ -26,25 +26,31 @@ def determine_coordinates(table_galaxy_z0_total, table_bh_z0_total, args, lst, g
     table_galaxy_z0 = table_galaxy_z0_total[table_galaxy_z0_total["galaxy_id"] == galaxy_id]
     galaxy_group_number = table_galaxy_z0["group_number"].values[0]
 
-    # add galaxy root id to table
-    table_bh_z0 = table_bh_z0_total[table_bh_z0_total["group number"] == galaxy_group_number]
+    # select only BHs of the galaxy
+    table_bh_z0 = table_bh_z0_total[table_bh_z0_total["group number"] == galaxy_group_number].reset_index(drop = True)
 
+    # remove BHs that are in satallitle galaxies not within 40 kpc and 300 kpc to match MW-like galaxies
+    table_bh_z0 = remove_distant_satellites(table_bh_z0, nsnap = 28, args = args)
+
+    # add galaxy id to table
     table_bh_z0["galaxy_id"] = np.ones(len(table_bh_z0)) * galaxy_id
 
     coordinate_transformer = dammcat.CoordinateTransformer(table_galaxy = table_galaxy_z0, table_bh = table_bh_z0)
 
     # get distance of BHs to galaxy center
-    r_gc = coordinate_transformer.distance_gc
+    r_gc, lat_gc, long_gc = coordinate_transformer.bh_galactic_coord_gc
 
     # get BH coordinates in galactic frame
-    r, lat, long = coordinate_transformer.bh_galactic_coord
+    r_sun, lat_sun, long_sun = coordinate_transformer.bh_galactic_coord_sun
 
     # add id, radial distances, latitude and longitude, (sub)groupnumber 2^30, and satellite information to table
     table_bh_z0["galaxy_id"] = galaxy_id
     table_bh_z0["d_GC [kpc]"] = r_gc
-    table_bh_z0["d_Sun [kpc]"] = r
-    table_bh_z0["lat [rad]"] = lat
-    table_bh_z0["long [rad]"] = long
+    table_bh_z0["lat_GC [rad]"] = lat_gc
+    table_bh_z0["long_GC [rad]"] = long_gc
+    table_bh_z0["d_Sun [kpc]"] = r_sun
+    table_bh_z0["lat_Sun [rad]"] = lat_sun
+    table_bh_z0["long_Sun [rad]"] = long_sun
     # table_bh_z0["(sub)group number: 2^30"] = False
     table_bh_z0["satellite"] = table_bh_z0["subgroup number"] != 0
 
@@ -56,10 +62,12 @@ def determine_coordinates(table_galaxy_z0_total, table_bh_z0_total, args, lst, g
         "z_f",
         "z_c",
         "nsnap_c", 
-        "d_GC [kpc]", 
+        "d_GC [kpc]",
+        "lat_GC [rad]", 
+        "long_GC [rad]",  
         "d_Sun [kpc]", 
-        "lat [rad]", 
-        "long [rad]", 
+        "lat_Sun [rad]", 
+        "long_Sun [rad]", 
         "satellite" 
         # "(sub)group number: 2^30"
         ]].reset_index(drop = True)
@@ -149,13 +157,13 @@ if __name__ == "__main__":
     # extract bh data at z = 0
     table_bh_z0_total = data_collector.bh_data(nsnap = 28)
 
-    if args.plot:
-        # save galaxy images
-        galaxy_plotter = dammplot.GalaxyPlotter(sim_name = args.sim_name, table_galaxy = table_galaxy_z0_total, table_bh = table_bh_z0_total)
-        galaxy_plotter.save_gri_images()
+    # if args.plot:
+    #     # save galaxy images
+    #     galaxy_plotter = dammplot.GalaxyPlotter(sim_name = args.sim_name, table_galaxy = table_galaxy_z0_total, table_bh = table_bh_z0_total)
+    #     galaxy_plotter.save_gri_images()
 
-        # plot galaxy properties distributions, such as 
-        galaxy_plotter.plot_galaxy_distributions()
+    #     # plot galaxy properties distributions, such as 
+    #     galaxy_plotter.plot_galaxy_distributions()
 
     # Create a multiprocessing manager list to share the pandas tables between processes
     coord_list = mp.Manager().list()
