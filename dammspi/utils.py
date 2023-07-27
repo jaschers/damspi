@@ -17,9 +17,9 @@ def parse_args():
     parser.add_argument("-nf", "--number_files", type = int, required = False, default = 128, metavar = "-", help = "Number of files for the particle data, default: 128") # 16
     parser.add_argument("-plt", "--plot", type = str, required = False, default = "n", metavar = "-", help = "Bool if plots for individual galaxies are saved (takes some time) [y, n], default: n")
     parser.add_argument("-sa", "--save_animation", type = str, required = False, default = "n", metavar = "-", help = "Bool if animations for individual galaxies are saved (takes a long time) [y, n], default: n")
-    parser.add_argument("-mdm", "--m_dm", type = float, required = False, nargs = "+", default = 500, metavar = "-", help = "Mass of dark matter particle in GeV. Can be single value or mass range. If mass range is given, scaling can be specified by the mass_dm_scaling argument. Default: 500 GeV")
+    parser.add_argument("-mdm", "--m_dm", type = float, required = False, nargs = "+", default = [500], metavar = "-", help = "Mass of dark matter particle in GeV. Can be single input or mass range + number of masses (three inputs). If mass range is given, scaling can be specified by the mass_dm_scaling argument. Default: 500 GeV")
     parser.add_argument("-mdms", "--m_dm_scaling", type = str, required = False, default = "linear", metavar = "-", help = "Scaling of dark matter particle mass. Can be linear or log. Default: linear")
-    parser.add_argument("-sv", "--sigma_v", type = float, required = False, nargs = "+", default = 1e-26, metavar = "-", help = "Dark matter (velocity weighted) annihilation cross section in cm^3/s. Can be single value or cross section range. If cross section range is given, scaling can be specified by the cross_section_scaling argument. Default: 1e-26 cm^3/s")
+    parser.add_argument("-sv", "--sigma_v", type = float, required = False, nargs = "+", default = [1e-26], metavar = "-", help = "Dark matter (velocity weighted) annihilation cross section in cm^3/s. Can be Can be single input or cross section range + number of cross sections (three inputs). If cross section range is given, scaling can be specified by the cross_section_scaling argument. Default: 1e-26 cm^3/s")
     parser.add_argument("-svs", "--sigma_v_scaling", type = str, required = False, default = "log", metavar = "-", help = "Scaling of dark matter (velocity weighted) annihilation cross section. Can be linear or log. Default: log")
     parser.add_argument("-c", "--channel", type = str, required = False, default = "b", metavar = "-", help = "Dark matter annihilation channel. Can be: 'V->e', 'V->mu', 'V->tau', 'W', 'WL', 'WT', 'Z', 'ZL', 'ZT', 'b', 'c', 'e', 'eL', 'eR', 'g', 'gamma', 'h', 'mu', 'muL', 'muR', 'nu_e', 'nu_mu', 'nu_tau', 'q', 't', 'tau', 'tauL', 'tauR'. Default: b")
     parser.add_argument("-eth", "--E_th", type = float, required = False, default = 300, metavar = "-", help = "Lower energy threshold to calculate number of gamma rays per dark matter annihilation in GeV. Default: 300 GeV")
@@ -32,7 +32,7 @@ def parse_args():
     args.save_animation = convert_to_bool(args.save_animation)
     args.E_th = args.E_th * u.GeV
 
-    if isinstance(args.m_dm, list):
+    if isinstance(args.m_dm, list) and len(args.m_dm) == 3:
         if args.m_dm_scaling == 'linear':
             args.m_dm = np.linspace(args.m_dm[0], args.m_dm[1], int(args.m_dm[2])) * u.GeV
         elif args.m_dm_scaling == 'log':
@@ -40,7 +40,7 @@ def parse_args():
     else:
         args.m_dm = args.m_dm * u.GeV
 
-    if isinstance(args.sigma_v, list):
+    if isinstance(args.sigma_v, list) and len(args.sigma_v) == 3:
         if args.sigma_v_scaling == 'linear':
             args.sigma_v = np.linspace(args.sigma_v[0], args.sigma_v[1], int(args.sigma_v[2])) * u.cm**3 / u.s
         elif args.sigma_v_scaling == 'log':
@@ -134,17 +134,12 @@ def remove_distant_satellites(table_bh, nsnap, args):
             )
 
         m200 = table_galaxy['m200'].values * u.Msun
-
         r_rescaled = rescaled_distance(r, m200)
-
         table_galaxy['rescaled distance [Mpc]'] = r_rescaled.value
 
         condition = (r_rescaled > r_min) & (r_rescaled < r_max)
-
         table_close_satellites = table_galaxy[condition]
-
         subgroup_numbers_close_satellites = np.unique(table_close_satellites['subgroup_number'].values)
-
         # add host galaxy back to valid subgroup numbers
         subgroup_numbers_valid = np.append(subgroup_numbers_close_satellites, 0)
 
