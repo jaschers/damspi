@@ -47,7 +47,7 @@ class FluxCalculator:
         N = flux_annihi.table_model.integral(E_th, m_dm).to(u.dimensionless_unscaled)
         return(N)
 
-    def imbh_flux(self, m_dm, channel, E_th, sigma_v):
+    def gamma_flux(self, m_dm, channel, E_th, sigma_v):
         N = self.N_gamma(m_dm, channel, E_th)
 
         # reference: https://journals.aps.org/prd/pdf/10.1103/PhysRevD.72.103517?casa_token=-e4eEEaCw5oAAAAA%3A9KIbORPLYWRlSVC5MyI3HSIslOLws15IjLMCUkoM2E3uD9PaUV_cXtfBta2anEGB9Epsa-J9DZ9qUiI
@@ -60,17 +60,7 @@ class FluxCalculator:
         r_cut_0 = 1e-3 * u.pc
 
         y = phi_0 * N * (sigma_v / sigma_v0) * (m_dm / m_dm_0)**(-2) * (self.distance / d_0)**(-2) * (self.rho_r_sp / rho_r_sp_0)**2 * (self.r_sp / r_sp_0) ** (14/3) * (self.r_cut / r_cut_0)**(-5/3)
-
         y = y.to(1 / (u.cm**2 * u.s))
 
         return(y)
 
-    def imbh_integrated_lum(sigma_v, m_dm, E_th, channel, d, rho_r_sp, r_sp, r_cut, flux_th):
-        int_lum = [[] for _ in range(len(m_dm))]
-        for i, m in enumerate(m_dm):
-            flux_annihi = PrimaryFlux(mDM = m, channel = channel)
-            N_gamma = flux_annihi.table_model.integral(E_th, m).to(u.dimensionless_unscaled)
-            flux = imbh_flux(N_gamma, sigma_v, m, d, rho_r_sp, r_sp, r_cut)
-            for threshold in flux_th:
-                int_lum[i].append(len(flux[flux >= threshold]))
-        return(int_lum)
