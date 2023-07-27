@@ -14,7 +14,7 @@ import matplotlib.cm as cm
 import matplotlib.animation as animation
 import numpy as np
 import requests
-from dammspi.utils import nfw_profile, nfw_integral, M_bh_2
+from dammspi.utils import nfw_profile, nfw_integral, M_bh_2, parameter_distr_mean
 from astropy import units as u
 from astropy.coordinates import SkyCoord
 from scipy.stats import gaussian_kde
@@ -186,8 +186,7 @@ class BlackHolePlotter:
         plt.yscale("log")
         plt.tight_layout()
         plt.legend()
-        plt.savefig(path + f"nfw.pdf", dpi = 300)
-        # plt.show()
+        plt.savefig(path + "nfw.pdf", dpi = 300)
         plt.close()
 
     @staticmethod
@@ -205,8 +204,7 @@ class BlackHolePlotter:
         plt.yscale("log")
         plt.legend()
         plt.tight_layout()
-        plt.savefig(path + f"r_h.pdf", dpi = 300)
-        # plt.show()
+        plt.savefig(path + "r_h.pdf", dpi = 300)
         plt.close()
 
     def plot_dist_total(self, path):
@@ -356,7 +354,8 @@ class BlackHolePlotter:
         parameters = ["m [M_solar]", "z_f", "d_GC [kpc]", "lat_GC [rad]", "long_GC [rad]", "d_Sun [kpc]", "lat_Sun [rad]", "long_Sun [rad]", "r_sp [pc]", "rho(r_sp) [GeV/cm3]"]
         units = ["$M_{\odot}$", "", "kpc", "rad", "rad", "kpc", "rad", "rad", "pc", "GeV/cm$^3$"]
         log_parameters = ["m [M_solar]", "r_sp [pc]", "rho(r_sp) [GeV/cm3]"]
-        x_labels = [r"$m_\mathrm{BH}$ [$M_{\odot}$]", r"$z_f$", r"$d_\mathrm{GC}$ [kpc]", r"$b_\mathrm{GC}$ [rad]", r"$l_\mathrm{GC}$ [rad]", r"$d_\mathrm{Sun}$ [kpc]", r"$b_\mathrm{Sun}$ [rad]", r"$l_\mathrm{Sun}$ [rad]", "r_sp [pc]", r"$\rho(r_\mathrm{sp})$ [GeV/cm$^3$]"]
+        # log_parameters = ["m [M_solar]"]
+        x_labels = [r"$m_\mathrm{BH}$ [$M_{\odot}$]", r"$z_f$", r"$d_\mathrm{GC}$ [kpc]", r"$b_\mathrm{GC}$ [rad]", r"$l_\mathrm{GC}$ [rad]", r"$d_\mathrm{Sun}$ [kpc]", r"$b_\mathrm{Sun}$ [rad]", r"$l_\mathrm{Sun}$ [rad]", "$r_\mathrm{sp}$ [pc]", r"$\rho(r_\mathrm{sp})$ [GeV/cm$^3$]"]
         filenames = ["mass_mean", "redshift_mean", "distance_gc_mean", "latitude_GC_mean", "longitude_GC_mean", "distance_sun_mean", "latitude_Sun_mean", "longitude_Sun_mean", "r_sp_mean", "rho_sp_mean"]
         
         for parameter, unit, x_label, filename in zip(parameters, units, x_labels, filenames):
@@ -375,7 +374,8 @@ class BlackHolePlotter:
                 # print("bins_width", bins_width)
                 error_x_position = np.sqrt(bins[1:] * bins[:-1])
                 plt.xscale("log")
-                plt.yscale("log")
+                if parameter == "m [M_solar]":
+                    plt.yscale("log")
             else:
                 bins = np.linspace(np.min(data), np.max(data), 9)
                 error_x_position = (bins[1:] + bins[:-1]) / 2
@@ -438,20 +438,21 @@ class FluxPlotter:
     def __init__(self, flux_catalogue):
         self.flux_catalogue = flux_catalogue
 
-    def flux_thresholds(self, flux):
-        flux_th = np.logspace(np.log10(np.min(flux.value) * 1e-1), np.log10(np.max(flux.value)), 30) * flux.unit
+    @staticmethod
+    def flux_thresholds(flux):
+        flux_th = np.logspace(np.log10(np.min(flux.value)), np.log10(np.max(flux.value)), 30) * flux.unit
         return(flux_th)
 
-    def integrated_luminosity(self, flux, flux_th):
+    @staticmethod
+    def integrated_luminosity(flux, flux_th):
         int_lum = []
         for threshold in flux_th:
             int_lum.append(len(flux[flux >= threshold]))
         return(int_lum)
     
-    def integrated_luminosity_mean(self):
+    def integrated_luminosity_mean(self, flux_th):
         int_lum_list = []
         galaxy_ids = np.unique(self.flux_catalogue["galaxy_id"].values)
-        flux_th = self.flux_thresholds(self.flux_catalogue["flux [cm-2 s-1]"].values * u.Unit("cm-2 s-1"))
         for galaxy_id in galaxy_ids:
             flux_catalogue_id = self.flux_catalogue[self.flux_catalogue["galaxy_id"] == galaxy_id]
             flux_id = flux_catalogue_id["flux [cm-2 s-1]"].values * u.Unit("cm-2 s-1")
@@ -459,18 +460,36 @@ class FluxPlotter:
             int_lum_list.append(int_lum_id)
         int_lum_mean = np.mean(int_lum_list, axis = 0)
         int_lum_error = np.sqrt(int_lum_mean) / np.sqrt(len(int_lum_list))
-        return(flux_th, int_lum_mean, int_lum_error)
+        return(int_lum_mean, int_lum_error)
+ 
+    def plot_integrated_luminosity(self, flux_th, m_dm, color):
+        int_lum_mean, int_lum_error = self.integrated_luminosity_mean(flux_th)
+        plt.errorbar(flux_th, int_lum_mean, yerr = int_lum_error, label = f"$m_{{\chi}}$ = {np.round(m_dm.to(u.TeV).value, 1)} TeV", linestyle = "", marker = ".", capsize = 3, color = color)
 
-    def plot_integrated_luminosity(self, m_dm, sigma_v, E_th, path):
-        flux_th, int_lum_mean, int_lum_error = self.integrated_luminosity_mean()
-        
-        plt.figure()
-        plt.errorbar(flux_th, int_lum_mean, yerr = int_lum_error, label = f"$m_{{\chi}}$ = {np.rint(m_dm.value)} GeV", linestyle = "", marker = ".", capsize = 3, color = "blue")
-        plt.xlabel(f"$\Phi (E > {np.rint(E_th.value)}$ GeV) [cm$^{{-2}}$ s$^{{-1}}$]")
-        plt.ylabel(r"$N_{{BH}}(>\Phi)$")
+    def plot_cuttoff_radius_dist(self, path):
+        r_cut = self.flux_catalogue["r_cut [pc]"].values
+        r_cut_mean = np.mean(r_cut)
+        r_cut_mean_error = np.std(r_cut, ddof = 1) / np.sqrt(len(r_cut))
+        r_cut_median = np.median(r_cut)
+
+        bins = np.logspace(np.log10(np.min(r_cut)), np.log10(np.max(r_cut)), 9)
+        bins_centre = (bins[1:] + bins[:-1]) / 2
+        bins_width = bins[1:] - bins[:-1]
+
+        error_x_position = np.sqrt(bins[1:] * bins[:-1])
+
+        plt.figure(figsize = single_column_fig_size)
+        hist_mean, hist_mean_error = parameter_distr_mean(table = self.flux_catalogue, parameter = "r_cut [pc]", bins = bins)
+        plt.bar(bins_centre, hist_mean, width = bins_width, color = color_darkblue)
+        plt.errorbar(error_x_position, hist_mean, yerr = hist_mean_error, color = color_lightblue, linestyle = "")
+        plt.vlines(r_cut_mean, ymin = 0, ymax = np.max(hist_mean) + np.max(hist_mean_error), color = color_yellow, linestyle = "dashed", label = r"$\mu$ = {0:.2e} $\pm$ {1:.2e} {2}".format(r_cut_mean, r_cut_mean_error, "pc"))
+        plt.vlines(r_cut_median, ymin = 0, ymax = np.max(hist_mean) + np.max(hist_mean_error), color = color_yellow, linestyle = "solid", label = r"median = {0:.2e} {1}".format(r_cut_median, "pc"))
+        plt.xlabel("$r_\mathrm{cut}$ [pc]")
+        plt.ylabel("Number of BHs")
         plt.xscale("log")
-        plt.yscale("log")
         plt.legend()
         plt.tight_layout()
-        plt.savefig(path, dpi = 300)
+        plt.savefig(path, dpi = 500)
         plt.close()
+        # plt.yscale("log")
+        
