@@ -434,4 +434,43 @@ class BlackHolePlotter:
         plt.close()
 
 
+class FluxPlotter:
+    def __init__(self, flux_catalogue):
+        self.flux_catalogue = flux_catalogue
 
+    def flux_thresholds(self, flux):
+        flux_th = np.logspace(np.log10(np.min(flux.value) * 1e-1), np.log10(np.max(flux.value)), 30) * flux.unit
+        return(flux_th)
+
+    def integrated_luminosity(self, flux, flux_th):
+        int_lum = []
+        for threshold in flux_th:
+            int_lum.append(len(flux[flux >= threshold]))
+        return(int_lum)
+    
+    def integrated_luminosity_mean(self):
+        int_lum_list = []
+        galaxy_ids = np.unique(self.flux_catalogue["galaxy_id"].values)
+        flux_th = self.flux_thresholds(self.flux_catalogue["flux [cm-2 s-1]"].values * u.Unit("cm-2 s-1"))
+        for galaxy_id in galaxy_ids:
+            flux_catalogue_id = self.flux_catalogue[self.flux_catalogue["galaxy_id"] == galaxy_id]
+            flux_id = flux_catalogue_id["flux [cm-2 s-1]"].values * u.Unit("cm-2 s-1")
+            int_lum_id = self.integrated_luminosity(flux_id, flux_th)
+            int_lum_list.append(int_lum_id)
+        int_lum_mean = np.mean(int_lum_list, axis = 0)
+        int_lum_error = np.sqrt(int_lum_mean) / np.sqrt(len(int_lum_list))
+        return(flux_th, int_lum_mean, int_lum_error)
+
+    def plot_integrated_luminosity(self, m_dm, sigma_v, E_th, path):
+        flux_th, int_lum_mean, int_lum_error = self.integrated_luminosity_mean()
+        
+        plt.figure()
+        plt.errorbar(flux_th, int_lum_mean, yerr = int_lum_error, label = f"$m_{{\chi}}$ = {np.rint(m_dm.value)} GeV", linestyle = "", marker = ".", capsize = 3, color = "blue")
+        plt.xlabel(f"$\Phi (E > {np.rint(E_th.value)}$ GeV) [cm$^{{-2}}$ s$^{{-1}}$]")
+        plt.ylabel(r"$N_{{BH}}(>\Phi)$")
+        plt.xscale("log")
+        plt.yscale("log")
+        plt.legend()
+        plt.tight_layout()
+        plt.savefig(path, dpi = 300)
+        plt.close()
