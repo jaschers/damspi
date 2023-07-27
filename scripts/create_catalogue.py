@@ -130,6 +130,7 @@ def calculate_spikes(args, lst, row_tuple):
 
     if args.plot:
         path = f"plots/{args.sim_name}/galaxy_id_{int(galaxy_id)}/black_holes/mini_spikes/id_{int(bh_id)}/"
+        os.makedirs(path, exist_ok = True)
         # plot mini spike parameters
         dm_mini_spikes.plot_nfw(path)
         dm_mini_spikes.plot_radius_gravitational_influence(path)
@@ -168,6 +169,7 @@ if __name__ == "__main__":
     # Create a multiprocessing manager list to share the pandas tables between processes
     coord_list = mp.Manager().list()
 
+    print("Start extracting black hole coordinates for each MW-like galaxy...")
     # Initialize the multiprocessing pool
     with mp.Pool(processes=num_processes) as pool:
         # add necesarry arguments to the function except of galaxy_id_unique since this is the variable to loop over
@@ -186,8 +188,8 @@ if __name__ == "__main__":
     # combine all tables into the BH catalogue
     bh_catalogue = pd.concat(coord_list, ignore_index=True)
 
-    print(f"Number of unmerged black holes in simulation {args.sim_name}: {len(bh_catalogue)}")
-    print("Extract black hole dark matter mini spike parameter for each BH...")
+    print(f"Number of unmerged black holes in MW-like galaxies in simulation {args.sim_name}: {len(bh_catalogue)}")
+    print("Start extracting black hole dark matter mini spike parameter for each BH...")
 
     # Create a multiprocessing manager list to share the pandas tables between processes
     spikes_list = mp.Manager().list()
