@@ -33,6 +33,26 @@ np.seterr(divide='ignore')
 pd.options.mode.chained_assignment = None  # default='warn'
 
 class DataCollector:
+    """
+    Collects data from the EAGLE simulations.
+
+    Parameters
+    ----------
+    sim_name: str 
+        The name of the EAGLE simulation.
+    number_files: int
+        The number of files in the EAGLE simulation.
+
+    Attributes
+    ----------
+    sim_name: str
+        The name of the EAGLE simulation.
+    number_files: int
+        The number of files in the EAGLE simulation.
+    dict_redshift: dict
+        A dictionary that maps the snapshot number to the redshift.
+
+    """
     def __init__(self, sim_name, number_files):
         self.sim_name = sim_name
         self.number_files = number_files
