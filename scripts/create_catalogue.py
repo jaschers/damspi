@@ -157,13 +157,13 @@ if __name__ == "__main__":
     # extract bh data at z = 0
     table_bh_z0_total = data_collector.bh_data(nsnap = 28)
 
-    # if args.plot:
-    #     # save galaxy images
-    #     galaxy_plotter = dammplot.GalaxyPlotter(sim_name = args.sim_name, table_galaxy = table_galaxy_z0_total, table_bh = table_bh_z0_total)
-    #     galaxy_plotter.save_gri_images()
+    if args.plot:
+        # save galaxy images
+        galaxy_plotter = dammplot.GalaxyPlotter(sim_name = args.sim_name, table_galaxy = table_galaxy_z0_total, table_bh = table_bh_z0_total)
+        galaxy_plotter.save_gri_images()
 
-    #     # plot galaxy properties distributions, such as 
-    #     galaxy_plotter.plot_galaxy_distributions()
+        # plot galaxy properties distributions, such as 
+        galaxy_plotter.plot_galaxy_distributions()
 
     # Create a multiprocessing manager list to share the pandas tables between processes
     coord_list = mp.Manager().list()
