@@ -22,7 +22,7 @@ def parse_args():
     parser.add_argument("-sv", "--sigma_v", type = float, required = False, nargs = "+", default = [1e-26], metavar = "-", help = "Dark matter (velocity weighted) annihilation cross section in cm^3/s. Can be Can be single input or cross section range + number of cross sections (three inputs). If cross section range is given, scaling can be specified by the cross_section_scaling argument. Default: 1e-26 cm^3/s")
     parser.add_argument("-svs", "--sigma_v_scaling", type = str, required = False, default = "log", metavar = "-", help = "Scaling of dark matter (velocity weighted) annihilation cross section. Can be linear or log. Default: log")
     parser.add_argument("-c", "--channel", type = str, required = False, default = "b", metavar = "-", help = "Dark matter annihilation channel. Can be: 'V->e', 'V->mu', 'V->tau', 'W', 'WL', 'WT', 'Z', 'ZL', 'ZT', 'b', 'c', 'e', 'eL', 'eR', 'g', 'gamma', 'h', 'mu', 'muL', 'muR', 'nu_e', 'nu_mu', 'nu_tau', 'q', 't', 'tau', 'tauL', 'tauR'. Default: b")
-    parser.add_argument("-eth", "--E_th", type = float, required = False, default = 300, metavar = "-", help = "Lower energy threshold to calculate number of gamma rays per dark matter annihilation in GeV. Default: 300 GeV")
+    parser.add_argument("-eth", "--E_th", type = float, required = False, default = 100, metavar = "-", help = "Lower energy threshold to calculate number of gamma rays per dark matter annihilation in GeV. Default: 100 GeV")
 
     args = parser.parse_args()
     print("####### Setup #######")
@@ -32,7 +32,7 @@ def parse_args():
     args.save_animation = convert_to_bool(args.save_animation)
     args.E_th = args.E_th * u.GeV
 
-    if isinstance(args.m_dm, list) and len(args.m_dm) == 3:
+    if len(args.m_dm) == 3:
         if args.m_dm_scaling == 'linear':
             args.m_dm = np.linspace(args.m_dm[0], args.m_dm[1], int(args.m_dm[2])) * u.GeV
         elif args.m_dm_scaling == 'log':
@@ -40,7 +40,7 @@ def parse_args():
     else:
         args.m_dm = args.m_dm * u.GeV
 
-    if isinstance(args.sigma_v, list) and len(args.sigma_v) == 3:
+    if len(args.sigma_v) == 3:
         if args.sigma_v_scaling == 'linear':
             args.sigma_v = np.linspace(args.sigma_v[0], args.sigma_v[1], int(args.sigma_v[2])) * u.cm**3 / u.s
         elif args.sigma_v_scaling == 'log':
@@ -150,3 +150,16 @@ def remove_distant_satellites(table_bh, nsnap, args):
     else:
         return(table_bh)
     
+def parameter_distr_mean(table, parameter, bins):
+    hist_list = []
+    table_parameter = table[parameter]
+    for galaxy_id in np.unique(table["galaxy_id"].values):
+        data_galaxy_id = table_parameter[table["galaxy_id"].values == galaxy_id]
+        hist, _ = np.histogram(data_galaxy_id, bins = bins)
+        hist_list.append(hist)
+    
+    hist_mean = np.mean(hist_list, axis = 0)
+    hist_std = np.std(hist_list, ddof = 1, axis = 0)
+    hist_mean_error = hist_std / np.sqrt(len(hist_list))
+
+    return hist_mean, hist_mean_error
