@@ -18,6 +18,9 @@ from dammspi.utils import nfw_profile, nfw_integral, M_bh_2, parameter_distr_mea
 from astropy import units as u
 from astropy.coordinates import SkyCoord
 from scipy.stats import gaussian_kde
+from scipy.integrate import dblquad
+from astropy.wcs import WCS
+from astropy.io import fits
 
 # set matplotlib parameters for nice looking plots
 plt.rcParams.update({'font.size': 8}) # 8 (paper), 10 (poster)
@@ -29,9 +32,10 @@ single_column_fig_size = (8.85679 * cm_conversion_factor, 8.85679 * 3/4 * cm_con
 single_column_fig_size_legend = (8.85679 * cm_conversion_factor, 8.85679 * 3/4 * 7/6 * cm_conversion_factor)
 double_column_fig_size = (18.34621 * cm_conversion_factor, 18.34621 * 3/4 * cm_conversion_factor)
 double_column_squeezed_fig_size = (18.34621 * cm_conversion_factor, 18.34621 * 1/2 * cm_conversion_factor)
-markersize = 4
+markersize = 2
 
-cmap = LinearSegmentedColormap.from_list("", ['#FFF275', '#E83151', "#003049", "#171B1D"])
+cmap = LinearSegmentedColormap.from_list("", ["#FFF275", "#E83151", "#003049", "#171B1D"])
+cmap_r = LinearSegmentedColormap.from_list("", ["#171B1D", "#003049", "#E83151", "#FFF275"])
 color_black = "#171b1d"
 color_red = "#e83151"
 color_red_presentation = "#F44D4D"
@@ -262,33 +266,94 @@ class BlackHolePlotter:
     def plot_2d_map_contours(self, lat, long, path):
         # Extract coordinates
         coords = SkyCoord(long, lat, frame='galactic', unit='rad')
+        coord_stacked = np.stack((coords.l.wrap_at('180d').radian, coords.b.radian), axis = -1)
 
         # Calculate kernel density estimation
         kde = gaussian_kde([coords.l.wrap_at('180d').radian, coords.b.radian])
 
         # Define grid for evaluating KDE
-        x = np.linspace(-np.pi, np.pi, 100)
-        y = np.linspace(-np.pi / 2, np.pi / 2, 100)
+        x = np.linspace(-np.pi, np.pi, 480)
+        y = np.linspace(-np.pi / 2, np.pi / 2, 240)
         X, Y = np.meshgrid(x, y)
+
         positions = np.vstack([X.ravel(), Y.ravel()])
 
-        # Evaluate KDE at grid points
-        Z = np.reshape(kde(positions).T, X.shape)
+        # Evaluate KDE at grid points, i.e. estimating the probability density function (PDF)
+        pdf = np.reshape(kde(positions).T, X.shape)
 
-        # Plot the coordinates using Aitoff projection
-        fig = plt.figure(figsize  = double_column_fig_size)
-        ax = fig.add_subplot(111, projection='aitoff')
+        # normalize pdf
+        pdf = pdf / np.sum(pdf)
+
+        # calculate cdf
+        # define desired percentage contours to be calculated
+        percentages_desired = [10, 20, 40, 60, 80]
+        # percentages_desired = [10, 20, 30]
+        # initialize variables that will be filled in the loop later
+        percentages_diff = np.full(len(percentages_desired), np.inf)
+        percentages_cont = np.zeros(len(percentages_desired))
+        percentages_cont_collections = np.empty(len(percentages_desired), dtype = object)
+
+        # calculate the desired percentage contours with matplotlib
+        fig_cdf = plt.figure(figsize=double_column_fig_size)
+        ax_cdf = fig_cdf.add_subplot(111, projection="aitoff")
+        # extract the PDF contours
+        levels = np.linspace(pdf.min(), pdf.max(), 150)
+        # levels = np.linspace(pdf.min(), pdf.max(), 30)
+        cont = ax_cdf.contour(X, Y, pdf, levels = levels)
+
+        # Get the contour collections
+        cont_collections = cont.collections
+
+        # Loop through each contour collection
+        for collection in cont_collections:
+            # Get the contour path
+            cont_path = collection.get_paths()
+            if cont_path: # check if the contour is not empty
+                cont_path = cont_path[0]
+                # Get the grid points within the contour path
+                mask = cont_path.contains_points(positions.T)
+                # Get the sum of PDF values within the contour path
+                cont_percentage = pdf.flatten()[mask].sum() * 100
+                # Check if the current contour is closer to the desired percentage than the previous one and update the variables
+                for i, percentage in enumerate(percentages_desired):
+                    if np.abs(percentage - cont_percentage) < percentages_diff[i]:
+                        percentages_cont[i] = cont_percentage
+                        percentages_cont_collections[i] = collection
+                        percentages_diff[i] = np.abs(percentage - cont_percentage)
+
+        plt.close()
+
+        # Plot in Aitoff projection
+        fig = plt.figure(figsize=double_column_fig_size)
+        ax = fig.add_subplot(111, projection="aitoff")
         ax.grid(True, alpha = 0.5)
+        # plot the PDF
+        im = ax.pcolormesh(X, Y, pdf, cmap = cmap_r, edgecolors = "face", linewidth = 0, rasterized=True)
 
-        # Plot the density contours
-        levels = np.linspace(Z.min(), Z.max(), 10)
-        cont = ax.contour(X, Y, Z, levels=levels, cmap = cmap)
+        # plot the contours
+        x_max_previous = 0
+        for i, collection in enumerate(percentages_cont_collections):
+            cont_path = collection.get_paths()[0]
+            x, y = zip(*cont_path.vertices)
+            x_max, y_min = np.max(x), np.min(y)
+            ax.plot(x, y, color = "white", alpha = 0.8)
+            ax.text(
+                x_max_previous + np.abs(x_max - x_max_previous) / 2, 
+                - 5 * (2*np.pi/360), 
+                r"${0:.0f} \%$".format(percentages_cont[i]), 
+                color = "white",
+                horizontalalignment = "center", 
+                verticalalignment = "center",
+                alpha = 0.8
+                )
+            x_max_previous = x_max
 
         # Add colorbar
-        cbar = fig.colorbar(cont)
+        cbar = fig.colorbar(im, shrink = 0.5)
+        cbar.set_label("Probability density function")
 
-        # Plot the points
-        ax.scatter(coords.l.wrap_at('180d').radian, coords.b.radian, color = color_darkblue, marker='o', s = markersize)
+        # Plot the individual BHs as points on the map
+        ax.scatter(coords.l.wrap_at('180d').radian, coords.b.radian, color = "white", marker='o', s = markersize, alpha = 0.15, edgecolor = "None")
 
         # Set labels and title
         ax.set_xlabel('Galactic Longitude')
@@ -314,7 +379,8 @@ class BlackHolePlotter:
     def plot_cumulative_radial_distribution_mean(self, path):
         distance = self.table_bh["d_GC [kpc]"].values
         d_min, d_max = np.min(distance), np.max(distance)
-        bins = np.logspace(np.log10(d_min), np.log10(d_max), 20)
+        # bins = np.logspace(np.log10(d_min), np.log10(d_max), 20)
+        bins = np.linspace(np.log10(d_min), np.log10(d_max), 20)
 
         cumulative_hist_list = []
         for galaxy_id in np.unique(self.table_bh["galaxy_id"].values):
@@ -330,8 +396,8 @@ class BlackHolePlotter:
         plt.errorbar(bins, cumulative_hist_mean, yerr = cumulative_hist_mean_error, color = color_darkblue, linestyle = "", marker = ".")
         plt.xlabel(r"$d_\mathrm{GC}$ [kpc]")
         plt.ylabel(r"$N(<r) / N_\mathrm{tot}$")
-        plt.xscale("log")
-        plt.yscale("log")
+        # plt.xscale("log")
+        # plt.yscale("log")
         plt.tight_layout()
         plt.savefig(path, dpi = 500)
         plt.close()
@@ -459,8 +525,11 @@ class FluxPlotter:
             int_lum_id = self.integrated_luminosity(flux_id, flux_th)
             int_lum_list.append(int_lum_id)
         int_lum_mean = np.mean(int_lum_list, axis = 0)
-        int_lum_error = np.sqrt(int_lum_mean) / np.sqrt(len(int_lum_list))
-        return(int_lum_mean, int_lum_error)
+        int_lum_std = np.std(int_lum_list, ddof = 1, axis = 0)
+        int_lum_mean_error = int_lum_std / np.sqrt(len(int_lum_list))
+        # int_lum_error = np.sqrt(int_lum_mean) / np.sqrt(len(int_lum_list))
+        # return(int_lum_mean, int_lum_error)
+        return(int_lum_mean, int_lum_mean_error)
  
     def plot_integrated_luminosity(self, flux_th, m_dm, color):
         int_lum_mean, int_lum_error = self.integrated_luminosity_mean(flux_th)
