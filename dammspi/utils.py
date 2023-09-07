@@ -13,10 +13,11 @@ def parse_args():
     parser = argparse.ArgumentParser(description=script_descr)
 
     # Define expected arguments
-    parser.add_argument("-sn", "--sim_name", type = str, required = False, default = "RefL0050N0752", metavar = "-", help = "Name of the EAGLE simulation, default: RefL0050N0752") # RefL0025N0376
-    parser.add_argument("-nf", "--number_files", type = int, required = False, default = 128, metavar = "-", help = "Number of files for the particle data, default: 128") # 16
+    parser.add_argument("-sn", "--sim_name", type = str, required = False, default = "RefL0100N1504", metavar = "-", help = "Name of the EAGLE simulation, default: RefL0100N1504") # RefL0025N0376 # RefL0050N0752 #RefL0100N1504
+    parser.add_argument("-nf", "--number_files", type = int, required = False, default = 256, metavar = "-", help = "Number of files for the particle data, default: 256") # 16 # 128 # 256
+    parser.add_argument("-bs", "--box_size", type = int, required = False, default = 100, metavar = "-", help = "Box size of the simulation in Mpc, default: 100")
     parser.add_argument("-plt", "--plot", type = str, required = False, default = "n", metavar = "-", help = "Bool if plots for individual galaxies are saved (takes some time) [y, n], default: n")
-    parser.add_argument("-sa", "--save_animation", type = str, required = False, default = "n", metavar = "-", help = "Bool if animations for individual galaxies are saved (takes a long time) [y, n], default: n")
+    parser.add_argument("-sa", "--save_animation", type = str, required = False, default = "n", metavar = "-", help = "Bool if animations for individual galaxies are saved (takes a lot of time) [y, n], default: n")
     parser.add_argument("-mdm", "--m_dm", type = float, required = False, nargs = "+", default = [500], metavar = "-", help = "Mass of dark matter particle in GeV. Can be single input or mass range + number of masses (three inputs). If mass range is given, scaling can be specified by the mass_dm_scaling argument. Default: 500 GeV")
     parser.add_argument("-mdms", "--m_dm_scaling", type = str, required = False, default = "linear", metavar = "-", help = "Scaling of dark matter particle mass. Can be linear or log. Default: linear")
     parser.add_argument("-sv", "--sigma_v", type = float, required = False, nargs = "+", default = [1e-26], metavar = "-", help = "Dark matter (velocity weighted) annihilation cross section in cm^3/s. Can be Can be single input or cross section range + number of cross sections (three inputs). If cross section range is given, scaling can be specified by the cross_section_scaling argument. Default: 1e-26 cm^3/s")
@@ -31,6 +32,7 @@ def parse_args():
     args.plot = convert_to_bool(args.plot)
     args.save_animation = convert_to_bool(args.save_animation)
     args.E_th = args.E_th * u.GeV
+    args.box_size = args.box_size * u.Mpc
 
     if len(args.m_dm) == 3:
         if args.m_dm_scaling == 'linear':
