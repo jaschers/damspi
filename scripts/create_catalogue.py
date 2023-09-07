@@ -35,13 +35,13 @@ def determine_coordinates(table_galaxy_z0_total, table_bh_z0_total, args, lst, g
     # add galaxy id to table
     table_bh_z0["galaxy_id"] = np.ones(len(table_bh_z0)) * galaxy_id
 
-    coordinate_transformer = dammcat.CoordinateTransformer(table_galaxy = table_galaxy_z0, table_bh = table_bh_z0)
+    coordinate_transformer = dammcat.CoordinateTransformer(table_galaxy = table_galaxy_z0, table_bh = table_bh_z0, box_size = args.box_size)
 
     # get distance of BHs to galaxy center
-    r_gc, lat_gc, long_gc = coordinate_transformer.bh_galactic_coord_gc
+    r_gc, lat_gc, long_gc = coordinate_transformer.bh_spherical_coord_gc
 
     # get BH coordinates in galactic frame
-    r_sun, lat_sun, long_sun = coordinate_transformer.bh_galactic_coord_sun
+    r_sun, lat_sun, long_sun = coordinate_transformer.bh_galactic_coord
 
     # add id, radial distances, latitude and longitude, (sub)groupnumber 2^30, and satellite information to table
     table_bh_z0["galaxy_id"] = galaxy_id
@@ -102,10 +102,10 @@ def calculate_spikes(args, lst, row_tuple):
     table = pd.DataFrame()
 
     data_collector = dammcat.DataCollector(sim_name = args.sim_name, number_files = args.number_files)
-    table_bh_zf_total = data_collector.bh_data(nsnap=nsnap_c)
+    table_bh_zf_total = data_collector.black_hole_data(nsnap=nsnap_c)
     table_bh_zf = table_bh_zf_total[table_bh_zf_total["bh_id"] == bh_id]
 
-    dm_mini_spikes = dammcat.DMMiniSpikesCalculator(sim_name = args.sim_name, table_bh = table_bh_zf)
+    dm_mini_spikes = dammcat.DMMiniSpikesCalculator(sim_name = args.sim_name, box_size = args.box_size, table_bh = table_bh_zf)
 
     # extract mini spike parameters
     # spike radius
@@ -156,7 +156,7 @@ if __name__ == "__main__":
     galaxy_id_unique = np.unique(table_galaxy_z0_total["galaxy_id"])
 
     # extract bh data at z = 0
-    table_bh_z0_total = data_collector.bh_data(nsnap = 28)
+    table_bh_z0_total = data_collector.black_hole_data(nsnap = 28)
 
     if args.plot:
         # save galaxy images
