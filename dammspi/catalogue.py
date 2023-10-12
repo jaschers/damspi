@@ -11,7 +11,8 @@ sys.path.append(module_dir)
 import numpy as np
 import pandas as pd
 import eagleSqlTools as sql
-from astropy.cosmology import Planck18 as cosmo
+# from astropy.cosmology import Planck18 as cosmo
+from astropy.cosmology import Planck13 as cosmo
 from astropy import units as u
 import h5py
 from dammspi.utils import (
@@ -815,6 +816,7 @@ class DMMiniSpikesCalculator:
         self.z_closest = table_bh["z_c"].values[0]
         self.nsnap_closest = table_bh["nsnap_c"].values[0]
         self.bh_coord = table_bh[["coord x", "coord y", "coord z"]].values[0]
+        self.bh_mass = table_bh["m [M_solar]"].values[0] * u.Msun
         self.no_host = (self.group_number == 2**30) or (self.subgroup_number == 2**30)
         self.hubble_constant = cosmo.H0.value / 100
         self.minimal_galaxy_mass = 10**10 * u.Msun / self.hubble_constant
@@ -910,6 +912,7 @@ class DMMiniSpikesCalculator:
                         DES.Image_face as img_face, \
                         DES.Image_edge as img_edge, \
                         DES.Image_box as img_box, \
+                        DES.Spurious as spurious, \
                         AP.ApertureSize as aperture_size, \
                         AP.Mass_DM as m_dm_ap \
                     FROM \
@@ -919,8 +922,7 @@ class DMMiniSpikesCalculator:
                         DES.Snapnum = {self.nsnap_closest} \
                         and DES.GroupNumber = {self.group_number} \
                         and DES.SubGroupNumber = {self.subgroup_number} \
-                        and AP.GalaxyID = DES.GalaxyID \
-                        and DES.Spurious = 0"
+                        and AP.GalaxyID = DES.GalaxyID"
 
         else:
             query = f"SELECT \
@@ -935,7 +937,8 @@ class DMMiniSpikesCalculator:
                         DES.CentreOfPotential_z as cop_z, \
                         DES.Image_face as img_face, \
                         DES.Image_edge as img_edge, \
-                        DES.Image_box as img_box \
+                        DES.Image_box as img_box, \
+                        DES.Spurious as spurious \
                     FROM \
                         {self.sim_name}_SubHalo as DES \
                     WHERE \
@@ -965,6 +968,7 @@ class DMMiniSpikesCalculator:
         else:
             # if BH has a host galaxy, request galaxy data with aperture data
             query = self.query_galaxy_zf(subgroup_number_avail = True)
+
         # Execute query.
         con = sql.connect(config["User_input"]["user_name"], password=config["User_input"]["user_password"])
         # load galaxy data
@@ -1002,8 +1006,15 @@ class DMMiniSpikesCalculator:
             # put data into pandas DataFrame
             table_galaxy_zf = pd.DataFrame(data_galaxy)
 
-        # remove entries with m_dm_ap = 0 since it causes problems in the NFW fit
-        self.table_galaxy_zf = table_galaxy_zf[table_galaxy_zf["m_dm_ap"] != 0]
+        # check if BH host halo at formation redshift is spurious by definition or by having no proper aperture data
+        spurios_galaxy = (table_galaxy_zf["spurious"] == 1).all()
+        spurios_aperature = (table_galaxy_zf["m_dm_ap"] == 0).any()
+        self.spurios = True if (spurios_galaxy or spurios_aperature) else False
+
+        # # remove entries with m_dm_ap = 0 since it causes problems in the NFW fit
+        # self.table_galaxy_zf = table_galaxy_zf[table_galaxy_zf["m_dm_ap"] != 0]
+        self.table_galaxy_zf = table_galaxy_zf
+    
         
         return(self.table_galaxy_zf)
 
@@ -1117,6 +1128,10 @@ class DMMiniSpikesCalculator:
         The NFW profile is fitted using the scipy.optimize.minimize function.
         """
         table_galaxy_zf = self.get_table_galaxy_zf()
+
+        # return NaN if BH host halo at formation redshift is spurious
+        if self.spurios:
+            return(np.nan, np.nan)
 
         # extract DM halo profile of halo in which BH formed at formation redshift
         ap_size = table_galaxy_zf["aperture_size"].to_numpy() * u.kpc
@@ -1236,7 +1251,8 @@ class DMMiniSpikesCalculator:
         r_h: astropy.units.quantity.Quantity
             The radius of the gravitational influence of the black hole.
         """
-        r_h = self.radius_gravitational_influence(self.rho_0, self.r_s, self.bh_mass_formation)
+        # r_h = self.radius_gravitational_influence(self.rho_0, self.r_s, self.bh_mass_formation) # use BH mass at its formation
+        r_h = self.radius_gravitational_influence(self.rho_0, self.r_s, self.bh_mass) # use BH mass at z = 0
         return(r_h)
 
     @property
