@@ -4,3 +4,6 @@ User_input:
 
 Cosmology:
   hubble
+
+HESS:
+  flux_sensitivity: 4.6e-13
