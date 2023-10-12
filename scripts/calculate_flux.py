@@ -20,13 +20,17 @@ import multiprocessing as mp
 from functools import partial
 from matplotlib.colors import LinearSegmentedColormap
 import matplotlib.pyplot as plt
+import yaml
+
+with open("config/config.yaml", "r") as f:
+    config = yaml.load(f, Loader=yaml.FullLoader)
 
 plt.rcParams.update({'font.size': 8}) # 8 (paper), 10 (poster)
 plt.rc('text', usetex=True)
 plt.rc('font', family='Times New Roman')#, weight='normal', size=14)
 plt.rcParams['mathtext.fontset'] = 'cm'
 cm_conversion_factor = 1/2.54  # centimeters in inches
-single_column_fig_size = (8.85679 * cm_conversion_factor, 8.85679 * 3/4 * cm_conversion_factor)
+single_column_fig_size = (7.0 * cm_conversion_factor, 7.0 * 3/4 * cm_conversion_factor)
 
 
 def extract_flux_catalogue(bh_catalogue, flux_calculator, args, m_dm):
@@ -43,6 +47,7 @@ def extract_flux_catalogue(bh_catalogue, flux_calculator, args, m_dm):
         
         flux_catalogue = pd.concat([flux_catalogue, table], ignore_index = True)
     flux_catalogue.to_hdf(path + f"m_dm_{int(np.rint(m_dm.value))}GeV.h5", key = "table", mode = "w")
+    print(flux_catalogue)
 
 
 if __name__ == "__main__":
@@ -107,19 +112,20 @@ if __name__ == "__main__":
             for flux_catalogue, m_dm, color in zip(flux_catalogues, args.m_dm, colors):
                 flux_plotter = dammplot.FluxPlotter(flux_catalogue)
                 flux_plotter.plot_integrated_luminosity(flux_th, m_dm, color)
-            plt.xlabel(f"$\Phi (E > {int(np.rint(args.E_th.value))}$ GeV) [cm$^{{-2}}$ s$^{{-1}}$]")
+            plt.xlabel(f"$\Phi (E_\mathrm{{th}} > {int(np.rint(args.E_th.value))}$ GeV) [cm$^{{-2}}$ s$^{{-1}}$]")
             plt.ylabel(r"$N_{{\mathrm{BH}}}(>\Phi)$")
+            ymin, ymax = 1, 30 #TODO: set automatically
+            plt.vlines(config["HESS"]["flux_sensitivity"], ymin, ymax, color = "grey", linestyle = "dashed")
             plt.xscale("log")
             plt.yscale("log")
-            ymin, ymax = plt.ylim()
-            plt.ylim(ymin = 1, ymax = ymax)
-            plt.legend()
+            plt.ylim(ymin = ymin, ymax = ymax) #TODO: set automatically
+            xmin, xmax = plt.xlim()
+            plt.xlim(xmin = xmin, xmax = 1e-7) #TODO: set automatically
+            plt.legend(loc = "upper right", frameon = False, fontsize = 7)
             plt.tight_layout()
             plt.savefig(path_plots + "integrated_luminosity.pdf", dpi = 300)
             plt.close()
 
-
-            print(flux_catalogue)
             # plot r_cut distribution for highest DM mass
             flux_plotter.plot_cuttoff_radius_dist(path_plots + "r_cut_dist.pdf")
 
