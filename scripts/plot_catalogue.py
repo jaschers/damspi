@@ -19,9 +19,6 @@ if __name__ == '__main__':
     # open the catalogue
     filename = f"catalogue/{args.sim_name}/catalogue.csv"
     bh_catalogue = pd.read_csv(filename)
-    
-    # remove nan values (temporary fix)
-    bh_catalogue = bh_catalogue.dropna()
 
     # get the latitude and longitude of the black holes
     d_gc = bh_catalogue['d_GC [kpc]']
@@ -36,16 +33,16 @@ if __name__ == '__main__':
     path = f"plots/{args.sim_name}/black_hole_dist/"
     os.makedirs(path, exist_ok = True)
 
-    # Plotting BH number distributions
+    # # Plotting BH number distributions
     print("Plotting BH number distributions...")
     bh_plotter.plot_number_dist(path)
 
     # Plotting BH distributions
     print("Plotting BH distributions...")
-    bh_plotter.plot_dist_total(path)
+    # bh_plotter.plot_dist_total(path)
     bh_plotter.plot_dist_total_mean(path)
 
-    bh_plotter.plot_cumulative_radial_distribution(d_gc, path + "cumulative_radial_distribution.pdf")
+    # bh_plotter.plot_cumulative_radial_distribution(d_gc, path + "cumulative_radial_distribution.pdf")
     bh_plotter.plot_cumulative_radial_distribution_mean(path + "cumulative_radial_distribution_mean.pdf")
 
     # Plotting BH 2D maps
@@ -53,7 +50,7 @@ if __name__ == '__main__':
     bh_plotter.plot_2d_map(lat_gc, long_gc, path + "2d_map_gc.pdf")
     bh_plotter.plot_2d_map(lat_sun, long_sun, path + "2d_map_sun.pdf")
 
-    bh_plotter.plot_2d_map_contours(lat_gc, long_gc, path + "2d_map_gc_contours.pdf")
+    # bh_plotter.plot_2d_map_contours(lat_gc, long_gc, path + "2d_map_gc_contours.pdf")
     bh_plotter.plot_2d_map_contours(lat_sun, long_sun, path + "2d_map_sun_contours.pdf")
 
     print(bh_catalogue)
