@@ -107,33 +107,35 @@ def calculate_spikes(args, lst, row_tuple):
 
     dm_mini_spikes = dammcat.DMMiniSpikesCalculator(sim_name = args.sim_name, box_size = args.box_size, table_bh = table_bh_zf)
 
-    # extract mini spike parameters
-    # spike radius
-    r_sp = dm_mini_spikes.r_sp
+    # only determine DM mini spikes if BH host halo at formation redshift is not spurious
+    if dm_mini_spikes.spurios == False:
+        # extract mini spike parameters
+        # spike radius
+        r_sp = dm_mini_spikes.r_sp
 
-    # DM density at spike radius
-    rho_at_r_sp = dm_mini_spikes.rho_at_r_sp
-    rho_at_r_sp = (rho_at_r_sp * const.c ** 2).to(u.GeV / u.cm ** 3)
+        # DM density at spike radius
+        rho_at_r_sp = dm_mini_spikes.rho_at_r_sp
+        rho_at_r_sp = (rho_at_r_sp * const.c ** 2).to(u.GeV / u.cm ** 3)
 
-    # check if BH has a galaxy host at formation redshift
-    no_host = dm_mini_spikes.no_host
+        # check if BH has a galaxy host at formation redshift
+        no_host = dm_mini_spikes.no_host
 
-    # add mini spike parameters to table
-    table["bh_id"] = [bh_id]
-    table["r_sp [pc]"] = [r_sp.to(u.pc).value]
-    table["rho(r_sp) [GeV/cm3]"] = [rho_at_r_sp.value]
-    table["no_host"] = [no_host]
-    # bh_catalogue.loc[bh_catalogue["bh_id"] == bh_id, "r_sp [pc]"] = r_sp.to(u.pc).value
-    # bh_catalogue.loc[bh_catalogue["bh_id"] == bh_id, "rho(r_sp) [GeV/cm3]"] = rho_at_r_sp.value
+        # add mini spike parameters to table
+        table["bh_id"] = [bh_id]
+        table["r_sp [pc]"] = [r_sp.to(u.pc).value]
+        table["rho(r_sp) [GeV/cm3]"] = [rho_at_r_sp.value]
+        table["no_host"] = [no_host]
+        # bh_catalogue.loc[bh_catalogue["bh_id"] == bh_id, "r_sp [pc]"] = r_sp.to(u.pc).value
+        # bh_catalogue.loc[bh_catalogue["bh_id"] == bh_id, "rho(r_sp) [GeV/cm3]"] = rho_at_r_sp.value
 
-    lst.append(table)
+        lst.append(table)
 
-    if args.plot:
-        path = f"plots/{args.sim_name}/galaxy_id_{int(galaxy_id)}/black_holes/mini_spikes/id_{int(bh_id)}/"
-        os.makedirs(path, exist_ok = True)
-        # plot mini spike parameters
-        dm_mini_spikes.plot_nfw(path)
-        dm_mini_spikes.plot_radius_gravitational_influence(path)
+        if args.plot:
+            path = f"plots/{args.sim_name}/galaxy_id_{int(galaxy_id)}/black_holes/mini_spikes/id_{int(bh_id)}/"
+            os.makedirs(path, exist_ok = True)
+            # plot mini spike parameters
+            dm_mini_spikes.plot_nfw(path)
+            dm_mini_spikes.plot_radius_gravitational_influence(path)
 
 
 if __name__ == "__main__":
@@ -209,6 +211,9 @@ if __name__ == "__main__":
 
     # merge mini spike table with BH catalogue
     bh_catalogue = bh_catalogue.merge(spikes_table, on = "bh_id", how = "left")
+
+    # drop the rows for which no mini spike parameters could be calculated due to spurious BH host halos
+    bh_catalogue = bh_catalogue.dropna()
 
     # save BH catalogue
     bh_catalogue.to_csv(path_catalogue + "catalogue.csv", index=False)
