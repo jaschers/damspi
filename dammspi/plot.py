@@ -21,6 +21,7 @@ from scipy.stats import gaussian_kde
 from scipy.integrate import dblquad
 from astropy.wcs import WCS
 from astropy.io import fits
+import math
 
 # set matplotlib parameters for nice looking plots
 plt.rcParams.update({'font.size': 8}) # 8 (paper), 10 (poster)
@@ -28,11 +29,16 @@ plt.rc('text', usetex=True)
 plt.rc('font', family='Times New Roman')#, weight='normal', size=14)
 plt.rcParams['mathtext.fontset'] = 'cm'
 cm_conversion_factor = 1/2.54  # centimeters in inches
-single_column_fig_size = (8.85679 * cm_conversion_factor, 8.85679 * 3/4 * cm_conversion_factor)
+# single_column_fig_size = (8.85679 * cm_conversion_factor, 8.85679 * 3/4 * cm_conversion_factor)
+single_column_fig_size = (7.0 * cm_conversion_factor, 7.0 * 3/4 * cm_conversion_factor)
 single_column_fig_size_legend = (8.85679 * cm_conversion_factor, 8.85679 * 3/4 * 7/6 * cm_conversion_factor)
-double_column_fig_size = (18.34621 * cm_conversion_factor, 18.34621 * 3/4 * cm_conversion_factor)
+# double_column_fig_size = (18.34621 * cm_conversion_factor, 18.34621 * 3/4 * cm_conversion_factor)
+double_column_fig_size = (14.5 * cm_conversion_factor, 14.5 * 3/4 * cm_conversion_factor)
 double_column_squeezed_fig_size = (18.34621 * cm_conversion_factor, 18.34621 * 1/2 * cm_conversion_factor)
 markersize = 2
+bar_edge_color = "white"
+bar_edge_width = 0.4
+number_bins = 11
 
 cmap = LinearSegmentedColormap.from_list("", ["#FFF275", "#E83151", "#003049", "#171B1D"])
 cmap_r = LinearSegmentedColormap.from_list("", ["#171B1D", "#003049", "#E83151", "#FFF275"])
@@ -172,7 +178,7 @@ class BlackHolePlotter:
                 bins = 5
             plt.hist(data, bins = bins, color = color_darkblue)
             plt.xlabel(x_label)
-            plt.ylabel("Number of BHs")
+            plt.ylabel("$N_\mathrm{BH}$")
             plt.tight_layout()
             plt.savefig(path + f"{filename}.pdf", dpi = 500)
             plt.close()
@@ -227,7 +233,7 @@ class BlackHolePlotter:
                 bins = 9
             plt.hist(data, bins = bins, color = color_darkblue)
             plt.xlabel(x_label)
-            plt.ylabel("Number of BHs")
+            plt.ylabel("$N_\mathrm{BH}$")
             plt.tight_layout()
             plt.savefig(path + f"{filename}.pdf", dpi = 500)
             plt.close()
@@ -244,7 +250,7 @@ class BlackHolePlotter:
                 bins = 9
                 plt.hist(data, bins = bins, color = color_darkblue)
                 plt.xlabel(x_label)
-                plt.ylabel("Number of BHs")
+                plt.ylabel("$N_\mathrm{BH}$")
                 plt.tight_layout()
                 plt.savefig(path + f"{filename}.pdf", dpi = 500)
                 plt.close()
@@ -255,7 +261,7 @@ class BlackHolePlotter:
         fig = plt.figure(figsize  = single_column_fig_size)
         ax = fig.add_subplot(111, projection='aitoff')
         ax.grid(True, alpha = 0.5)
-        ax.scatter(coords.l.wrap_at('180d').radian, coords.b.radian, color = color_darkblue, marker = 'o', s = markersize)
+        ax.scatter(coords.l.wrap_at('180d').radian, coords.b.radian, color = color_darkblue, marker = 'o', s = markersize / 100)
         ax.set_xlabel('Longitude')
         ax.set_ylabel('Latitude')
         plt.tight_layout()
@@ -276,6 +282,20 @@ class BlackHolePlotter:
         y = np.linspace(-np.pi / 2, np.pi / 2, 240)
         X, Y = np.meshgrid(x, y)
 
+        # HESS galactic plane survey
+        hess_lat_min, hess_lat_max = -3, 3
+        hess_long_min, hess_long_max = -65, 110
+
+        # CTA galactic plane survey
+        cta_lat_min, cta_lat_max = -6, 6
+        cta_long_min, cta_long_max = -90, 90
+
+        # convert coordinates to rad
+        hess_lat_min, hess_lat_max = hess_lat_min * np.pi / 180, hess_lat_max * np.pi / 180
+        hess_long_min, hess_long_max = hess_long_min * np.pi / 180, hess_long_max * np.pi / 180
+        cta_lat_min, cta_lat_max = cta_lat_min * np.pi / 180, cta_lat_max * np.pi / 180
+        cta_long_min, cta_long_max = cta_long_min * np.pi / 180, cta_long_max * np.pi / 180
+
         positions = np.vstack([X.ravel(), Y.ravel()])
 
         # Evaluate KDE at grid points, i.e. estimating the probability density function (PDF)
@@ -283,6 +303,12 @@ class BlackHolePlotter:
 
         # normalize pdf
         pdf = pdf / np.sum(pdf)
+
+        # sum up all values in pdf within HESS/CTA galactic plane survey
+        pdf_galactic_plane_hess = np.sum(pdf[(Y > hess_lat_min) & (Y < hess_lat_max) & (X > hess_long_min) & (X < hess_long_max)])
+        pdf_galactic_plane_cta = np.sum(pdf[(Y > cta_lat_min) & (Y < cta_lat_max) & (X > cta_long_min) & (X < cta_long_max)])
+        print("PDF integral HESS galactic plane survey", np.round(pdf_galactic_plane_hess * 100), "%")
+        print("PDF integral CTA galactic plane survey", np.round(pdf_galactic_plane_cta * 100), "%")
 
         # calculate cdf
         # define desired percentage contours to be calculated
@@ -344,7 +370,8 @@ class BlackHolePlotter:
                 color = "white",
                 horizontalalignment = "center", 
                 verticalalignment = "center",
-                alpha = 0.8
+                alpha = 0.8,
+                fontsize = 6
                 )
             x_max_previous = x_max
 
@@ -363,7 +390,7 @@ class BlackHolePlotter:
 
     def plot_cumulative_radial_distribution(self, distance, path):
         plt.figure(figsize = single_column_fig_size)
-        plt.hist(distance, bins = 20, cumulative = True, density = True, color = color_darkblue)
+        plt.hist(distance, bins = number_bins, cumulative = True, density = True, color = color_darkblue)
         plt.xlabel(r"$d_\mathrm{GC}$ [kpc]")
         plt.ylabel(r"$N(<r) / N_\mathrm{tot}$")
         plt.tight_layout()
@@ -374,26 +401,32 @@ class BlackHolePlotter:
         cumulative_hist = []
         for bin in bins:
             cumulative_hist.append(np.sum(distance < bin) / len(distance))
+        # skip first bin which is zero
+        cumulative_hist = np.array(cumulative_hist[1:])
         return cumulative_hist
 
     def plot_cumulative_radial_distribution_mean(self, path):
         distance = self.table_bh["d_GC [kpc]"].values
+        galaxy_ids = np.unique(self.table_bh["galaxy_id"].values)
         d_min, d_max = np.min(distance), np.max(distance)
-        # bins = np.logspace(np.log10(d_min), np.log10(d_max), 20)
-        bins = np.linspace(np.log10(d_min), np.log10(d_max), 20)
+        # bins = np.logspace(np.log10(d_min), np.log10(d_max), number_bins)
+        bins = np.linspace(d_min, d_max, number_bins)
+        bins_width = bins[1:] - bins[:-1]
+        bins_centre = (bins[1:] + bins[:-1]) / 2
 
         cumulative_hist_list = []
-        for galaxy_id in np.unique(self.table_bh["galaxy_id"].values):
+        for galaxy_id in galaxy_ids:
             distance_galaxy_id = distance[self.table_bh["galaxy_id"].values == galaxy_id]
             cumulative_hist = self.cumulative_radial_distribution(distance_galaxy_id, bins)
             cumulative_hist_list.append(cumulative_hist)
         
         cumulative_hist_mean = np.mean(cumulative_hist_list, axis = 0)
         cumulative_hist_std = np.std(cumulative_hist_list, ddof = 1, axis = 0)
-        cumulative_hist_mean_error = cumulative_hist_std / np.sqrt(len(cumulative_hist_list))
+        cumulative_hist_mean_error = cumulative_hist_std / np.sqrt(len(galaxy_ids))
 
         plt.figure(figsize = single_column_fig_size)
-        plt.errorbar(bins, cumulative_hist_mean, yerr = cumulative_hist_mean_error, color = color_darkblue, linestyle = "", marker = ".")
+        # plt.errorbar(bins, cumulative_hist_mean, yerr = cumulative_hist_mean_error, color = color_darkblue, linestyle = "", marker = ".", markersize = 0.01)
+        plt.bar(bins_centre, cumulative_hist_mean, yerr = cumulative_hist_mean_error, width = bins_width, color = color_darkblue, edgecolor = bar_edge_color, linewidth = bar_edge_width, ecolor = color_lightblue)
         plt.xlabel(r"$d_\mathrm{GC}$ [kpc]")
         plt.ylabel(r"$N(<r) / N_\mathrm{tot}$")
         # plt.xscale("log")
@@ -416,6 +449,7 @@ class BlackHolePlotter:
 
         return hist_mean, hist_mean_error
 
+
     def plot_dist_total_mean(self, path):
         parameters = ["m [M_solar]", "z_f", "d_GC [kpc]", "lat_GC [rad]", "long_GC [rad]", "d_Sun [kpc]", "lat_Sun [rad]", "long_Sun [rad]", "r_sp [pc]", "rho(r_sp) [GeV/cm3]"]
         units = ["$M_{\odot}$", "", "kpc", "rad", "rad", "kpc", "rad", "rad", "pc", "GeV/cm$^3$"]
@@ -426,38 +460,100 @@ class BlackHolePlotter:
         
         for parameter, unit, x_label, filename in zip(parameters, units, x_labels, filenames):
             data = self.table_bh[parameter].values
+            data_sorted = np.sort(data)
             data_mean = np.mean(data)
             data_mean_error = np.std(data, ddof = 1) / np.sqrt(len(data))
             data_median = np.median(data)
+            # Calculate the values at the 16th and 84th percentiles to get the error on the median
+            lower_percentile = np.percentile(data, 16)
+            upper_percentile = np.percentile(data, 84)
+            median_lower_error = data_median - lower_percentile
+            median_upper_error = upper_percentile - data_median
+
+            # for plotting
+            # Calculate the exponent (order of magnitude)
+            # Calculate the exponent (order of magnitude)
+            if data_median == 0:
+                exponent = 0  # Handle zero separately
+            else:
+                exponent = int(math.floor(math.log10(abs(data_median))))
+
+            # Normalize the values
+            normalized_median = data_median / 10**exponent
+            normalized_upper_error = median_upper_error / 10**exponent
+            normalized_lower_error = median_lower_error / 10**exponent
+
+            # Format the values for display
+            formatted_median = "{:.2f}".format(normalized_median)
+            formatted_upper_error = "{:.2f}".format(normalized_upper_error)
+            formatted_lower_error = "{:.2f}".format(normalized_lower_error)
+
+            # Create the label
+            # label = f"$\mu = ({formatted_median} + {formatted_upper_error} - {formatted_lower_error}) \cdot 10^{exponent}$ {unit}"
+            if exponent != 0:
+                label = r"$\tilde{{\mu}} = ({0}^{{+{1}}}_{{-{2}}}) \cdot 10^{3}$ {4}".format(formatted_median, formatted_upper_error, formatted_lower_error, exponent, unit)
+            else:
+                label = r"$\tilde{{\mu}} = {0}^{{+{1}}}_{{-{2}}}$ {3}".format(formatted_median, formatted_upper_error, formatted_lower_error, unit)
+
             
-            plt.figure(figsize = single_column_fig_size)
+            fig, ax = plt.subplots(figsize = single_column_fig_size)
             if parameter in log_parameters:
-                bins = np.logspace(np.log10(np.min(data)), np.log10(np.max(data)), 9)
+                bins = np.logspace(np.log10(np.min(data)), np.log10(np.max(data)), number_bins)
                 # bins_centre = np.sqrt(bins[1:] * bins[:-1])
                 # bin_width_left = bins_centre - bins[:-1]
                 # bin_width_right = bins[1:] - bins_centre    
                 # bins_width = np.vstack([bin_width_left, bin_width_right])
                 # print("bins_width", bins_width)
                 error_x_position = np.sqrt(bins[1:] * bins[:-1])
-                plt.xscale("log")
-                if parameter == "m [M_solar]":
-                    plt.yscale("log")
+                ax.set_xscale("log")
+                # if parameter == "m [M_solar]":
+                ax.set_yscale("log")
             else:
-                bins = np.linspace(np.min(data), np.max(data), 9)
+                bins = np.linspace(np.min(data), np.max(data), number_bins)
                 error_x_position = (bins[1:] + bins[:-1]) / 2
 
             bins_centre = (bins[1:] + bins[:-1]) / 2
             bins_width = bins[1:] - bins[:-1]
             
             hist_mean, hist_mean_error = self.parameter_distr_mean(parameter, bins)
-            plt.bar(bins_centre, hist_mean, width = bins_width, color = color_darkblue)
-            plt.errorbar(error_x_position, hist_mean, yerr = hist_mean_error, color = color_lightblue, linestyle = "")
-            plt.vlines(data_mean, ymin = 0, ymax = np.max(hist_mean) + np.max(hist_mean_error), color = color_yellow, linestyle = "dashed", label = r"$\mu$ = {0:.2e} $\pm$ {1:.2e} {2}".format(data_mean, data_mean_error, unit))
-            plt.vlines(data_median, ymin = 0, ymax = np.max(hist_mean) + np.max(hist_mean_error), color = color_yellow, linestyle = "solid", label = r"median = {0:.2e} {1}".format(data_median, unit))
-            plt.xlabel(x_label)
-            plt.ylabel("Number of BHs")
-            plt.legend()
+            ax.bar(bins_centre, hist_mean, width = bins_width, color = color_darkblue, edgecolor = bar_edge_color, linewidth = bar_edge_width)
+            ax.errorbar(error_x_position, hist_mean, yerr = hist_mean_error, color = color_lightblue, linestyle = "")
+            # ax.vlines(data_mean, ymin = 0, ymax = np.max(hist_mean) + np.max(hist_mean_error), color = color_yellow, linestyle = "dashed", label = r"$\mu$ = {0:.2e} $\pm$ {1:.2e} {2}".format(data_mean, data_mean_error, unit))
+            if parameter in log_parameters:
+                ymin, ymax = ax.get_ylim()
+                factor_ymax = 2
+                ymin = np.min(hist_mean[hist_mean > 0]) * 0.5
+                ymax = np.max(hist_mean[hist_mean > 0]) * factor_ymax
+            else: 
+                ymin, ymax = ax.get_ylim()
+                factor_ymax = 1.
+                ymax = ymax * factor_ymax
+            
+            ax.vlines(data_median, ymin = ymin, ymax = ymax, color = color_red, linestyle = "solid", label = label)
+            ax.axvspan(lower_percentile, upper_percentile, alpha = 0.25, facecolor = color_red, edgecolor = "None")
+            ax.set_ylim(ymin, ymax)
+            ax.set_xlabel(x_label)
+            ax.set_ylabel("$N_\mathrm{BH}$")
+            if parameter in ["r_sp [pc]", "rho(r_sp) [GeV/cm3]"]:
+                legend = plt.legend(bbox_to_anchor = (0, 1.02, 1, 0.2), loc = "center", mode = "expand", borderaxespad = 0, ncol = 1, alignment = "center")
+            else:
+                legend = plt.legend(loc = "upper right")
             plt.tight_layout()
+            if parameter == "m [M_solar]":
+                # # Get the current x-axis tick locations and labels
+                # tick_locations, tick_labels = plt.xticks()
+                # print("tick_locations", tick_locations)
+                # print("tick_labels", tick_labels)
+
+                # # Use the first and last tick locations and labels
+                # first_tick_location = tick_locations[0]
+                # last_tick_location = tick_locations[-1]
+                # first_tick_label = tick_labels[0]
+                # last_tick_label = tick_labels[-1]
+
+                # # Set only the first and last x-axis tick labels
+                # plt.xticks([first_tick_location, last_tick_location], [first_tick_label, last_tick_label])
+                plt.xticks([2e5, 3e5, 4e5, 6e5], [r'$2 \times 10^5$', "", "", r'$6 \times 10^5$']) # TODO: find a better way to do this, plt.xticks() does not work
             plt.savefig(path + f"{filename}.pdf", dpi = 500)
             plt.close()
 
@@ -474,27 +570,44 @@ class BlackHolePlotter:
             #     plt.figure(figsize = single_column_fig_size)
             #     plt.errorbar(hist_edges[:-1], hist_mean, yerr = hist_mean_error, color = color_darkblue, linestyle = "", marker = ".")
             #     plt.xlabel(x_label)
-            #     plt.ylabel("Number of BHs")
+            #     plt.ylabel("$N_\mathrm{BH}$")
             #     plt.tight_layout()
             #     plt.savefig(path + f"{filename}.pdf", dpi = 500)
             #     plt.close()
 
     def plot_number_dist(self, path):
-        n = np.unique(self.table_bh["galaxy_id"].values, return_counts = True)[1]
-        hist, bins_edges = np.histogram(n, bins = 10)
-        bins_width = bins_edges[1:] - bins_edges[:-1]
-        bins_centre = (bins_edges[1:] + bins_edges[:-1]) / 2
+        galaxy_ids, n_bh = np.unique(self.table_bh["galaxy_id"].values, return_counts = True)
+        n_bh_median = np.median(n_bh)
+        n_bh_sorted = np.sort(n_bh)
+        lower_percentile = np.percentile(n_bh_sorted, 16)
+        upper_percentile = np.percentile(n_bh_sorted, 84)
+        n_bh_median_lower_error = n_bh_median - lower_percentile
+        n_bh_median_upper_error = upper_percentile - n_bh_median
+        hist, bins = np.histogram(n_bh, bins = number_bins)
+        bins_width = bins[1:] - bins[:-1]
+        bins_centre = (bins[1:] + bins[:-1]) / 2
         hist_err = np.sqrt(hist)
-        n_mean = np.mean(n)
-        n_median = np.median(n)
-        n_mean_error = np.std(n, ddof = 1) / np.sqrt(len(n))
+
+        # Format the values for display
+        formatted_median = "{:.0f}".format(n_bh_median)
+        formatted_upper_error = "{:.0f}".format(n_bh_median_upper_error)
+        formatted_lower_error = "{:.0f}".format(n_bh_median_lower_error)
+        
+        label = r"$\tilde{{\mu}} = {0}^{{+{1}}}_{{-{2}}}$".format(formatted_median, formatted_upper_error, formatted_lower_error)
+
         plt.figure(figsize = single_column_fig_size)
-        plt.bar(bins_centre, hist, width = bins_width, color = color_darkblue, yerr = hist_err, ecolor = color_lightblue)
-        plt.vlines(n_mean, ymin = 0, ymax = np.max(hist) + np.max(hist_err), color = color_yellow, linestyle = "dashed", label = r"$\mu$ = {0:.2f} $\pm$ {1:.2f}".format(n_mean, n_mean_error))
-        plt.vlines(n_median, ymin = 0, ymax = np.max(hist) + np.max(hist_err), color = color_yellow, linestyle = "solid", label = r"median = {0:.2f}".format(n_median))
+        plt.bar(bins_centre, hist, width = bins_width, color = color_darkblue, yerr = hist_err, ecolor = color_lightblue, edgecolor = bar_edge_color, linewidth = bar_edge_width)
+        # plt.vlines(n_mean, ymin = 0, ymax = np.max(hist) + np.max(hist_err), color = color_yellow, linestyle = "dashed", label = r"$\mu$ = {0:.2f} $\pm$ {1:.2f}".format(n_mean, n_mean_error))
+        # plt.vlines(n_median, ymin = 0, ymax = np.max(hist) + np.max(hist_err), color = color_yellow, linestyle = "solid", label = r"median = {0:.2f}".format(n_median))
+        ymin, ymax = plt.ylim()
+        plt.vlines(n_bh_median, ymin = ymin, ymax = ymax, color = color_red, linestyle = "solid", label = label)
+        plt.axvspan(lower_percentile, upper_percentile, alpha = 0.25, facecolor = color_red, edgecolor = "None")
         plt.xlabel(r"$N_\mathrm{BH}$")
-        plt.ylabel(r"Number of galaxies with $N_\mathrm{BH}$")
-        plt.legend()
+        # plt.ylabel(r"Number of galaxies with $N_\mathrm{BH}$")
+        plt.ylabel(r"$N_\mathrm{g}$")
+        plt.ylim(ymin, ymax)
+        # plt.legend(bbox_to_anchor = (0, 1.02, 1, 0.2), loc = "lower left", mode = "expand", borderaxespad = 0, ncol = 1)
+        plt.legend(loc = "upper right")
         plt.tight_layout()
         plt.savefig(path + "number_dist.pdf", dpi = 500)
         plt.close()
@@ -533,15 +646,35 @@ class FluxPlotter:
  
     def plot_integrated_luminosity(self, flux_th, m_dm, color):
         int_lum_mean, int_lum_error = self.integrated_luminosity_mean(flux_th)
-        plt.errorbar(flux_th, int_lum_mean, yerr = int_lum_error, label = f"$m_{{\chi}}$ = {np.round(m_dm.to(u.TeV).value, 1)} TeV", linestyle = "", marker = ".", capsize = 3, color = color)
+        plt.errorbar(flux_th, int_lum_mean, yerr = int_lum_error, label = f"$m_{{\chi}}$ = {np.round(m_dm.to(u.TeV).value, 1)} TeV", linestyle = "", marker = ".", capsize = 3, color = color, markersize = 3)
 
     def plot_cuttoff_radius_dist(self, path):
         r_cut = self.flux_catalogue["r_cut [pc]"].values
         r_cut_mean = np.mean(r_cut)
         r_cut_mean_error = np.std(r_cut, ddof = 1) / np.sqrt(len(r_cut))
         r_cut_median = np.median(r_cut)
+        # Calculate the values at the 16th and 84th percentiles to get the error on the median
+        lower_percentile = np.percentile(r_cut, 16)
+        upper_percentile = np.percentile(r_cut, 84)
+        median_lower_error = r_cut_median - lower_percentile
+        median_upper_error = upper_percentile - r_cut_median
 
-        bins = np.logspace(np.log10(np.min(r_cut)), np.log10(np.max(r_cut)), 9)
+        exponent = int(math.floor(math.log10(abs(r_cut_median))))
+
+        # Normalize the values
+        normalized_median = r_cut_median / 10**exponent
+        normalized_upper_error = median_upper_error / 10**exponent
+        normalized_lower_error = median_lower_error / 10**exponent
+
+        # Format the values for display
+        formatted_median = "{:.2f}".format(normalized_median)
+        formatted_upper_error = "{:.2f}".format(normalized_upper_error)
+        formatted_lower_error = "{:.2f}".format(normalized_lower_error)
+
+        # Create the label
+        label = r"$\tilde{{\mu}} = ({0}^{{+{1}}}_{{-{2}}}) \cdot 10^{{{3}}}$ {4}".format(formatted_median, formatted_upper_error, formatted_lower_error, exponent, "pc")
+
+        bins = np.logspace(np.log10(np.min(r_cut)), np.log10(np.max(r_cut)), number_bins)
         bins_centre = (bins[1:] + bins[:-1]) / 2
         bins_width = bins[1:] - bins[:-1]
 
@@ -549,16 +682,21 @@ class FluxPlotter:
 
         plt.figure(figsize = single_column_fig_size)
         hist_mean, hist_mean_error = parameter_distr_mean(table = self.flux_catalogue, parameter = "r_cut [pc]", bins = bins)
-        plt.bar(bins_centre, hist_mean, width = bins_width, color = color_darkblue)
+        plt.bar(bins_centre, hist_mean, width = bins_width, color = color_darkblue, edgecolor = bar_edge_color, linewidth = bar_edge_width)
         plt.errorbar(error_x_position, hist_mean, yerr = hist_mean_error, color = color_lightblue, linestyle = "")
-        plt.vlines(r_cut_mean, ymin = 0, ymax = np.max(hist_mean) + np.max(hist_mean_error), color = color_yellow, linestyle = "dashed", label = r"$\mu$ = {0:.2e} $\pm$ {1:.2e} {2}".format(r_cut_mean, r_cut_mean_error, "pc"))
-        plt.vlines(r_cut_median, ymin = 0, ymax = np.max(hist_mean) + np.max(hist_mean_error), color = color_yellow, linestyle = "solid", label = r"median = {0:.2e} {1}".format(r_cut_median, "pc"))
+        # plt.vlines(r_cut_mean, ymin = 0, ymax = np.max(hist_mean) + np.max(hist_mean_error), color = color_yellow, linestyle = "dashed", label = r"$\mu$ = {0:.2e} $\pm$ {1:.2e} {2}".format(r_cut_mean, r_cut_mean_error, "pc"))
+        # plt.vlines(r_cut_median, ymin = 0, ymax = np.max(hist_mean) + np.max(hist_mean_error), color = color_yellow, linestyle = "solid", label = r"median = {0:.2e} {1}".format(r_cut_median, "pc"))
+        ymin, ymax = plt.ylim()
+        ymax = ymax * 2
+        plt.vlines(r_cut_median, ymin = ymin, ymax = ymax, color = color_red, linestyle = "solid", label = label)
+        plt.axvspan(lower_percentile, upper_percentile, alpha = 0.25, facecolor = color_red, edgecolor = "None")
+        plt.ylim(1e-3, ymax)
         plt.xlabel("$r_\mathrm{cut}$ [pc]")
-        plt.ylabel("Number of BHs")
+        plt.ylabel("$N_\mathrm{BH}$")
         plt.xscale("log")
-        plt.legend()
+        plt.yscale("log")
+        plt.legend(bbox_to_anchor = (0, 1.02, 1, 0.2), loc = "lower left", mode = "expand", borderaxespad = 0, ncol = 1)
         plt.tight_layout()
         plt.savefig(path, dpi = 500)
         plt.close()
-        # plt.yscale("log")
         
