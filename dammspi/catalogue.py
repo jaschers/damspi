@@ -21,11 +21,13 @@ from dammspi.utils import (
     redshift,
     nfw_profile,
     nfw_integral,
+    cored_profile,
+    cored_integral,
     M_bh_2
     )
 from scipy.spatial.transform import Rotation as R
 from astropy.coordinates import cartesian_to_spherical, spherical_to_cartesian
-from scipy.odr import Model, RealData, ODR
+from scipy.odr import Model, RealData, ODR, Data
 import dammspi.plot as dammplot
 import yaml
 
@@ -806,10 +808,12 @@ class DMMiniSpikesCalculator:
     >>> DMMiniSpikesCalculator(sim_name = "RefL0050N0752", table_bh = table_bh)
     """
 
-    def __init__(self, sim_name, box_size, table_bh):
+    def __init__(self, sim_name, box_size, dm_profile, table_bh):
         self.sim_name = sim_name
         self.box_size = box_size.to(u.kpc).value
+        self.dm_profile = dm_profile
         self.table_bh = table_bh
+        self.bh_id = self.table_bh["bh_id"].values[0]
         self.group_number = self.table_bh["group number"].values[0]
         self.subgroup_number = self.table_bh["subgroup number"].values[0]
         self.z_formation = table_bh["z_f"].values[0]
@@ -821,7 +825,13 @@ class DMMiniSpikesCalculator:
         self.hubble_constant = cosmo.H0.value / 100
         self.minimal_galaxy_mass = 10**10 * u.Msun / self.hubble_constant
         self.bh_mass_formation = 10**5 * u.Msun / self.hubble_constant
-        self.rho_0, self.r_s = self.nfw_fit()
+        if self.dm_profile == "nfw":
+            self.rho_0, self.r_s = self.nfw_fit()
+        elif self.dm_profile == "cored":
+            self.rho_0, self.r_s, self.r_c, self.gamma_c = self.cored_fit()
+
+        # self.r_sp = self.spike_radius()
+        # self.rho_at_r_sp = self.density_at_spike_radius()
 
     @staticmethod
     def redshift_to_scale_factor(redshift):
@@ -1082,6 +1092,47 @@ class DMMiniSpikesCalculator:
         rho_log = np.log(rho_0) - np.log(r/r_s) - 2*np.log(1+r/r_s) 
         return(rho_log)
 
+    def cored_profile_log(self, params, r):
+        """
+        Used to fit the cored profile to the DM density profile of the host galaxy.
+
+        Parameters
+        ----------
+        params: tuple
+            The cored parameters.
+        r: numpy.ndarray or astropy.units.quantity.Quantity
+            The radius.
+
+        Returns
+        -------
+        rho_log: numpy.ndarray or float
+            The DM density profile of the host galaxy (log).
+
+        Notes
+        -----
+        The cored profile (log) is calculated using the cored parameters and the radius.
+
+        Examples
+        --------
+        >>> cored_profile_log((5e6 * u.Msun / u.kpc**3, 40 * u.kpc, 5 * u.kpc, 0.2), 10 * u.kpc)
+        """
+        rho_0, r_s, r_c, gamma_c = params
+        if hasattr(r, 'unit'):
+            r = r.to(u.kpc).value
+        if hasattr(rho_0, 'unit'):
+            rho_0 = rho_0.to(u.Msun/u.kpc**3).value
+        if hasattr(r_s, 'unit'):
+            r_s = r_s.to(u.kpc).value
+        if hasattr(r_c, 'unit'):
+            r_c = r_c.to(u.kpc).value
+        rho_nfw_log = np.log(rho_0) - np.log(r/r_s) - 2*np.log(1 + r/r_s)
+        rho_nfw_log_rc = np.log(rho_0) - np.log(r_c/r_s) - 2*np.log(1 + r_c/r_s)
+        mask = r < r_c
+        log_rho_cored = np.where(mask, rho_nfw_log_rc - gamma_c * np.log(r/r_c), rho_nfw_log)
+
+        return log_rho_cored
+
+    
     def nfw_cost_function(self, params, r):
         """
         Used to fit the NFW profile to the DM density profile of the host galaxy.
@@ -1109,8 +1160,39 @@ class DMMiniSpikesCalculator:
         rho_0, r_s = params
         if rho_0 <= 0 or r_s <= 0:
             return np.inf
-        predicted = self.nfw_profile_log((rho_0, r_s), r)
-        return predicted
+        output = self.nfw_profile_log((rho_0, r_s), r)
+        return output
+
+    def cored_cost_function(self, params, r):
+        """
+        Used to fit the cored profile to the DM density profile of the host galaxy.
+
+        Parameters
+        ----------
+        params: tuple
+            The cored parameters.
+        r: numpy.ndarray
+            The radius.
+
+        Returns
+        -------
+        predicted: numpy.ndarray
+            The predicted DM density profile of the host galaxy (log).
+
+        Notes
+        -----
+        The cored profile (log) is calculated using the cored parameters and the radius.
+
+        Examples
+        --------
+        >>> cored_cost_function((5e6 * u.Msun / u.kpc**3, 40 * u.kpc, 0.2), 10 * u.kpc)
+        """
+        rho_0, r_s, r_c, gamma_c = params
+        # set conditions for parameters due to physical constraints
+        if rho_0 <= 0 or r_s <= 0 or r_c <= 0 or gamma_c < 0 or gamma_c >= 3:
+            return np.inf
+        output = self.cored_profile_log((rho_0, r_s, r_c, gamma_c), r)
+        return output
 
     def nfw_fit(self):
         """
@@ -1140,15 +1222,17 @@ class DMMiniSpikesCalculator:
         # compute DM density profile of halo in which BH formed at formation redshift
         dm_rho_log = np.log(self.density_within_aperature(ap_size, ap_mass).value) * u.Msun / u.kpc**3
 
+
         if hasattr(ap_size, 'unit'):
             ap_size = ap_size.to(u.kpc).value
         if hasattr(dm_rho_log, 'unit'):
             dm_rho_log = dm_rho_log.to(u.Msun/u.kpc**3).value
         model = Model(self.nfw_cost_function)
         data = RealData(ap_size, dm_rho_log)
+        # data = Data(ap_size, dm_rho_log)
         odr = ODR(data, model, beta0=[5e6, 40]) 
 
-        odr.set_job(fit_type=2)
+        odr.set_job(fit_type=2) #fit_type=2
         output = odr.run()
         popt = output.beta
         rho_0, r_s = popt
@@ -1158,7 +1242,57 @@ class DMMiniSpikesCalculator:
 
         return(self.rho_0, self.r_s)
 
-    def radius_gravitational_influence_equation(self, r, rho_0, r_s, M_bh):
+    def cored_fit(self):
+        """
+        Fit the cored profile to the DM density profile of the host galaxy.
+
+        Returns
+        -------
+        rho_0: astropy.units.quantity.Quantity
+            The cored normalisation parameter.
+        r_s: astropy.units.quantity.Quantity
+            The cored scale radius.
+        alpha: float
+            The cored shape parameter.
+
+        Notes
+        -----
+        The cored profile is fitted using the scipy.optimize.minimize function.
+        """
+        table_galaxy_zf = self.get_table_galaxy_zf()
+
+        # return NaN if BH host halo at formation redshift is spurious
+        if self.spurios:
+            return(np.nan, np.nan, np.nan, np.nan)
+
+        # extract DM halo profile of halo in which BH formed at formation redshift
+        ap_size = table_galaxy_zf["aperture_size"].to_numpy() * u.kpc
+        ap_mass = table_galaxy_zf["m_dm_ap"].to_numpy() * u.Msun
+
+        # compute DM density profile of halo in which BH formed at formation redshift
+        dm_rho_log = np.log(self.density_within_aperature(ap_size, ap_mass).value) * u.Msun / u.kpc**3
+
+        if hasattr(ap_size, 'unit'):
+            ap_size = ap_size.to(u.kpc).value
+        if hasattr(dm_rho_log, 'unit'):
+            dm_rho_log = dm_rho_log.to(u.Msun/u.kpc**3).value
+        model = Model(self.cored_cost_function)
+        data = RealData(ap_size, dm_rho_log)
+        odr = ODR(data, model, beta0=[5e6, 40, 3, 1]) 
+
+        odr.set_job(fit_type=2)
+        output = odr.run()
+        popt = output.beta
+        rho_0, r_s, r_c, gamma_c = popt
+
+        self.rho_0 = rho_0 * u.Msun / u.kpc**3
+        self.r_s = r_s * u.kpc
+        self.r_c = r_c * u.kpc
+        self.gamma_c = gamma_c
+
+        return(self.rho_0, self.r_s, self.r_c, self.gamma_c)
+
+    def radius_gravitational_influence_equation(self, r, rho_0, r_s, M_bh, r_c = None, gamma_c = None):
         """
         Equation used to calculate the radius of the gravitational influence of the black hole.
 
@@ -1190,56 +1324,103 @@ class DMMiniSpikesCalculator:
         M_bh = 10**5 * u.Msun
         >>> radius_gravitational_influence_equation(r, rho_0, r_s, M_bh)
         """
-        y1 = np.log(nfw_integral(r, rho_0, r_s).value)
+        if self.dm_profile == "nfw":
+            y1 = np.log(nfw_integral(r, rho_0, r_s).value)
+        elif self.dm_profile == "cored":
+            y1 = np.log(cored_integral(r, rho_0, r_s, r_c, gamma_c).value) 
+
         y2 = np.log(M_bh_2(M_bh).value)
         y = (y1 - y2)
         y = y
         return(y)
     
-    def radius_gravitational_influence(self, rho_0, r_s, M_bh):
-        """
-        Calculate the radius of the gravitational influence of the black hole.
+    # def radius_gravitational_influence(self, rho_0, r_s, M_bh, r_c = None, gamma_c = None):
+    #     """
+    #     Calculate the radius of the gravitational influence of the black hole.
 
-        Parameters
-        ----------
-        rho_0: astropy.units.quantity.Quantity
-            The NFW normalisation parameter.
-        r_s: astropy.units.quantity.Quantity
-            The NFW scale radius.
-        M_bh: astropy.units.quantity.Quantity
-            The black hole mass.
+    #     Parameters
+    #     ----------
+    #     rho_0: astropy.units.quantity.Quantity
+    #         The NFW normalisation parameter.
+    #     r_s: astropy.units.quantity.Quantity
+    #         The NFW scale radius.
+    #     M_bh: astropy.units.quantity.Quantity
+    #         The black hole mass.
 
-        Returns
-        -------
-        r_h: astropy.units.quantity.Quantity
-            The radius of the gravitational influence of the black hole.
+    #     Returns
+    #     -------
+    #     r_h: astropy.units.quantity.Quantity
+    #         The radius of the gravitational influence of the black hole.
 
-        Notes
-        -----
-        The radius of the gravitational influence of the black hole is calculated using the scipy.optimize.fsolve function.
+    #     Notes
+    #     -----
+    #     The radius of the gravitational influence of the black hole is calculated using the scipy.optimize.fsolve function.
 
-        Examples
-        --------
-        rho_0 = 5e6 * u.Msun / u.kpc**3
-        r_s = 40 * u.kpc
-        M_bh = 10**5 * u.Msun
-        >>> radius_gravitational_influence(rho_0, r_s, M_bh)
-        """
+    #     Examples
+    #     --------
+    #     rho_0 = 5e6 * u.Msun / u.kpc**3
+    #     r_s = 40 * u.kpc
+    #     M_bh = 10**5 * u.Msun
+    #     >>> radius_gravitational_influence(rho_0, r_s, M_bh)
+    #     """
+    #     # Generate a range of r values
+    #     r_min, r_max = 0.1e-3 * u.kpc, 200e-3 * u.kpc #kpc
+    #     r = np.linspace(r_min, r_max, 1000)
+    #     r_log = np.log(r.value)
+
+    #     # Compute the function values
+    #     if self.dm_profile == "nfw":
+    #         y_log = self.radius_gravitational_influence_equation(r, rho_0, r_s, M_bh)
+    #     elif self.dm_profile == "cored":
+    #         y_log = self.radius_gravitational_influence_equation(r, rho_0, r_s, M_bh, r_c, gamma_c)
+
+    #     # Fit a linear function to the logarithmic data
+    #     coefficients = np.polyfit(r_log, y_log, 1)
+
+    #     # Obtain the optimal r value from the linear fit
+    #     r_h = -coefficients[1] / coefficients[0]
+    #     r_h = np.exp(r_h) * u.kpc
+
+    #     print("r_h", r_h)
+
+    #     return(r_h)
+
+    @staticmethod
+    def linear_func(params, x):
+        return params[0]*x + params[1]
+
+    def radius_gravitational_influence(self, rho_0, r_s, M_bh, r_c=None, gamma_c=None):
         # Generate a range of r values
         r_min, r_max = 0.1e-3 * u.kpc, 200e-3 * u.kpc #kpc
         r = np.linspace(r_min, r_max, 1000)
         r_log = np.log(r.value)
 
         # Compute the function values
-        y_log = self.radius_gravitational_influence_equation(r, rho_0, r_s, M_bh)
+        if self.dm_profile == "nfw":
+            y_log = self.radius_gravitational_influence_equation(r, rho_0, r_s, M_bh)
+        elif self.dm_profile == "cored":
+            y_log = self.radius_gravitational_influence_equation(r, rho_0, r_s, M_bh, r_c, gamma_c)
 
-        # Fit a linear function to the logarithmic data
-        coefficients = np.polyfit(r_log, y_log, 1)
+        # Create a model for ODR regression
+        linear_model = Model(self.linear_func)
+
+        # Create a Data instance. We assume no specific standard deviations for now
+        mydata = Data(r_log, y_log)
+
+        # Instantiate ODR with your data, model and initial parameter estimate
+        myodr = ODR(mydata, linear_model, beta0=[1., 0.])
+
+        # Run the regression
+        output = myodr.run()
+
+        # Extract the coefficients
+        coefficients = output.beta
 
         # Obtain the optimal r value from the linear fit
         r_h = -coefficients[1] / coefficients[0]
         r_h = np.exp(r_h) * u.kpc
-        return(r_h)
+
+        return r_h
 
     @property
     def r_h(self):
@@ -1252,9 +1433,13 @@ class DMMiniSpikesCalculator:
             The radius of the gravitational influence of the black hole.
         """
         # r_h = self.radius_gravitational_influence(self.rho_0, self.r_s, self.bh_mass_formation) # use BH mass at its formation
-        r_h = self.radius_gravitational_influence(self.rho_0, self.r_s, self.bh_mass) # use BH mass at z = 0
+        if self.dm_profile == "nfw":
+            r_h = self.radius_gravitational_influence(self.rho_0, self.r_s, self.bh_mass) 
+        elif self.dm_profile == "cored":
+            r_h = self.radius_gravitational_influence(self.rho_0, self.r_s, self.bh_mass, r_c = self.r_c, gamma_c = self.gamma_c) 
         return(r_h)
 
+    # def spike_radius(self):
     @property
     def r_sp(self):
         """
@@ -1268,6 +1453,7 @@ class DMMiniSpikesCalculator:
         r_sp = 0.2 * self.r_h
         return(r_sp)
 
+    # def density_at_spike_radius(self):
     @property
     def rho_at_r_sp(self):
         """
@@ -1278,8 +1464,28 @@ class DMMiniSpikesCalculator:
         rho_sp: astropy.units.quantity.Quantity
             The dark matter mini-spike density.
         """
-        rho_at_r_sp = nfw_profile((self.rho_0, self.r_s), self.r_sp)
+        if self.dm_profile == "nfw":
+            rho_at_r_sp = nfw_profile((self.rho_0, self.r_s), self.r_sp)
+        elif self.dm_profile == "cored":
+            rho_at_r_sp = cored_profile((self.rho_0, self.r_s, self.r_c, self.gamma_c), self.r_sp)
         return(rho_at_r_sp)
+
+    @property
+    def spike_index(self):
+        """
+        The dark matter mini-spike index.
+
+        Returns
+        -------
+        gamma_sp: float
+            The dark matter mini-spike index.
+        """
+        if self.dm_profile == "nfw":
+            gamma = 1
+        elif self.dm_profile == "cored":
+            gamma = self.gamma_c
+        gamma_sp = (9 - 2 * gamma) / (4 - gamma)
+        return(gamma_sp)
 
     def plot_nfw(self, path):
         """
@@ -1305,6 +1511,30 @@ class DMMiniSpikesCalculator:
 
         bh_plotter.plot_nfw(ap_size, rho, self.rho_0, self.r_s, galaxy_zf_mass, galaxy_zf_z, path)
 
+    def plot_cored(self, path):
+        """
+        Plot the cored profile fit.
+
+        Parameters
+        ----------
+        path: str
+            The path to the folder where the plots are saved.
+
+        Notes
+        -----
+        The cored profile fit is plotted using the dammspi.plot.BlackHolePlotter class.
+        """
+        os.makedirs(path, exist_ok = True)
+        galaxy_zf_mass = self.table_galaxy_zf["m"].values[0] * u.Msun
+        galaxy_zf_z = self.table_galaxy_zf["z"].values[0]
+        ap_size = self.table_galaxy_zf["aperture_size"].to_numpy() * u.kpc
+        m_dm_ap = self.table_galaxy_zf["m_dm_ap"].to_numpy() * u.Msun
+        rho = self.density_within_aperature(ap_size, m_dm_ap)
+
+        bh_plotter = dammplot.BlackHolePlotter(sim_name = self.sim_name, table_bh = self.table_bh)
+
+        bh_plotter.plot_cored(ap_size, rho, self.rho_0, self.r_s, self.r_c, self.gamma_c, galaxy_zf_mass, galaxy_zf_z, path)
+
     def plot_radius_gravitational_influence(self, path):
         """
         Plot the radius of the gravitational influence of the black hole fit.
@@ -1323,16 +1553,168 @@ class DMMiniSpikesCalculator:
 
         bh_plotter = dammplot.BlackHolePlotter(sim_name = self.sim_name, table_bh = self.table_bh)
 
-        bh_plotter.plot_radius_gravitational_influence(
-            r_h = self.r_h, 
-            rho_0 = self.rho_0, 
-            r_s = self.r_s, 
-            M_bh = self.bh_mass_formation, 
-            galaxy_mass = galaxy_zf_mass, 
-            z = galaxy_zf_z, 
-            path = path
-            )
+        if self.dm_profile == "nfw":
+            bh_plotter.plot_radius_gravitational_influence_nfw(
+                r_h = self.r_h, 
+                rho_0 = self.rho_0, 
+                r_s = self.r_s, 
+                M_bh = self.bh_mass_formation, 
+                galaxy_mass = galaxy_zf_mass, 
+                z = galaxy_zf_z, 
+                path = path
+                )
+        elif self.dm_profile == "cored":
+            bh_plotter.plot_radius_gravitational_influence_cored(
+                r_h = self.r_h, 
+                rho_0 = self.rho_0, 
+                r_s = self.r_s, 
+                r_c = self.r_c,
+                gamma_c = self.gamma_c,
+                M_bh = self.bh_mass_formation, 
+                galaxy_mass = galaxy_zf_mass, 
+                z = galaxy_zf_z, 
+                path = path
+                )
 
+
+class DMMiniSpikesCalculator3():
+    def __init__(self):
+        self.bh_id = 123
+        self.rho_0, self.r_s = self.nfw_fit()
+
+    def nfw_fit(self):
+        """
+        Fit the NFW profile to the DM density profile of the host galaxy.
+
+        Returns
+        -------
+        rho_0: astropy.units.quantity.Quantity
+            The NFW normalisation parameter.
+        r_s: astropy.units.quantity.Quantity
+            The NFW scale radius.
+
+        Notes
+        -----
+        The NFW profile is fitted using the scipy.optimize.minimize function.
+        """
+        # table_galaxy_zf = self.get_table_galaxy_zf()
+
+        # # return NaN if BH host halo at formation redshift is spurious
+        # if self.spurios:
+        #     return(np.nan, np.nan)
+
+        # extract DM halo profile of halo in which BH formed at formation redshift
+        # ap_size = table_galaxy_zf["aperture_size"].to_numpy() * u.kpc
+        # ap_mass = table_galaxy_zf["m_dm_ap"].to_numpy() * u.Msun
+
+        # compute DM density profile of halo in which BH formed at formation redshift
+        # dm_rho_log = np.log(self.density_within_aperature(ap_size, ap_mass).value) * u.Msun / u.kpc**3
+
+        ap_size = np.array([1.0, 3.0, 5.0, 10.0, 20.0, 30.0, 40.0, 50.0, 70.0, 100.0])
+        dm_rho_log = np.array([17.293771051085873, 15.993605777316597, 15.073423974432858, 13.782439767849121, 
+                       12.335745054262574, 11.416201869323169, 10.667259719377345, 10.025250806583088, 
+                       9.02237010633348, 7.952345274517282])
+
+        for size, rho in zip(ap_size, dm_rho_log):
+            print("size", size)
+            print("size type", type(size))
+            print("rho", rho)
+            print("rho type", type(rho))
+
+        # print("\nbh id", self.bh_id)
+        # for rho, size in zip(dm_rho_log, ap_size):
+        #     print("rho", rho)
+        #     print("size", size)
+
+        # print("dm_rho_log", dm_rho_log)
+        # print("ap_size", ap_size)
+
+        if hasattr(ap_size, 'unit'):
+            ap_size = ap_size.to(u.kpc).value
+        if hasattr(dm_rho_log, 'unit'):
+            dm_rho_log = dm_rho_log.to(u.Msun/u.kpc**3).value
+        model = Model(self.nfw_cost_function)
+        data = RealData(ap_size, dm_rho_log)
+        # data = Data(ap_size, dm_rho_log)
+        odr = ODR(data, model, beta0=[5e6, 40]) 
+
+        odr.set_job(fit_type=2) #fit_type=2
+        output = odr.run()
+        popt = output.beta
+        rho_0, r_s = popt
+
+        print("rho_0", rho_0)
+        # print("r_s", r_s)
+
+        self.rho_0 = rho_0 * u.Msun / u.kpc**3
+        self.r_s = r_s * u.kpc
+
+        return(self.rho_0, self.r_s)
+
+    def nfw_cost_function(self, params, r):
+        """
+        Used to fit the NFW profile to the DM density profile of the host galaxy.
+
+        Parameters
+        ----------
+        params: tuple
+            The NFW parameters.
+        r: numpy.ndarray
+            The radius.
+
+        Returns
+        -------
+        predicted: numpy.ndarray
+            The predicted DM density profile of the host galaxy (log).
+
+        Notes
+        -----
+        The NFW profile (log) is calculated using the NFW parameters and the radius.
+
+        Examples
+        --------
+        >>> nfw_cost_function((5e6 * u.Msun / u.kpc**3, 40 * u.kpc), 10 * u.kpc)
+        """
+        rho_0, r_s = params
+        if rho_0 <= 0 or r_s <= 0:
+            return np.inf
+        output = self.nfw_profile_log((rho_0, r_s), r)
+        return output
+
+    @staticmethod
+    def nfw_profile_log(params, r):
+        """
+        Used to fit the NFW profile to the DM density profile of the host galaxy.
+
+        Parameters
+        ----------
+        params: tuple
+            The NFW parameters.
+        r: numpy.ndarray or astropy.units.quantity.Quantity
+            The radius.
+
+        Returns
+        -------
+        rho_log: numpy.ndarray or float
+            The DM density profile of the host galaxy (log).
+        
+        Notes
+        -----
+        The NFW profile (log) is calculated using the NFW parameters and the radius.
+
+        Examples
+        --------
+        >>> nfw_profile_log((5e6 * u.Msun / u.kpc**3, 40 * u.kpc), 10 * u.kpc)
+        """
+        rho_0, r_s = params
+        if hasattr(r, 'unit'):
+            r = r.to(u.kpc).value
+        if hasattr(rho_0, 'unit'):
+            rho_0 = rho_0.to(u.Msun/u.kpc**3).value
+        if hasattr(r_s, 'unit'):
+            r_s = r_s.to(u.kpc).value
+        rho_log = np.log(rho_0) - np.log(r/r_s) - 2*np.log(1+r/r_s) 
+        return(rho_log)
 
 # TO DO:
 # replace username and password

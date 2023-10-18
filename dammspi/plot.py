@@ -14,7 +14,7 @@ import matplotlib.cm as cm
 import matplotlib.animation as animation
 import numpy as np
 import requests
-from dammspi.utils import nfw_profile, nfw_integral, M_bh_2, parameter_distr_mean
+from dammspi.utils import nfw_profile, nfw_integral, cored_profile, cored_integral, M_bh_2, parameter_distr_mean
 from astropy import units as u
 from astropy.coordinates import SkyCoord
 from scipy.stats import gaussian_kde
@@ -186,7 +186,7 @@ class BlackHolePlotter:
     @staticmethod
     def plot_nfw(r, rho, rho_0, r_s, galaxy_mass, z, path):
         lablel_fit = f"Fit\n$\\rho_0$ = {rho_0.value:.2e} M$_{{\\odot}}$ / kpc$^3$\n$r_s$ = {r_s.value:.2f} kpc"
-        plt.figure(figsize = single_column_fig_size)
+        plt.figure(figsize = double_column_fig_size)
         plt.title(f"M$_{{halo}}$ = {galaxy_mass.value:.2e} M$_{{\\odot}}$, z = {z:.2f}")
         plt.plot(r, rho, color = color_black, label = "Data")
         plt.plot(r, nfw_profile((rho_0, r_s), r), color = color_red, linestyle = "dashed", label = lablel_fit)
@@ -200,7 +200,24 @@ class BlackHolePlotter:
         plt.close()
 
     @staticmethod
-    def plot_radius_gravitational_influence(r_h, rho_0, r_s, M_bh, galaxy_mass, z, path):
+    def plot_cored(r, rho, rho_0, r_s, r_c, gamma_c, galaxy_mass, z, path):
+        # lablel_fit = f"Fit\n$\\rho_0$ = {rho_0.value:.2e} M$_{{\\odot}}$ / kpc$^3$\n$r_s$ = {r_s.value:.2f} kpc"
+        lablel_fit = f"Fit\n$\\rho_0$ = {rho_0.value:.2e} M$_{{\\odot}}$ / kpc$^3$\n$r_s$ = {r_s.value:.2f} kpc\n$r_c$ = {r_c.value:.2f} kpc\n$\\gamma_c$ = {gamma_c:.2f}"
+        plt.figure(figsize = double_column_fig_size)
+        plt.title(f"M$_{{halo}}$ = {galaxy_mass.value:.2e} M$_{{\\odot}}$, z = {z:.2f}")
+        plt.plot(r, rho, color = color_black, label = "Data")
+        plt.plot(r, cored_profile((rho_0, r_s, r_c, gamma_c), r), color = color_red, linestyle = "dashed", label = lablel_fit)
+        plt.xlabel(r"$r$ [kpc]")
+        plt.ylabel(r"$\rho$ [M$_{\odot}$ / kpc$^3$]")
+        plt.xscale("log")
+        plt.yscale("log")
+        plt.tight_layout()
+        plt.legend()
+        plt.savefig(path + "cored.pdf", dpi = 300)
+        plt.close()
+
+    @staticmethod
+    def plot_radius_gravitational_influence_nfw(r_h, rho_0, r_s, M_bh, galaxy_mass, z, path):
         r_min, r_max = 0.1e-3 * u.kpc, 200e-3 * u.kpc #kpc
         r = np.linspace(r_min, r_max, 1000)
         plt.figure()
@@ -214,7 +231,25 @@ class BlackHolePlotter:
         plt.yscale("log")
         plt.legend()
         plt.tight_layout()
-        plt.savefig(path + "r_h.pdf", dpi = 300)
+        plt.savefig(path + "r_h_nfw.pdf", dpi = 300)
+        plt.close()
+
+    @staticmethod
+    def plot_radius_gravitational_influence_cored(r_h, rho_0, r_s, r_c, gamma_c, M_bh, galaxy_mass, z, path):
+        r_min, r_max = 0.1e-3 * u.kpc, 200e-3 * u.kpc #kpc
+        r = np.linspace(r_min, r_max, 1000)
+        plt.figure()
+        plt.title(f"M$_{{halo}}$ = {galaxy_mass:.2e} M$_{{\odot}}$, z = {z:.2f}")
+        plt.plot(r, cored_integral(r, rho_0, r_s, r_c, gamma_c), color = color_black, label = "Cored integral")
+        plt.hlines(M_bh_2(M_bh).value, xmin = np.min(r).value, xmax = np.max(r).value, linestyle = "dotted", color = color_black, label = f"$2 \cdot M_{{BH}}$ = {M_bh_2(M_bh).value:.2e} M$_{{\\odot}}$")
+        plt.vlines(r_h.value, ymin = np.min(cored_integral(r, rho_0, r_s, r_c, gamma_c)).value, ymax = np.max(cored_integral(r, rho_0, r_s, r_c, gamma_c)).value, linestyle = "dashed", color = color_red, label = f"$r_h$ = {r_h:.2e}\n$r_{{sp}}$ = {0.2 * r_h:.2e}")
+        plt.xlabel(r"$r$ [kpc]")
+        plt.ylabel(r"$Y$ [M$_{\odot}$]")
+        plt.xscale("log")
+        plt.yscale("log")
+        plt.legend()
+        plt.tight_layout()
+        plt.savefig(path + "r_h_cored.pdf", dpi = 300)
         plt.close()
 
     def plot_dist_total(self, path):
@@ -459,6 +494,7 @@ class BlackHolePlotter:
         filenames = ["mass_mean", "redshift_mean", "distance_gc_mean", "latitude_GC_mean", "longitude_GC_mean", "distance_sun_mean", "latitude_Sun_mean", "longitude_Sun_mean", "r_sp_mean", "rho_sp_mean"]
         
         for parameter, unit, x_label, filename in zip(parameters, units, x_labels, filenames):
+            print(filename)
             data = self.table_bh[parameter].values
             data_sorted = np.sort(data)
             data_mean = np.mean(data)

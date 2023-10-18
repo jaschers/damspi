@@ -19,6 +19,9 @@ import astropy.constants as const
 import astropy.units as u
 import multiprocessing as mp
 from functools import partial
+import warnings
+
+warnings.filterwarnings('error')
 
 
 # define function to process each MW-like galaxy within the EAGLE simulation with multiprocessing
@@ -105,7 +108,12 @@ def calculate_spikes(args, lst, row_tuple):
     table_bh_zf_total = data_collector.black_hole_data(nsnap=nsnap_c)
     table_bh_zf = table_bh_zf_total[table_bh_zf_total["bh_id"] == bh_id]
 
-    dm_mini_spikes = dammcat.DMMiniSpikesCalculator(sim_name = args.sim_name, box_size = args.box_size, table_bh = table_bh_zf)
+    dm_mini_spikes = dammcat.DMMiniSpikesCalculator(
+        sim_name = args.sim_name, 
+        box_size = args.box_size, 
+        dm_profile = args.dark_matter_profile, 
+        table_bh = table_bh_zf
+        )
 
     # only determine DM mini spikes if BH host halo at formation redshift is not spurious
     if dm_mini_spikes.spurios == False:
@@ -117,6 +125,9 @@ def calculate_spikes(args, lst, row_tuple):
         rho_at_r_sp = dm_mini_spikes.rho_at_r_sp
         rho_at_r_sp = (rho_at_r_sp * const.c ** 2).to(u.GeV / u.cm ** 3)
 
+        # get spike index
+        gamma_sp = dm_mini_spikes.spike_index
+
         # check if BH has a galaxy host at formation redshift
         no_host = dm_mini_spikes.no_host
 
@@ -124,7 +135,12 @@ def calculate_spikes(args, lst, row_tuple):
         table["bh_id"] = [bh_id]
         table["r_sp [pc]"] = [r_sp.to(u.pc).value]
         table["rho(r_sp) [GeV/cm3]"] = [rho_at_r_sp.value]
+        table["gamma_sp"] = [gamma_sp]
         table["no_host"] = [no_host]
+
+        if args.dark_matter_profile == "cored":
+            r_c = dm_mini_spikes.r_c
+            table["r_c [kpc]"] = [r_c.to(u.kpc).value]
         # bh_catalogue.loc[bh_catalogue["bh_id"] == bh_id, "r_sp [pc]"] = r_sp.to(u.pc).value
         # bh_catalogue.loc[bh_catalogue["bh_id"] == bh_id, "rho(r_sp) [GeV/cm3]"] = rho_at_r_sp.value
 
@@ -132,11 +148,14 @@ def calculate_spikes(args, lst, row_tuple):
 
         if args.plot:
             path = f"plots/{args.sim_name}/galaxy_id_{int(galaxy_id)}/black_holes/mini_spikes/id_{int(bh_id)}/"
+            print("galaxy_id:", galaxy_id)
             os.makedirs(path, exist_ok = True)
             # plot mini spike parameters
-            dm_mini_spikes.plot_nfw(path)
+            if args.dark_matter_profile == "nfw":
+                dm_mini_spikes.plot_nfw(path)
+            elif args.dark_matter_profile == "cored":
+                dm_mini_spikes.plot_cored(path)
             dm_mini_spikes.plot_radius_gravitational_influence(path)
-
 
 if __name__ == "__main__":
     # initialise user input
@@ -148,47 +167,58 @@ if __name__ == "__main__":
 
     # define directory for catalogue
     path_catalogue = f"catalogue/{args.sim_name}/"
+    path_catalogue_temp = f"catalogue_temp/{args.sim_name}/"
     os.makedirs(path_catalogue, exist_ok = True)
+    os.makedirs(path_catalogue_temp, exist_ok = True)
 
-    # extract galaxy data at z = 0
-    data_collector = dammcat.DataCollector(sim_name = args.sim_name, number_files = args.number_files)
-    table_galaxy_z0_total = data_collector.galaxy_data(nsnap = 28)
+    # load temporary catalogue if requested
+    if args.load_temporary_catalogue:
+        bh_catalogue = pd.read_csv(path_catalogue_temp + f"{args.filename}_temp.csv")
+        print("Temporary catalogue sucessfully loaded!")
+    # else create new catalogue
+    else:
+        # extract galaxy data at z = 0
+        data_collector = dammcat.DataCollector(sim_name = args.sim_name, number_files = args.number_files)
+        table_galaxy_z0_total = data_collector.galaxy_data(nsnap = 28)
 
-    # unique galaxy root ids
-    galaxy_id_unique = np.unique(table_galaxy_z0_total["galaxy_id"])
+        # unique galaxy root ids
+        galaxy_id_unique = np.unique(table_galaxy_z0_total["galaxy_id"])
 
-    # extract bh data at z = 0
-    table_bh_z0_total = data_collector.black_hole_data(nsnap = 28)
+        # extract bh data at z = 0
+        table_bh_z0_total = data_collector.black_hole_data(nsnap = 28)
 
-    if args.plot:
-        # save galaxy images
-        galaxy_plotter = dammplot.GalaxyPlotter(sim_name = args.sim_name, table_galaxy = table_galaxy_z0_total, table_bh = table_bh_z0_total)
-        galaxy_plotter.save_gri_images()
+        if args.plot:
+            # save galaxy images
+            galaxy_plotter = dammplot.GalaxyPlotter(sim_name = args.sim_name, table_galaxy = table_galaxy_z0_total, table_bh = table_bh_z0_total)
+            galaxy_plotter.save_gri_images()
 
-        # plot galaxy properties distributions, such as 
-        galaxy_plotter.plot_galaxy_distributions()
+            # plot galaxy properties distributions, such as 
+            galaxy_plotter.plot_galaxy_distributions()
 
-    # Create a multiprocessing manager list to share the pandas tables between processes
-    coord_list = mp.Manager().list()
+        # Create a multiprocessing manager list to share the pandas tables between processes
+        coord_list = mp.Manager().list()
 
-    print("Start extracting black hole coordinates for each MW-like galaxy...")
-    # Initialize the multiprocessing pool
-    with mp.Pool(processes=num_processes) as pool:
-        # add necesarry arguments to the function except of galaxy_id_unique since this is the variable to loop over
-        determine_coordinates_with_args = partial(
-            determine_coordinates, 
-            table_galaxy_z0_total, 
-            table_bh_z0_total, 
-            args, 
-            coord_list
-            )
-        # Use tqdm to visualize the progress of the loop
-        # loop over all individual galaxies to extract coordinates of BHs
-        for _ in tqdm(pool.imap_unordered(determine_coordinates_with_args, galaxy_id_unique), total=len(galaxy_id_unique)):
-            pass
+        print("Start extracting black hole coordinates for each MW-like galaxy...")
+        # Initialize the multiprocessing pool
+        with mp.Pool(processes=num_processes) as pool:
+            # add necesarry arguments to the function except of galaxy_id_unique since this is the variable to loop over
+            determine_coordinates_with_args = partial(
+                determine_coordinates, 
+                table_galaxy_z0_total, 
+                table_bh_z0_total, 
+                args, 
+                coord_list
+                )
+            # Use tqdm to visualize the progress of the loop
+            # loop over all individual galaxies to extract coordinates of BHs
+            for _ in tqdm(pool.imap_unordered(determine_coordinates_with_args, galaxy_id_unique), total=len(galaxy_id_unique)):
+                pass
 
-    # combine all tables into the BH catalogue
-    bh_catalogue = pd.concat(coord_list, ignore_index=True)
+        # combine all tables into the BH catalogue
+        bh_catalogue = pd.concat(coord_list, ignore_index=True)
+
+        # save current catalogue as temporary file so that it can be loaded by the same script if needed
+        bh_catalogue.to_csv(path_catalogue_temp + f"{args.filename}_temp.csv", index=False)
 
     print(f"Number of unmerged black holes in MW-like galaxies in simulation {args.sim_name}: {len(bh_catalogue)}")
     print("Start extracting black hole dark matter mini spike parameter for each BH...")
@@ -216,4 +246,4 @@ if __name__ == "__main__":
     bh_catalogue = bh_catalogue.dropna()
 
     # save BH catalogue
-    bh_catalogue.to_csv(path_catalogue + "catalogue.csv", index=False)
+    bh_catalogue.to_csv(path_catalogue + f"{args.filename}.csv", index=False)

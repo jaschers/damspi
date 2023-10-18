@@ -40,14 +40,13 @@ def extract_flux_catalogue(bh_catalogue, flux_calculator, args, m_dm):
 
         r_cut = flux_calculator.radius_cut(m_dm, sigma_v)
         flux = flux_calculator.gamma_flux(m_dm, args.channel, args.E_th, sigma_v)
-        
+
         table["sigma_v [cm3 s-1]"] = sigma_v.value
         table["r_cut [pc]"] = r_cut.to(u.pc).value
         table["flux [cm-2 s-1]"] = flux.to(1 / (u.cm**2 * u.s)).value
         
         flux_catalogue = pd.concat([flux_catalogue, table], ignore_index = True)
     flux_catalogue.to_hdf(path + f"m_dm_{int(np.rint(m_dm.value))}GeV.h5", key = "table", mode = "w")
-    print(flux_catalogue)
 
 
 if __name__ == "__main__":
@@ -56,9 +55,12 @@ if __name__ == "__main__":
 
     # define directory for catalogue
     path_catalogue = f"catalogue/{args.sim_name}/"
-    print(f"Load black hole catalogue from {path_catalogue + 'catalogue.csv'}")
-    bh_catalogue = pd.read_csv(path_catalogue + "catalogue.csv")
-    flux_calculator = dammflux.FluxCalculator(bh_catalogue)
+    print(f"Load black hole catalogue from {path_catalogue + f'{args.filename}.csv'}")
+    bh_catalogue = pd.read_csv(path_catalogue + f"{args.filename}.csv")
+
+    bh_catalogue["gamma_sp"] = 7 / 3
+
+    flux_calculator = dammflux.FluxCalculator(bh_catalogue = bh_catalogue, dm_profile = args.dark_matter_profile)
 
     path = f"catalogue/{args.sim_name}/flux/{args.channel}_channel/"
     os.makedirs(path, exist_ok = True)

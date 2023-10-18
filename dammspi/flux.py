@@ -5,16 +5,16 @@ from astropy.cosmology import Planck18 as cosmo
 from gammapy.astro.darkmatter import PrimaryFlux
 
 class FluxCalculator:
-    def __init__(self, bh_catalogue):
+    def __init__(self, bh_catalogue, dm_profile):
         self.bh_catalogue = bh_catalogue
         self.z_f = self.bh_catalogue['z_f'].values
         self.t_0 = self.redshift_to_time(0)
         self.t_f = self.redshift_to_time(self.z_f)
         self.r_sp = self.bh_catalogue['r_sp [pc]'].values * u.pc
+        self.gamma_sp = self.bh_catalogue['gamma_sp'].values
         self.rho_r_sp = self.bh_catalogue['rho(r_sp) [GeV/cm3]'].values * u.GeV / u.cm**3
         self.distance = self.bh_catalogue['d_Sun [kpc]'].values * u.kpc
         self.M_bh = self.bh_catalogue['m [M_solar]'].values * u.M_sun
-        self.gamma = 7/3
 
     @staticmethod
     def redshift_to_time(z):
@@ -23,9 +23,9 @@ class FluxCalculator:
         return time
 
     @staticmethod
-    def radius_lim(m_dm, sigma_v, time_0, time_f, r_sp, rho_r_sp, gamma):
+    def radius_lim(m_dm, sigma_v, time_0, time_f, r_sp, rho_r_sp, gamma_sp):
         rho_lim = (m_dm / (sigma_v * (time_0 - time_f))).to(u.GeV / u.cm**3)
-        r_lim = (r_sp * (rho_lim / rho_r_sp)**(- 1 / gamma)).to(u.pc)
+        r_lim = (r_sp * (rho_lim / rho_r_sp)**(- 1 / gamma_sp)).to(u.pc)
         return(r_lim)
 
     @staticmethod
@@ -35,7 +35,7 @@ class FluxCalculator:
 
     def radius_cut(self, m_dm, sigma_v):
         r_schw = self.radius_schw(self.M_bh)
-        r_lim = self.radius_lim(m_dm, sigma_v, self.t_0, self.t_f, self.r_sp, self.rho_r_sp, self.gamma)
+        r_lim = self.radius_lim(m_dm, sigma_v, self.t_0, self.t_f, self.r_sp, self.rho_r_sp, self.gamma_sp)
         r_cut = np.maximum(4*r_schw.to(u.pc).value, r_lim.to(u.pc).value)
         self.r_cut = r_cut * u.pc
         return(self.r_cut)
@@ -51,15 +51,7 @@ class FluxCalculator:
         N = self.N_gamma(m_dm, channel, E_th)
 
         # reference: https://journals.aps.org/prd/pdf/10.1103/PhysRevD.72.103517?casa_token=-e4eEEaCw5oAAAAA%3A9KIbORPLYWRlSVC5MyI3HSIslOLws15IjLMCUkoM2E3uD9PaUV_cXtfBta2anEGB9Epsa-J9DZ9qUiI
-        phi_0 = 9e-10 * u.cm**(-2) * u.s**(-1)
-        sigma_v0 = 1e-26 * u.cm**(3) * u.s**(-1)
-        m_dm_0 = 100 * u.GeV
-        d_0 = 1 * u.kpc
-        rho_r_sp_0 = 1e2 * u.GeV * u.cm**(-3)
-        r_sp_0 = 1 * u.pc
-        r_cut_0 = 1e-3 * u.pc
-
-        y = phi_0 * N * (sigma_v / sigma_v0) * (m_dm / m_dm_0)**(-2) * (self.distance / d_0)**(-2) * (self.rho_r_sp / rho_r_sp_0)**2 * (self.r_sp / r_sp_0) ** (14/3) * (self.r_cut / r_cut_0)**(-5/3)
+        y = N * (self.rho_r_sp**2 * sigma_v * self.r_sp**3) / ((4 * self.gamma_sp - 6) * m_dm**2 * self.distance**2) * (self.r_cut / self.r_sp)**(-2 * self.gamma_sp + 3)
         y = y.to(1 / (u.cm**2 * u.s))
 
         return(y)

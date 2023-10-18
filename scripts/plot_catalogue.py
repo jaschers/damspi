@@ -17,7 +17,7 @@ if __name__ == '__main__':
     args = parse_args()
 
     # open the catalogue
-    filename = f"catalogue/{args.sim_name}/catalogue.csv"
+    filename = f"catalogue/{args.sim_name}/{args.filename}.csv"
     bh_catalogue = pd.read_csv(filename)
 
     # get the latitude and longitude of the black holes
