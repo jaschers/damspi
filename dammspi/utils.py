@@ -193,3 +193,7 @@ def parameter_distr_mean(table, parameter, bins):
     hist_mean_error = hist_std / np.sqrt(len(hist_list))
 
     return hist_mean, hist_mean_error
+
+def gamma_core(gamma_sp):
+    gamma_core = (9-4*gamma_sp)/(2-gamma_sp)
+    return(gamma_core)

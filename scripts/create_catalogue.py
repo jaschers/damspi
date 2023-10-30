@@ -226,6 +226,9 @@ if __name__ == "__main__":
     # Create a multiprocessing manager list to share the pandas tables between processes
     spikes_list = mp.Manager().list()
 
+    # # TODO remove this line
+    # bh_catalogue = bh_catalogue.iloc[:1]
+
     # calculate dark matter mini spike parameters for each BH
     # Initialize the multiprocessing pool
     # loop over all individual BHs to calculate mini spike parameters

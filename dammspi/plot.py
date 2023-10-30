@@ -401,12 +401,12 @@ class BlackHolePlotter:
             ax.text(
                 x_max_previous + np.abs(x_max - x_max_previous) / 2, 
                 - 5 * (2*np.pi/360), 
-                r"${0:.0f} \%$".format(percentages_cont[i]), 
+                r"${0:.0f}$".format(percentages_cont[i]), 
                 color = "white",
                 horizontalalignment = "center", 
                 verticalalignment = "center",
                 alpha = 0.8,
-                fontsize = 6
+                fontsize = 8
                 )
             x_max_previous = x_max
 
@@ -486,12 +486,12 @@ class BlackHolePlotter:
 
 
     def plot_dist_total_mean(self, path):
-        parameters = ["m [M_solar]", "z_f", "d_GC [kpc]", "lat_GC [rad]", "long_GC [rad]", "d_Sun [kpc]", "lat_Sun [rad]", "long_Sun [rad]", "r_sp [pc]", "rho(r_sp) [GeV/cm3]"]
-        units = ["$M_{\odot}$", "", "kpc", "rad", "rad", "kpc", "rad", "rad", "pc", "GeV/cm$^3$"]
+        parameters = ["m [M_solar]", "z_f", "d_GC [kpc]", "lat_GC [rad]", "long_GC [rad]", "d_Sun [kpc]", "lat_Sun [rad]", "long_Sun [rad]", "r_sp [pc]", "rho(r_sp) [GeV/cm3]", "gamma_sp", "gamma_c"]
+        units = ["$M_{\odot}$", "", "kpc", "rad", "rad", "kpc", "rad", "rad", "pc", "GeV/cm$^3$", "", ""]
         log_parameters = ["m [M_solar]", "r_sp [pc]", "rho(r_sp) [GeV/cm3]"]
         # log_parameters = ["m [M_solar]"]
-        x_labels = [r"$m_\mathrm{BH}$ [$M_{\odot}$]", r"$z_f$", r"$d_\mathrm{GC}$ [kpc]", r"$b_\mathrm{GC}$ [rad]", r"$l_\mathrm{GC}$ [rad]", r"$d_\mathrm{Sun}$ [kpc]", r"$b_\mathrm{Sun}$ [rad]", r"$l_\mathrm{Sun}$ [rad]", "$r_\mathrm{sp}$ [pc]", r"$\rho(r_\mathrm{sp})$ [GeV/cm$^3$]"]
-        filenames = ["mass_mean", "redshift_mean", "distance_gc_mean", "latitude_GC_mean", "longitude_GC_mean", "distance_sun_mean", "latitude_Sun_mean", "longitude_Sun_mean", "r_sp_mean", "rho_sp_mean"]
+        x_labels = [r"$m_\mathrm{BH}$ [$M_{\odot}$]", r"$z_f$", r"$d_\mathrm{GC}$ [kpc]", r"$b_\mathrm{GC}$ [rad]", r"$l_\mathrm{GC}$ [rad]", r"$d_\mathrm{Sun}$ [kpc]", r"$b_\mathrm{Sun}$ [rad]", r"$l_\mathrm{Sun}$ [rad]", "$r_\mathrm{sp}$ [pc]", r"$\rho(r_\mathrm{sp})$ [GeV/cm$^3$]", "$\gamma_\mathrm{sp}$", "$\gamma_\mathrm{c}$"]
+        filenames = ["mass_mean", "redshift_mean", "distance_gc_mean", "latitude_GC_mean", "longitude_GC_mean", "distance_sun_mean", "latitude_Sun_mean", "longitude_Sun_mean", "r_sp_mean", "rho_sp_mean", "gamma_sp_mean", "gamma_c_mean"]
         
         for parameter, unit, x_label, filename in zip(parameters, units, x_labels, filenames):
             print(filename)
@@ -527,7 +527,7 @@ class BlackHolePlotter:
             # Create the label
             # label = f"$\mu = ({formatted_median} + {formatted_upper_error} - {formatted_lower_error}) \cdot 10^{exponent}$ {unit}"
             if exponent != 0:
-                label = r"$\tilde{{\mu}} = ({0}^{{+{1}}}_{{-{2}}}) \cdot 10^{3}$ {4}".format(formatted_median, formatted_upper_error, formatted_lower_error, exponent, unit)
+                label = r"$\tilde{{\mu}} = ({0}^{{+{1}}}_{{-{2}}}) \cdot 10^{{ {3} }}$ {4}".format(formatted_median, formatted_upper_error, formatted_lower_error, exponent if exponent < 0 else " "+str(exponent), unit)
             else:
                 label = r"$\tilde{{\mu}} = {0}^{{+{1}}}_{{-{2}}}$ {3}".format(formatted_median, formatted_upper_error, formatted_lower_error, unit)
 
@@ -683,6 +683,10 @@ class FluxPlotter:
     def plot_integrated_luminosity(self, flux_th, m_dm, color):
         int_lum_mean, int_lum_error = self.integrated_luminosity_mean(flux_th)
         plt.errorbar(flux_th, int_lum_mean, yerr = int_lum_error, label = f"$m_{{\chi}}$ = {np.round(m_dm.to(u.TeV).value, 1)} TeV", linestyle = "", marker = ".", capsize = 3, color = color, markersize = 3)
+
+    def plot_integrated_luminosity_comparison(self, flux_th, label, color):
+        int_lum_mean, int_lum_error = self.integrated_luminosity_mean(flux_th)
+        plt.errorbar(flux_th, int_lum_mean, yerr = int_lum_error, label = label, linestyle = "", marker = ".", capsize = 3, color = color, markersize = 3)
 
     def plot_cuttoff_radius_dist(self, path):
         r_cut = self.flux_catalogue["r_cut [pc]"].values

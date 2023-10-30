@@ -62,7 +62,7 @@ if __name__ == "__main__":
 
     flux_calculator = dammflux.FluxCalculator(bh_catalogue = bh_catalogue, dm_profile = args.dark_matter_profile)
 
-    path = f"catalogue/{args.sim_name}/flux/{args.channel}_channel/"
+    path = f"catalogue/{args.sim_name}/flux/{args.dark_matter_profile}/{args.channel}_channel/"
     os.makedirs(path, exist_ok = True)
 
     print("Start calculating fluxes...")
@@ -93,7 +93,7 @@ if __name__ == "__main__":
     if args.plot:
         if len(args.sigma_v) == 1:
             print("Start plotting...")
-            path_plots = f"plots/{args.sim_name}/flux/{args.channel}_channel/"
+            path_plots = f"plots/{args.sim_name}/flux/{args.dark_matter_profile}/{args.channel}_channel/"
             os.makedirs(path_plots, exist_ok = True)
 
             cmap = LinearSegmentedColormap.from_list("", ["#fca311", "#e83151", "#003049"])
@@ -122,6 +122,7 @@ if __name__ == "__main__":
             plt.yscale("log")
             plt.ylim(ymin = ymin, ymax = ymax) #TODO: set automatically
             xmin, xmax = plt.xlim()
+            # plt.hlines(2.3, xmin, 1e-7, color = "grey", linestyle = "dashdot")
             plt.xlim(xmin = xmin, xmax = 1e-7) #TODO: set automatically
             plt.legend(loc = "upper right", frameon = False, fontsize = 7)
             plt.tight_layout()

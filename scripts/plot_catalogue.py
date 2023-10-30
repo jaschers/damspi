@@ -9,8 +9,9 @@ module_dir = os.path.abspath(os.path.join(current_dir, '..'))
 sys.path.append(module_dir)
 
 import dammspi.plot as dammplot
-from dammspi.utils import parse_args
+from dammspi.utils import parse_args, gamma_core
 import pandas as pd
+import numpy as np
 
 if __name__ == '__main__':
     # get user input
@@ -27,10 +28,13 @@ if __name__ == '__main__':
     d_sun = bh_catalogue['d_Sun [kpc]']
     lat_sun = bh_catalogue['lat_Sun [rad]']
     long_sun = bh_catalogue['long_Sun [rad]']
+    gamma_sp = bh_catalogue['gamma_sp']
+    gamma_c = gamma_core(gamma_sp)
+    bh_catalogue['gamma_c'] = gamma_c
 
     bh_plotter = dammplot.BlackHolePlotter(sim_name = args.sim_name, table_bh = bh_catalogue)
 
-    path = f"plots/{args.sim_name}/black_hole_dist/"
+    path = f"plots/{args.sim_name}/black_hole_dist/{args.dark_matter_profile}/"
     os.makedirs(path, exist_ok = True)
 
     # # Plotting BH number distributions
