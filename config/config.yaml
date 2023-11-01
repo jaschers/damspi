@@ -2,8 +2,47 @@ User_input:
   user_name: dvd351
   user_password: zqfARI55
 
-Cosmology:
-  hubble
-
 HESS:
   flux_sensitivity: 4.6e-13
+
+Figure_size:
+  single_column: 
+    - 2.75591  
+    - 2.06693 
+  single_column_legend:
+    - 2.75591
+    - 2.41142
+  single_column_squeezed:
+    - 3.5
+    - 2.06693 
+  double_column:
+    - 5.70866 
+    - 4.28150
+  double_column_squeezed:
+    - 7.22441
+    - 3.61221
+
+Plots:
+  markersize: 2
+  bar_edge_color: "white"
+  bar_edge_width: 0.4
+  number_bins: 11
+
+Colors:
+  black: "#171b1d"
+  red: "#e83151"
+  red_presentation: "#F44D4D"
+  darkblue: "#003049"
+  lightblue: "#6c8ead"
+  yellow: "#fca311"
+  cmap: ["#FFF275", "#E83151", "#003049", "#171B1D"]
+  cmap_r: ["#171B1D", "#003049", "#E83151", "#FFF275"]
+  cmap_flux: ["#fca311", "#e83151", "#003049"]
+
+Spike_profile_example:
+  rho_0: 0.33 # * u.GeV / u.cm**3
+  r_s: 20 # u.kpc  
+  r_sp: 1e-3 # u.kpc 
+  gamma_sp: 2.3333 # 7/3
+  r_cut: 1e-6 # u.kpc
+  M_bh: 1e5 # u.M_sun
