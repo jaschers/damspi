@@ -5,7 +5,7 @@ from astropy.cosmology import Planck18 as cosmo
 from gammapy.astro.darkmatter import PrimaryFlux
 
 class FluxCalculator:
-    def __init__(self, bh_catalogue, dm_profile):
+    def __init__(self, bh_catalogue):
         self.bh_catalogue = bh_catalogue
         self.z_f = self.bh_catalogue['z_f'].values
         self.t_0 = self.redshift_to_time(0)

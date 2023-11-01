@@ -18,7 +18,7 @@ if __name__ == '__main__':
     args = parse_args()
 
     # open the catalogue
-    filename = f"catalogue/{args.sim_name}/{args.filename}.csv"
+    filename = f"catalogue/{args.sim_name}/imbh/catalogue_{args.name}.csv"
     bh_catalogue = pd.read_csv(filename)
 
     # get the latitude and longitude of the black holes
@@ -34,7 +34,7 @@ if __name__ == '__main__':
 
     bh_plotter = dammplot.BlackHolePlotter(sim_name = args.sim_name, table_bh = bh_catalogue)
 
-    path = f"plots/{args.sim_name}/black_hole_dist/{args.dark_matter_profile}/"
+    path = f"plots/{args.sim_name}/black_hole_dist/{args.name}/"
     os.makedirs(path, exist_ok = True)
 
     # # Plotting BH number distributions
@@ -57,4 +57,4 @@ if __name__ == '__main__':
     # bh_plotter.plot_2d_map_contours(lat_gc, long_gc, path + "2d_map_gc_contours.pdf")
     bh_plotter.plot_2d_map_contours(lat_sun, long_sun, path + "2d_map_sun_contours.pdf")
 
-    print(bh_catalogue)
+    print(f"Plots saved in {path}")

@@ -19,9 +19,6 @@ import astropy.constants as const
 import astropy.units as u
 import multiprocessing as mp
 from functools import partial
-import warnings
-
-warnings.filterwarnings('error')
 
 
 # define function to process each MW-like galaxy within the EAGLE simulation with multiprocessing
@@ -54,7 +51,6 @@ def determine_coordinates(table_galaxy_z0_total, table_bh_z0_total, args, lst, g
     table_bh_z0["d_Sun [kpc]"] = r_sun
     table_bh_z0["lat_Sun [rad]"] = lat_sun
     table_bh_z0["long_Sun [rad]"] = long_sun
-    # table_bh_z0["(sub)group number: 2^30"] = False
     table_bh_z0["satellite"] = table_bh_z0["subgroup number"] != 0
 
     # keep only relevant columns
@@ -72,7 +68,6 @@ def determine_coordinates(table_galaxy_z0_total, table_bh_z0_total, args, lst, g
         "lat_Sun [rad]", 
         "long_Sun [rad]", 
         "satellite" 
-        # "(sub)group number: 2^30"
         ]].reset_index(drop = True)
 
     # add table to list
@@ -83,8 +78,6 @@ def determine_coordinates(table_galaxy_z0_total, table_bh_z0_total, args, lst, g
         path = f"plots/{args.sim_name}/galaxy_id_{galaxy_id}/black_holes/coordinates/"
         os.makedirs(path, exist_ok = True)
         coordinate_transformer.plot_3d_maps(sim_name = args.sim_name, path = path, save_animation = args.save_animation)
-
-        # TO DO: add 2D maps
 
         # plot BH distributions for each galaxy, such as mass, formation redshift, distance to galaxy center, etc.
         bh_plotter = dammplot.BlackHolePlotter(sim_name = args.sim_name, table_bh = table_bh_z0)
@@ -112,6 +105,7 @@ def calculate_spikes(args, lst, row_tuple):
         sim_name = args.sim_name, 
         box_size = args.box_size, 
         dm_profile = args.dark_matter_profile, 
+        core_index = args.core_index,
         table_bh = table_bh_zf
         )
 
@@ -141,8 +135,6 @@ def calculate_spikes(args, lst, row_tuple):
         if args.dark_matter_profile == "cored":
             r_c = dm_mini_spikes.r_c
             table["r_c [kpc]"] = [r_c.to(u.kpc).value]
-        # bh_catalogue.loc[bh_catalogue["bh_id"] == bh_id, "r_sp [pc]"] = r_sp.to(u.pc).value
-        # bh_catalogue.loc[bh_catalogue["bh_id"] == bh_id, "rho(r_sp) [GeV/cm3]"] = rho_at_r_sp.value
 
         lst.append(table)
 
@@ -159,21 +151,21 @@ def calculate_spikes(args, lst, row_tuple):
 
 if __name__ == "__main__":
     # initialise user input
-    args = parse_args()
+    args = parse_args(include_cat = True, include_plot = True)
 
     # Set the number of processes to the number of available CPU cores or adjust as needed
     num_processes = mp.cpu_count()
     print("Number of CPU cores available:", num_processes)
 
     # define directory for catalogue
-    path_catalogue = f"catalogue/{args.sim_name}/"
-    path_catalogue_temp = f"catalogue_temp/{args.sim_name}/"
+    path_catalogue = f"catalogue/{args.sim_name}/imbh/"
+    path_catalogue_temp = f"catalogue/{args.sim_name}/imbh_temp/"
     os.makedirs(path_catalogue, exist_ok = True)
     os.makedirs(path_catalogue_temp, exist_ok = True)
 
     # load temporary catalogue if requested
     if args.load_temporary_catalogue:
-        bh_catalogue = pd.read_csv(path_catalogue_temp + f"{args.filename}_temp.csv")
+        bh_catalogue = pd.read_csv(path_catalogue_temp + f"catalogue_temp_{args.name}.csv")
         print("Temporary catalogue sucessfully loaded!")
     # else create new catalogue
     else:
@@ -218,16 +210,13 @@ if __name__ == "__main__":
         bh_catalogue = pd.concat(coord_list, ignore_index=True)
 
         # save current catalogue as temporary file so that it can be loaded by the same script if needed
-        bh_catalogue.to_csv(path_catalogue_temp + f"{args.filename}_temp.csv", index=False)
+        bh_catalogue.to_csv(path_catalogue_temp + f"catalogue_temp_{args.name}.csv", index=False)
 
     print(f"Number of unmerged black holes in MW-like galaxies in simulation {args.sim_name}: {len(bh_catalogue)}")
     print("Start extracting black hole dark matter mini spike parameter for each BH...")
 
     # Create a multiprocessing manager list to share the pandas tables between processes
     spikes_list = mp.Manager().list()
-
-    # # TODO remove this line
-    # bh_catalogue = bh_catalogue.iloc[:1]
 
     # calculate dark matter mini spike parameters for each BH
     # Initialize the multiprocessing pool
@@ -249,4 +238,4 @@ if __name__ == "__main__":
     bh_catalogue = bh_catalogue.dropna()
 
     # save BH catalogue
-    bh_catalogue.to_csv(path_catalogue + f"{args.filename}.csv", index=False)
+    bh_catalogue.to_csv(path_catalogue + f"catalogue_{args.name}.csv", index=False)

@@ -3,8 +3,38 @@ import astropy.units as u
 import argparse
 import eagleSqlTools as sql
 import pandas as pd
+import astropy.constants as const 
 
-def parse_args():
+def check_core_index_range(value):
+    fvalue = float(value)
+    if fvalue < 0 or fvalue >= 1:
+        raise argparse.ArgumentTypeError(f"{value} is out of range [0, 1)")
+    return fvalue
+
+def add_catalogue_args(parser):
+    parser.add_argument("-dmp", "--dark_matter_profile", type = str, required = False, default = "nfw", metavar = "-", choices = ["nfw", "cored"], help = "Dark matter density profile. Can be: 'nfw', 'cored'. Default: nfw")
+    parser.add_argument("-ci", "--core_index", required = False, default = None, metavar = "-", type = check_core_index_range, help = "Cored dark matter density profile core index. Needs to fullfill: 0 <= core_index < 1. If None, the core index is a free paramter. Otherwise, the core index is fixed to specified value. Only has an effect if --dark_matter_profile='cored'. Default: None")
+    parser.add_argument("-sa", "--save_animation", type = str, required = False, default = "n", metavar = "-", help = "Bool if animations for individual galaxies are saved (takes a lot of time) [y, n], default: n")
+    parser.add_argument("-ltc", "--load_temporary_catalogue", type = str, required = False, default = "n", metavar = "-", help = "Yes, if temporary catalogue extracted in a previous run should be loaded. Only possible if create_catalogue.py was already run with the same -n <name> option in the past. Can be: 'y' or 'n'. Default: 'n'")
+
+def add_dark_matter_args(parser):
+    parser.add_argument("-mdm", "--m_dm", type = float, required = False, nargs = "+", default = [500, 1500, 3], metavar = "-", help = "Mass of dark matter particle in GeV. Can be single input or mass range + number of masses (three inputs). If mass range is given, scaling can be specified by the mass_dm_scaling argument. Default: 500 GeV")
+    parser.add_argument("-mdms", "--m_dm_scaling", type = str, required = False, default = "linear", metavar = "-", help = "Scaling of dark matter particle mass. Can be linear or log. Default: linear")
+    parser.add_argument("-sv", "--sigma_v", type = float, required = False, nargs = "+", default = [3e-26], metavar = "-", help = "Dark matter (velocity weighted) annihilation cross section in cm^3/s. Can be Can be single input or cross section range + number of cross sections (three inputs). If cross section range is given, scaling can be specified by the cross_section_scaling argument. Default: 3e-26 cm^3/s")
+    parser.add_argument("-svs", "--sigma_v_scaling", type = str, required = False, default = "log", metavar = "-", help = "Scaling of dark matter (velocity weighted) annihilation cross section. Can be linear or log. Default: log")
+    parser.add_argument("-c", "--channel", type = str, required = False, default = "b", metavar = "-", help = "Dark matter annihilation channel. Can be: 'V->e', 'V->mu', 'V->tau', 'W', 'WL', 'WT', 'Z', 'ZL', 'ZT', 'b', 'c', 'e', 'eL', 'eR', 'g', 'gamma', 'h', 'mu', 'muL', 'muR', 'nu_e', 'nu_mu', 'nu_tau', 'q', 't', 'tau', 'tauL', 'tauR'. Default: b")
+    parser.add_argument("-eth", "--E_th", type = float, required = False, default = 100, metavar = "-", help = "Lower energy threshold to calculate number of gamma rays per dark matter annihilation in GeV. Default: 100 GeV")
+
+def add_plot_args(parser):
+    parser.add_argument("-plt", "--plot", type = str, required = False, default = "n", metavar = "-", help = "Bool if plots for individual galaxies are saved (takes some time) [y, n], default: n")
+
+def add_labels_args(parser):
+    parser.add_argument("-l", "--labels", type = str, nargs = "+", default = ["NFW", r"free $\gamma_\mathrm{c}$", r"$\gamma_\mathrm{c} = 0.4$", r"$\gamma_\mathrm{c} = 0.0$"], metavar = "-", help = "Labels used in the plot legend.")
+
+def add_name_args(parser):
+    parser.add_argument("-n", "--name", type = str, required = True,  nargs = "+", metavar = "-", help = "Suffix of the output filenames, e.g. catalogue_<name>.csv.")
+
+def parse_args(include_name = True, include_cat = False, include_dm = False, include_plot = False, include_labels = False):
     script_descr="""
     Extracts IMBH catalogue from EAGLE data
     """
@@ -12,48 +42,55 @@ def parse_args():
     # Open argument parser
     parser = argparse.ArgumentParser(description=script_descr)
 
-    # Define expected arguments
     parser.add_argument("-sn", "--sim_name", type = str, required = False, default = "RefL0100N1504", metavar = "-", help = "Name of the EAGLE simulation, default: RefL0100N1504") # RefL0025N0376 # RefL0050N0752 #RefL0100N1504
     parser.add_argument("-nf", "--number_files", type = int, required = False, default = 256, metavar = "-", help = "Number of files for the particle data, default: 256") # 16 # 128 # 256
     parser.add_argument("-bs", "--box_size", type = int, required = False, default = 100, metavar = "-", help = "Box size of the simulation in Mpc, default: 100")
-    parser.add_argument("-dmp", "--dark_matter_profile", type = str, required = False, default = "nfw", metavar = "-", choices = ["nfw", "cored"], help = "Dark matter density profile. Can be: 'nfw', 'cored'. Default: nfw")
-    parser.add_argument("-plt", "--plot", type = str, required = False, default = "n", metavar = "-", help = "Bool if plots for individual galaxies are saved (takes some time) [y, n], default: n")
-    parser.add_argument("-sa", "--save_animation", type = str, required = False, default = "n", metavar = "-", help = "Bool if animations for individual galaxies are saved (takes a lot of time) [y, n], default: n")
-    parser.add_argument("-mdm", "--m_dm", type = float, required = False, nargs = "+", default = [500, 1500, 3], metavar = "-", help = "Mass of dark matter particle in GeV. Can be single input or mass range + number of masses (three inputs). If mass range is given, scaling can be specified by the mass_dm_scaling argument. Default: 500 GeV")
-    parser.add_argument("-mdms", "--m_dm_scaling", type = str, required = False, default = "linear", metavar = "-", help = "Scaling of dark matter particle mass. Can be linear or log. Default: linear")
-    parser.add_argument("-sv", "--sigma_v", type = float, required = False, nargs = "+", default = [3e-26], metavar = "-", help = "Dark matter (velocity weighted) annihilation cross section in cm^3/s. Can be Can be single input or cross section range + number of cross sections (three inputs). If cross section range is given, scaling can be specified by the cross_section_scaling argument. Default: 3e-26 cm^3/s")
-    parser.add_argument("-svs", "--sigma_v_scaling", type = str, required = False, default = "log", metavar = "-", help = "Scaling of dark matter (velocity weighted) annihilation cross section. Can be linear or log. Default: log")
-    parser.add_argument("-c", "--channel", type = str, required = False, default = "b", metavar = "-", help = "Dark matter annihilation channel. Can be: 'V->e', 'V->mu', 'V->tau', 'W', 'WL', 'WT', 'Z', 'ZL', 'ZT', 'b', 'c', 'e', 'eL', 'eR', 'g', 'gamma', 'h', 'mu', 'muL', 'muR', 'nu_e', 'nu_mu', 'nu_tau', 'q', 't', 'tau', 'tauL', 'tauR'. Default: b")
-    parser.add_argument("-eth", "--E_th", type = float, required = False, default = 100, metavar = "-", help = "Lower energy threshold to calculate number of gamma rays per dark matter annihilation in GeV. Default: 100 GeV")
-    parser.add_argument("-fn", "--filename", type = str, required = False, default = "catalogue", metavar = "-", help = "Name of the output file, filename.csv. Default: catalogue")
-    parser.add_argument("-ltc", "--load_temporary_catalogue", type = str, required = False, default = "n", metavar = "-", help = "Yes, if temporary catalogue extracted in a previous run should be loaded. Only possible if create_catalogue.py was already run with the same -fn <filename> option in the past. Can be: 'y' or 'n'. Default: 'n'")
 
+    if include_cat:
+        add_catalogue_args(parser)
+    if include_dm:
+        add_dark_matter_args(parser)
+    if include_plot:
+        add_plot_args(parser)
+    if include_labels:
+        add_labels_args(parser)
+    if include_name:
+        add_name_args(parser)
 
+    # Define expected arguments
     args = parser.parse_args()
     print("####### Setup #######")
     print(vars(args))
 
-    args.plot = convert_to_bool(args.plot)
-    args.save_animation = convert_to_bool(args.save_animation)
-    args.E_th = args.E_th * u.GeV
+    if include_name:
+        if len(args.name) == 1:
+            args.name = args.name[0]
+
     args.box_size = args.box_size * u.Mpc
-    args.load_temporary_catalogue = convert_to_bool(args.load_temporary_catalogue)
+    if include_plot:
+        args.plot = convert_to_bool(args.plot)
 
-    if len(args.m_dm) == 3:
-        if args.m_dm_scaling == 'linear':
-            args.m_dm = np.linspace(args.m_dm[0], args.m_dm[1], int(args.m_dm[2])) * u.GeV
-        elif args.m_dm_scaling == 'log':
-            args.m_dm = np.logspace(np.log10(args.m_dm[0]), np.log10(args.m_dm[1]), int(args.m_dm[2])) * u.GeV
-    else:
-        args.m_dm = args.m_dm * u.GeV
+    if include_cat:
+        args.save_animation = convert_to_bool(args.save_animation)
+        args.load_temporary_catalogue = convert_to_bool(args.load_temporary_catalogue)
 
-    if len(args.sigma_v) == 3:
-        if args.sigma_v_scaling == 'linear':
-            args.sigma_v = np.linspace(args.sigma_v[0], args.sigma_v[1], int(args.sigma_v[2])) * u.cm**3 / u.s
-        elif args.sigma_v_scaling == 'log':
-            args.sigma_v = np.logspace(np.log10(args.sigma_v[0]), np.log10(args.sigma_v[1]), int(args.sigma_v[2])) * u.cm**3 / u.s
-    else:
-        args.sigma_v = args.sigma_v * u.cm**3 / u.s
+    if include_dm:
+        args.E_th = args.E_th * u.GeV
+        if len(args.m_dm) == 3:
+            if args.m_dm_scaling == 'linear':
+                args.m_dm = np.linspace(args.m_dm[0], args.m_dm[1], int(args.m_dm[2])) * u.GeV
+            elif args.m_dm_scaling == 'log':
+                args.m_dm = np.logspace(np.log10(args.m_dm[0]), np.log10(args.m_dm[1]), int(args.m_dm[2])) * u.GeV
+        else:
+            args.m_dm = args.m_dm * u.GeV
+
+        if len(args.sigma_v) == 3:
+            if args.sigma_v_scaling == 'linear':
+                args.sigma_v = np.linspace(args.sigma_v[0], args.sigma_v[1], int(args.sigma_v[2])) * u.cm**3 / u.s
+            elif args.sigma_v_scaling == 'log':
+                args.sigma_v = np.logspace(np.log10(args.sigma_v[0]), np.log10(args.sigma_v[1]), int(args.sigma_v[2])) * u.cm**3 / u.s
+        else:
+            args.sigma_v = args.sigma_v * u.cm**3 / u.s
 
     return args
 
@@ -85,9 +122,6 @@ def convert_to_bool(string):
 
 def nfw_profile(params, r):
     rho_0, r_s = params
-    # print("rho_0", rho_0.unit)
-    # print("r_s", r_s.unit)
-    # print("r", r.unit)
     rho = (rho_0 * (r/r_s)**(-1) * (1+r/r_s)**(-2)).to(u.Msun/u.kpc**3)
     return(rho)
 
@@ -197,3 +231,25 @@ def parameter_distr_mean(table, parameter, bins):
 def gamma_core(gamma_sp):
     gamma_core = (9-4*gamma_sp)/(2-gamma_sp)
     return(gamma_core)
+
+def spike_profile(params, r):
+    rho_0, r_s, r_sp, gamma_sp = params
+    return nfw_profile((rho_0, r_s), r_sp) * (r/r_sp)**(-gamma_sp)
+
+def imbh_profile(params, r):
+    rho_0, r_schw, r_cut, r_s, r_sp, gamma_sp = params
+
+    if r <= 4 * r_schw:
+        return None
+    elif 4 * r_schw < r <= r_cut:
+        y = spike_profile((rho_0, r_s, r_sp, gamma_sp), r_cut)
+        y = (y * const.c ** 2).to(u.GeV / u.cm ** 3).value
+        return y
+    elif r_cut < r <= r_sp:
+        y = spike_profile((rho_0, r_s, r_sp, gamma_sp), r)
+        y = (y * const.c ** 2).to(u.GeV / u.cm ** 3).value
+        return y
+    else:  # r > r_sp
+        y = nfw_profile((rho_0, r_s), r)
+        y = (y * const.c ** 2).to(u.GeV / u.cm ** 3).value
+        return y

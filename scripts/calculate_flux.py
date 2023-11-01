@@ -8,6 +8,9 @@ current_dir = os.path.dirname(os.path.abspath(__file__))
 module_dir = os.path.abspath(os.path.join(current_dir, '..'))
 sys.path.append(module_dir)
 
+import matplotlib as mpl
+mpl.rc_file("config/mpl_config.rc")
+
 import dammspi.catalogue as dammcat
 import dammspi.plot as dammplot
 import dammspi.flux as dammflux
@@ -24,14 +27,6 @@ import yaml
 
 with open("config/config.yaml", "r") as f:
     config = yaml.load(f, Loader=yaml.FullLoader)
-
-plt.rcParams.update({'font.size': 8}) # 8 (paper), 10 (poster)
-plt.rc('text', usetex=True)
-plt.rc('font', family='Times New Roman')#, weight='normal', size=14)
-plt.rcParams['mathtext.fontset'] = 'cm'
-cm_conversion_factor = 1/2.54  # centimeters in inches
-single_column_fig_size = (7.0 * cm_conversion_factor, 7.0 * 3/4 * cm_conversion_factor)
-
 
 def extract_flux_catalogue(bh_catalogue, flux_calculator, args, m_dm):
     flux_catalogue = pd.DataFrame()
@@ -51,18 +46,16 @@ def extract_flux_catalogue(bh_catalogue, flux_calculator, args, m_dm):
 
 if __name__ == "__main__":
     # initialise user input
-    args = parse_args()
+    args = parse_args(include_dm = True, include_plot = True)
 
     # define directory for catalogue
-    path_catalogue = f"catalogue/{args.sim_name}/"
-    print(f"Load black hole catalogue from {path_catalogue + f'{args.filename}.csv'}")
-    bh_catalogue = pd.read_csv(path_catalogue + f"{args.filename}.csv")
+    path_catalogue = f"catalogue/{args.sim_name}/imbh/"
+    print(f"Load black hole catalogue from {path_catalogue + f'catalogue_{args.name}.csv'}")
+    bh_catalogue = pd.read_csv(path_catalogue + f"catalogue_{args.name}.csv")
 
-    bh_catalogue["gamma_sp"] = 7 / 3
+    flux_calculator = dammflux.FluxCalculator(bh_catalogue = bh_catalogue)
 
-    flux_calculator = dammflux.FluxCalculator(bh_catalogue = bh_catalogue, dm_profile = args.dark_matter_profile)
-
-    path = f"catalogue/{args.sim_name}/flux/{args.dark_matter_profile}/{args.channel}_channel/"
+    path = f"catalogue/{args.sim_name}/flux/{args.name}/{args.channel}_channel/"
     os.makedirs(path, exist_ok = True)
 
     print("Start calculating fluxes...")
@@ -93,7 +86,7 @@ if __name__ == "__main__":
     if args.plot:
         if len(args.sigma_v) == 1:
             print("Start plotting...")
-            path_plots = f"plots/{args.sim_name}/flux/{args.dark_matter_profile}/{args.channel}_channel/"
+            path_plots = f"plots/{args.sim_name}/flux/{args.name}/{args.channel}_channel/"
             os.makedirs(path_plots, exist_ok = True)
 
             cmap = LinearSegmentedColormap.from_list("", ["#fca311", "#e83151", "#003049"])
@@ -110,7 +103,7 @@ if __name__ == "__main__":
             flux = flux_catalogues_conat["flux [cm-2 s-1]"].values * u.Unit("cm-2 s-1")
             flux_th = flux_plotter.flux_thresholds(flux)
 
-            plt.figure(figsize = single_column_fig_size)
+            plt.figure(figsize = config["Figure_size"]["single_column"])
             for flux_catalogue, m_dm, color in zip(flux_catalogues, args.m_dm, colors):
                 flux_plotter = dammplot.FluxPlotter(flux_catalogue)
                 flux_plotter.plot_integrated_luminosity(flux_th, m_dm, color)
@@ -132,7 +125,6 @@ if __name__ == "__main__":
             # plot r_cut distribution for highest DM mass
             flux_plotter.plot_cuttoff_radius_dist(path_plots + "r_cut_dist.pdf")
 
-            print("Finished plotting!")
-            print(f"Plots saved to: {path}plots/")
+            print(f"Plots saved in {path_plots}")
         else:
             raise ValueError("Plotting is currently only possible for a single cross section value!")
