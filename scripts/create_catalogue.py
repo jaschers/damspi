@@ -139,8 +139,7 @@ def calculate_spikes(args, lst, row_tuple):
         lst.append(table)
 
         if args.plot:
-            path = f"plots/{args.sim_name}/galaxy_id_{int(galaxy_id)}/black_holes/mini_spikes/id_{int(bh_id)}/"
-            print("galaxy_id:", galaxy_id)
+            path = f"plots/{args.sim_name}/galaxy_id_{int(galaxy_id)}/black_holes/spikes/id_{int(bh_id)}/"
             os.makedirs(path, exist_ok = True)
             # plot mini spike parameters
             if args.dark_matter_profile == "nfw":
