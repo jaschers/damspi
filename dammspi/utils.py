@@ -18,15 +18,15 @@ def add_catalogue_args(parser):
     parser.add_argument("-ltc", "--load_temporary_catalogue", type = str, required = False, default = "n", metavar = "-", help = "Yes, if temporary catalogue extracted in a previous run should be loaded. Only possible if create_catalogue.py was already run with the same -n <name> option in the past. Can be: 'y' or 'n'. Default: 'n'")
 
 def add_dark_matter_args(parser):
-    parser.add_argument("-mdm", "--m_dm", type = float, required = False, nargs = "+", default = [500, 1500, 3], metavar = "-", help = "Mass of dark matter particle in GeV. Can be single input or mass range + number of masses (three inputs). If mass range is given, scaling can be specified by the mass_dm_scaling argument. Default: 500 GeV")
+    parser.add_argument("-mdm", "--m_dm", type = float, required = False, nargs = "+", default = [500, 1500, 3], metavar = "-", help = "Mass of dark matter particle in GeV. Can be single input or mass range + number of masses (three inputs). If mass range is given, scaling can be specified by the mass_dm_scaling argument. Default: 500 1500 3")
     parser.add_argument("-mdms", "--m_dm_scaling", type = str, required = False, default = "linear", metavar = "-", help = "Scaling of dark matter particle mass. Can be linear or log. Default: linear")
-    parser.add_argument("-sv", "--sigma_v", type = float, required = False, nargs = "+", default = [3e-26], metavar = "-", help = "Dark matter (velocity weighted) annihilation cross section in cm^3/s. Can be Can be single input or cross section range + number of cross sections (three inputs). If cross section range is given, scaling can be specified by the cross_section_scaling argument. Default: 3e-26 cm^3/s")
-    parser.add_argument("-svs", "--sigma_v_scaling", type = str, required = False, default = "log", metavar = "-", help = "Scaling of dark matter (velocity weighted) annihilation cross section. Can be linear or log. Default: log")
+    parser.add_argument("-sv", "--sigma_v", type = float, required = False, nargs = "+", default = [3e-26], metavar = "-", help = "Dark matter (velocity weighted) annihilation cross section in cm3/s. Default: 3e-26")
+    # parser.add_argument("-svs", "--sigma_v_scaling", type = str, required = False, default = "log", metavar = "-", help = "Scaling of dark matter (velocity weighted) annihilation cross section. Can be linear or log. Default: log")
     parser.add_argument("-c", "--channel", type = str, required = False, default = "b", metavar = "-", help = "Dark matter annihilation channel. Can be: 'V->e', 'V->mu', 'V->tau', 'W', 'WL', 'WT', 'Z', 'ZL', 'ZT', 'b', 'c', 'e', 'eL', 'eR', 'g', 'gamma', 'h', 'mu', 'muL', 'muR', 'nu_e', 'nu_mu', 'nu_tau', 'q', 't', 'tau', 'tauL', 'tauR'. Default: b")
-    parser.add_argument("-eth", "--E_th", type = float, required = False, default = 100, metavar = "-", help = "Lower energy threshold to calculate number of gamma rays per dark matter annihilation in GeV. Default: 100 GeV")
+    parser.add_argument("-eth", "--E_th", type = float, required = False, default = 100, metavar = "-", help = "Lower energy threshold to calculate number of gamma rays per dark matter annihilation in GeV. Default: 100")
 
 def add_plot_args(parser):
-    parser.add_argument("-plt", "--plot", type = str, required = False, default = "n", metavar = "-", help = "Bool if plots for individual galaxies are saved (takes some time) [y, n], default: n")
+    parser.add_argument("-plt", "--plot", type = str, required = False, default = "n", metavar = "-", help = "Bool if plots are saved [y, n], default: n")
 
 def add_labels_args(parser):
     parser.add_argument("-l", "--labels", type = str, nargs = "+", default = ["NFW", r"free $\gamma_\mathrm{c}$", r"$\gamma_\mathrm{c} = 0.4$", r"$\gamma_\mathrm{c} = 0.0$"], metavar = "-", help = "Labels used in the plot legend.")
