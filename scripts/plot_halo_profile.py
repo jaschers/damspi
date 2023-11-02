@@ -4,7 +4,7 @@ import os
 # Get the directory of the current script
 current_dir = os.path.dirname(os.path.abspath(__file__))
 
-# Add the dammspi module directory to the Python path
+# Add the damspi module directory to the Python path
 module_dir = os.path.abspath(os.path.join(current_dir, '..'))
 sys.path.append(module_dir)
 
@@ -14,18 +14,18 @@ mpl.rc_file("config/mpl_config.rc")
 import matplotlib.pyplot as plt
 import numpy as np
 from astropy import units as u
-from dammspi.utils import cored_profile
+from damspi.utils import cored_profile
 from scipy.odr import Model, RealData, ODR, Data
-from dammspi.utils import nfw_profile, cored_profile
+from damspi.utils import nfw_profile, cored_profile
 from astropy import constants as const
 from matplotlib.colors import LinearSegmentedColormap
 import matplotlib.cm as cm
 from mpl_toolkits.axes_grid1.inset_locator import inset_axes
 import matplotlib.ticker
 import matplotlib.gridspec as gridspec
-import dammspi.catalogue as dammcat
-import dammspi.plot as dammplot
-from dammspi.utils import parse_args, cored_profile, nfw_profile
+import damspi.catalogue as damcat
+import damspi.plot as damplot
+from damspi.utils import parse_args, cored_profile, nfw_profile
 import pandas as pd
 import yaml
 
@@ -56,13 +56,13 @@ if __name__ == "__main__":
 
     # load data
     print("Loading BH data at formation redshift...")
-    data_collector = dammcat.DataCollector(sim_name = args.sim_name, number_files = args.number_files)
+    data_collector = damcat.DataCollector(sim_name = args.sim_name, number_files = args.number_files)
     table_bh_zf_total = data_collector.black_hole_data(nsnap=nsnap_c)
     table_bh_zf = table_bh_zf_total[table_bh_zf_total["bh_id"] == bh_id]
 
     # determine dark matter halo profile assuming NFW profile
     print("Performing NFW fit...")
-    dm_mini_spikes_nfw = dammcat.DMMiniSpikesCalculator(
+    dm_mini_spikes_nfw = damcat.DMMiniSpikesCalculator(
         sim_name = args.sim_name, 
         box_size = args.box_size, 
         dm_profile = "nfw", 
@@ -83,7 +83,7 @@ if __name__ == "__main__":
 
     # determine dark matter halo profile assuming cored profile
     print("Performing cored fit...")
-    dm_mini_spikes_cored = dammcat.DMMiniSpikesCalculator(
+    dm_mini_spikes_cored = damcat.DMMiniSpikesCalculator(
         sim_name = args.sim_name, 
         box_size = args.box_size, 
         dm_profile = "cored", 
@@ -99,7 +99,7 @@ if __name__ == "__main__":
 
     # plot data and best fit
     print("Plotting results...")
-    galaxy_plotter = dammplot.GalaxyPlotter(sim_name = args.sim_name, table_galaxy = None, table_bh = None)
+    galaxy_plotter = damplot.GalaxyPlotter(sim_name = args.sim_name, table_galaxy = None, table_bh = None)
     galaxy_plotter.plot_dark_matter_profile(
         data = (data_r, data_rho),
         para_nfw = (rho_0_nfw, r_s_nfw),

@@ -4,17 +4,17 @@ import os
 # Get the directory of the current script
 current_dir = os.path.dirname(os.path.abspath(__file__))
 
-# Add the dammspi module directory to the Python path
+# Add the damspi module directory to the Python path
 module_dir = os.path.abspath(os.path.join(current_dir, '..'))
 sys.path.append(module_dir)
 
 import matplotlib as mpl
 mpl.rc_file("config/mpl_config.rc")
 
-import dammspi.catalogue as dammcat
-import dammspi.plot as dammplot
-import dammspi.flux as dammflux
-from dammspi.utils import parse_args
+import damspi.catalogue as damcat
+import damspi.plot as damplot
+import damspi.flux as damflux
+from damspi.utils import parse_args
 import pandas as pd
 import numpy as np
 import astropy.units as u
@@ -53,7 +53,7 @@ if __name__ == "__main__":
     print(f"Load black hole catalogue from {path_catalogue + f'catalogue_{args.name}.csv'}")
     bh_catalogue = pd.read_csv(path_catalogue + f"catalogue_{args.name}.csv")
 
-    flux_calculator = dammflux.FluxCalculator(bh_catalogue = bh_catalogue)
+    flux_calculator = damflux.FluxCalculator(bh_catalogue = bh_catalogue)
 
     path = f"catalogue/{args.sim_name}/flux/{args.name}/{args.channel}_channel/"
     os.makedirs(path, exist_ok = True)
@@ -99,13 +99,13 @@ if __name__ == "__main__":
                 flux_catalogues.append(pd.read_hdf(path + f"m_dm_{int(np.rint(m_dm.value))}GeV.h5", key = "table"))
             
             flux_catalogues_conat = pd.concat(flux_catalogues, ignore_index = True)
-            flux_plotter = dammplot.FluxPlotter(flux_catalogues_conat)
+            flux_plotter = damplot.FluxPlotter(flux_catalogues_conat)
             flux = flux_catalogues_conat["flux [cm-2 s-1]"].values * u.Unit("cm-2 s-1")
             flux_th = flux_plotter.flux_thresholds(flux)
 
             plt.figure(figsize = config["Figure_size"]["single_column"])
             for flux_catalogue, m_dm, color in zip(flux_catalogues, args.m_dm, colors):
-                flux_plotter = dammplot.FluxPlotter(flux_catalogue)
+                flux_plotter = damplot.FluxPlotter(flux_catalogue)
                 flux_plotter.plot_integrated_luminosity(flux_th, m_dm, color)
             plt.xlabel(f"$\Phi (E_\mathrm{{th}} > {int(np.rint(args.E_th.value))}$ GeV) [cm$^{{-2}}$ s$^{{-1}}$]")
             plt.ylabel(r"$N_{{\mathrm{BH}}}(>\Phi)$")

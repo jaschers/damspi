@@ -4,7 +4,7 @@ import os
 # Get the directory of the current script
 current_dir = os.path.dirname(os.path.abspath(__file__))
 
-# Add the dammspi module directory to the Python path
+# Add the damspi module directory to the Python path
 module_dir = os.path.abspath(os.path.join(current_dir, '..'))
 sys.path.append(module_dir)
 
@@ -14,7 +14,7 @@ import eagleSqlTools as sql
 from astropy.cosmology import Planck13 as cosmo
 from astropy import units as u
 import h5py
-from dammspi.utils import (
+from damspi.utils import (
     convert_float_to_three_digit, 
     convert_float_to_six_digit, 
     redshift,
@@ -27,7 +27,7 @@ from dammspi.utils import (
 from scipy.spatial.transform import Rotation as R
 from astropy.coordinates import cartesian_to_spherical, spherical_to_cartesian
 from scipy.odr import Model, RealData, ODR, Data
-import dammspi.plot as dammplot
+import damspi.plot as damplot
 import yaml
 
 with open("config/config.yaml", "r") as f:
@@ -647,13 +647,13 @@ class CoordinateTransformer:
 
         Notes
         -----
-        The 3d maps are plotted using the dammspi.plot.GalaxyPlotter class.
+        The 3d maps are plotted using the damspi.plot.GalaxyPlotter class.
 
         Examples
         --------
         >>> plot_3d_maps(sim_name = "RefL0050N0752", path = "./plots/", save_animation = False)
         """
-        galaxy_plotter = dammplot.GalaxyPlotter(sim_name = sim_name, table_galaxy = self.table_galaxy, table_bh = self.table_bh)
+        galaxy_plotter = damplot.GalaxyPlotter(sim_name = sim_name, table_galaxy = self.table_galaxy, table_bh = self.table_bh)
 
         galaxy_plotter.plot_3d_map(
             self.bh_coord_gc, 
@@ -1526,7 +1526,7 @@ class DMMiniSpikesCalculator:
 
         Notes
         -----
-        The NFW fit is plotted using the dammspi.plot.BlackHolePlotter class.
+        The NFW fit is plotted using the damspi.plot.BlackHolePlotter class.
         """
         os.makedirs(path, exist_ok = True)
         galaxy_zf_mass = self.table_galaxy_zf["m"].values[0] * u.Msun
@@ -1535,7 +1535,7 @@ class DMMiniSpikesCalculator:
         m_dm_ap = self.table_galaxy_zf["m_dm_ap"].to_numpy() * u.Msun
         rho = self.density_within_aperature(ap_size, m_dm_ap)
 
-        bh_plotter = dammplot.BlackHolePlotter(sim_name = self.sim_name, table_bh = self.table_bh)
+        bh_plotter = damplot.BlackHolePlotter(sim_name = self.sim_name, table_bh = self.table_bh)
 
         bh_plotter.plot_nfw(ap_size, rho, self.rho_0, self.r_s, galaxy_zf_mass, galaxy_zf_z, path)
 
@@ -1550,7 +1550,7 @@ class DMMiniSpikesCalculator:
 
         Notes
         -----
-        The cored profile fit is plotted using the dammspi.plot.BlackHolePlotter class.
+        The cored profile fit is plotted using the damspi.plot.BlackHolePlotter class.
         """
         os.makedirs(path, exist_ok = True)
         galaxy_zf_mass = self.table_galaxy_zf["m"].values[0] * u.Msun
@@ -1559,7 +1559,7 @@ class DMMiniSpikesCalculator:
         m_dm_ap = self.table_galaxy_zf["m_dm_ap"].to_numpy() * u.Msun
         rho = self.density_within_aperature(ap_size, m_dm_ap)
 
-        bh_plotter = dammplot.BlackHolePlotter(sim_name = self.sim_name, table_bh = self.table_bh)
+        bh_plotter = damplot.BlackHolePlotter(sim_name = self.sim_name, table_bh = self.table_bh)
 
         bh_plotter.plot_cored(ap_size, rho, self.rho_0, self.r_s, self.r_c, self.gamma_c, galaxy_zf_mass, galaxy_zf_z, path)
 
@@ -1574,12 +1574,12 @@ class DMMiniSpikesCalculator:
 
         Notes
         -----
-        The radius of the gravitational influence of the black hole fit is plotted using the dammspi.plot.BlackHolePlotter class.
+        The radius of the gravitational influence of the black hole fit is plotted using the damspi.plot.BlackHolePlotter class.
         """
         galaxy_zf_mass = self.table_galaxy_zf["m"].values[0] * u.Msun
         galaxy_zf_z = self.table_galaxy_zf["z"].values[0]
 
-        bh_plotter = dammplot.BlackHolePlotter(sim_name = self.sim_name, table_bh = self.table_bh)
+        bh_plotter = damplot.BlackHolePlotter(sim_name = self.sim_name, table_bh = self.table_bh)
 
         if self.dm_profile == "nfw":
             bh_plotter.plot_radius_gravitational_influence_nfw(

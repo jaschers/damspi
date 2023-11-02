@@ -5,7 +5,7 @@ DArk Matter SPIkes (DAMSPI) is a python package for the analysis of dark matter 
 
 # Installation
 ```
-git clone git@github.com:jaschers/dammspi.git
+git clone git@github.com:jaschers/damspi.git
 ```
 ```
 conda env create -f environment.yml

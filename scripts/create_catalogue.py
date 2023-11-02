@@ -4,13 +4,13 @@ import os
 # Get the directory of the current script
 current_dir = os.path.dirname(os.path.abspath(__file__))
 
-# Add the dammspi module directory to the Python path
+# Add the damspi module directory to the Python path
 module_dir = os.path.abspath(os.path.join(current_dir, '..'))
 sys.path.append(module_dir)
 
-import dammspi.catalogue as dammcat
-import dammspi.plot as dammplot
-from dammspi.utils import convert_to_bool, parse_args, remove_distant_satellites
+import damspi.catalogue as damcat
+import damspi.plot as damplot
+from damspi.utils import convert_to_bool, parse_args, remove_distant_satellites
 import argparse
 import numpy as np
 import pandas as pd
@@ -35,7 +35,7 @@ def determine_coordinates(table_galaxy_z0_total, table_bh_z0_total, args, lst, g
     # add galaxy id to table
     table_bh_z0["galaxy_id"] = np.ones(len(table_bh_z0)) * galaxy_id
 
-    coordinate_transformer = dammcat.CoordinateTransformer(table_galaxy = table_galaxy_z0, table_bh = table_bh_z0, box_size = args.box_size)
+    coordinate_transformer = damcat.CoordinateTransformer(table_galaxy = table_galaxy_z0, table_bh = table_bh_z0, box_size = args.box_size)
 
     # get distance of BHs to galaxy center
     r_gc, lat_gc, long_gc = coordinate_transformer.bh_spherical_coord_gc
@@ -80,7 +80,7 @@ def determine_coordinates(table_galaxy_z0_total, table_bh_z0_total, args, lst, g
         coordinate_transformer.plot_3d_maps(sim_name = args.sim_name, path = path, save_animation = args.save_animation)
 
         # plot BH distributions for each galaxy, such as mass, formation redshift, distance to galaxy center, etc.
-        bh_plotter = dammplot.BlackHolePlotter(sim_name = args.sim_name, table_bh = table_bh_z0)
+        bh_plotter = damplot.BlackHolePlotter(sim_name = args.sim_name, table_bh = table_bh_z0)
 
         path = f"plots/{args.sim_name}/galaxy_id_{galaxy_id}/black_holes/distributions/"
         os.makedirs(path, exist_ok = True)
@@ -97,11 +97,11 @@ def calculate_spikes(args, lst, row_tuple):
     # initialize empty table
     table = pd.DataFrame()
 
-    data_collector = dammcat.DataCollector(sim_name = args.sim_name, number_files = args.number_files)
+    data_collector = damcat.DataCollector(sim_name = args.sim_name, number_files = args.number_files)
     table_bh_zf_total = data_collector.black_hole_data(nsnap=nsnap_c)
     table_bh_zf = table_bh_zf_total[table_bh_zf_total["bh_id"] == bh_id]
 
-    dm_mini_spikes = dammcat.DMMiniSpikesCalculator(
+    dm_mini_spikes = damcat.DMMiniSpikesCalculator(
         sim_name = args.sim_name, 
         box_size = args.box_size, 
         dm_profile = args.dark_matter_profile, 
@@ -169,7 +169,7 @@ if __name__ == "__main__":
     # else create new catalogue
     else:
         # extract galaxy data at z = 0
-        data_collector = dammcat.DataCollector(sim_name = args.sim_name, number_files = args.number_files)
+        data_collector = damcat.DataCollector(sim_name = args.sim_name, number_files = args.number_files)
         table_galaxy_z0_total = data_collector.galaxy_data(nsnap = 28)
 
         # unique galaxy root ids
@@ -180,7 +180,7 @@ if __name__ == "__main__":
 
         if args.plot:
             # save galaxy images
-            galaxy_plotter = dammplot.GalaxyPlotter(sim_name = args.sim_name, table_galaxy = table_galaxy_z0_total, table_bh = table_bh_z0_total)
+            galaxy_plotter = damplot.GalaxyPlotter(sim_name = args.sim_name, table_galaxy = table_galaxy_z0_total, table_bh = table_bh_z0_total)
             galaxy_plotter.save_gri_images()
 
             # plot galaxy properties distributions, such as 

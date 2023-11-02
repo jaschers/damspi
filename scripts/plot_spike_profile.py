@@ -4,7 +4,7 @@ import os
 # Get the directory of the current script
 current_dir = os.path.dirname(os.path.abspath(__file__))
 
-# Add the dammspi module directory to the Python path
+# Add the damspi module directory to the Python path
 module_dir = os.path.abspath(os.path.join(current_dir, '..'))
 sys.path.append(module_dir)
 
@@ -18,8 +18,8 @@ import astropy.constants as const
 from matplotlib.colors import LinearSegmentedColormap
 import matplotlib.cm as cm
 import os
-from dammspi.utils import spike_profile, imbh_profile, parse_args
-import dammspi.plot as dammplot
+from damspi.utils import spike_profile, imbh_profile, parse_args
+import damspi.plot as damplot
 import yaml
 
 if __name__ == "__main__":
@@ -51,6 +51,6 @@ if __name__ == "__main__":
 
     # plot data and best fit
     print("Plotting spike profile...")
-    bh_plotter = dammplot.BlackHolePlotter(sim_name = None, table_bh = None)
+    bh_plotter = damplot.BlackHolePlotter(sim_name = None, table_bh = None)
     bh_plotter.plot_spike_profile(radii, rho_total, r_schw, r_cut, r_sp, path_plots)
     print(f"Plots saved in {path_plots}")

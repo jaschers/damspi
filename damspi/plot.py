@@ -4,7 +4,7 @@ import os
 # Get the directory of the current script
 current_dir = os.path.dirname(os.path.abspath(__file__))
 
-# Add the dammspi module directory to the Python path
+# Add the damspi module directory to the Python path
 module_dir = os.path.abspath(os.path.join(current_dir, '..'))
 sys.path.append(module_dir)
 
@@ -20,7 +20,7 @@ import matplotlib.ticker
 import matplotlib.gridspec as gridspec
 import numpy as np
 import requests
-from dammspi.utils import nfw_profile, nfw_integral, cored_profile, cored_integral, M_bh_2, parameter_distr_mean
+from damspi.utils import nfw_profile, nfw_integral, cored_profile, cored_integral, M_bh_2, parameter_distr_mean
 from astropy import units as u
 from astropy.coordinates import SkyCoord
 from scipy.stats import gaussian_kde
