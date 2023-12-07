@@ -91,8 +91,8 @@ class DataCollector:
         self.hubble_constant = cosmo.H0.value / 100
         self.minimal_galaxy_mass = 10**10 * u.Msun / self.hubble_constant
         self.bh_mass_formation = 10**5 * u.Msun / self.hubble_constant
-        self.stellar_mass_range = [10**(10.4), 10**(11.2)] * u.Msun
-        self.halo_mass_range = [10**(11.7), 10**(12.5)] * u.Msun
+        self.stellar_mass_range = [eval(config["Milky_way"]["stellar_mass_range"][0]), eval(config["Milky_way"]["stellar_mass_range"][1])] * u.Msun
+        self.halo_mass_range = [eval(config["Milky_way"]["halo_mass_range"][0]), eval(config["Milky_way"]["halo_mass_range"][1])] * u.Msun
         self.bh_mass_limit = 10**6 * u.Msun
 
     def black_hole_data(self, nsnap):
@@ -117,6 +117,7 @@ class DataCollector:
         --------
         >>> black_hole_data(nsnap = 28)
         """
+
         # extract BH values at z = 0
         # bh_mass = (self.read_dataset(itype = 5, att = "Mass", nsnap = 28) * u.g).to(u.M_sun).value
         bh_subgrid_mass = (self.read_dataset(itype = 5, att = "BH_Mass", nsnap = nsnap) * u.g).to(u.M_sun).value
@@ -912,7 +913,7 @@ class DMMiniSpikesCalculator:
                         {self.sim_name}_SubHalo as DES \
                     WHERE \
                         DES.Snapnum = {self.nsnap_closest} \
-                        and DES.Mass >= {self.bh_mass_formation.to(u.Msun).value} \
+                        and DES.Mass >= {self.minimal_galaxy_mass.to(u.Msun).value} \
                         and sqrt(square((DES.CentreOfPotential_x * {scale_factor}) - {self.bh_coord[0]}) + square((DES.CentreOfPotential_y * {scale_factor}) - {self.bh_coord[1]}) + square((DES.CentreOfPotential_z * {scale_factor}) - {self.bh_coord[2]})) <= 2e3 \
                         and DES.Spurious = 0"
         return(query)
@@ -1586,7 +1587,7 @@ class DMMiniSpikesCalculator:
                 r_h = self.r_h, 
                 rho_0 = self.rho_0, 
                 r_s = self.r_s, 
-                M_bh = self.bh_mass_formation, 
+                M_bh = self.bh_mass, 
                 galaxy_mass = galaxy_zf_mass, 
                 z = galaxy_zf_z, 
                 path = path
@@ -1598,7 +1599,7 @@ class DMMiniSpikesCalculator:
                 r_s = self.r_s, 
                 r_c = self.r_c,
                 gamma_c = self.gamma_c,
-                M_bh = self.bh_mass_formation, 
+                M_bh = self.bh_mass, 
                 galaxy_mass = galaxy_zf_mass, 
                 z = galaxy_zf_z, 
                 path = path
