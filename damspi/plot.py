@@ -23,13 +23,16 @@ import requests
 from damspi.utils import nfw_profile, nfw_integral, cored_profile, cored_integral, M_bh_2, parameter_distr_mean
 from astropy import units as u
 from astropy.coordinates import SkyCoord
-from scipy.stats import gaussian_kde
+from scipy.stats import gaussian_kde, multivariate_normal
 from scipy.integrate import dblquad
 from astropy.wcs import WCS
 from astropy.io import fits
 import math
 from astropy import constants as const
 import yaml
+from scipy.optimize import curve_fit
+import scipy.stats
+from scipy.odr import Model, RealData, ODR, Data
 
 with open("config/config.yaml", "r") as f:
     config = yaml.load(f, Loader=yaml.FullLoader)
@@ -477,7 +480,117 @@ class BlackHolePlotter:
 
         # Add colorbar
         cbar = fig.colorbar(im, shrink = 0.5)
-        cbar.set_label("Probability density function")
+        cbar.set_label(r"PDF [sr$^{-1}$]")
+
+        # Plot the individual BHs as points on the map
+        ax.scatter(coords.l.wrap_at('180d').radian, coords.b.radian, color = "white", marker='o', s = config["Plots"]["markersize"], alpha = 0.15, edgecolor = "None")
+
+        # Set labels and title
+        ax.set_xlabel('Galactic Longitude')
+        ax.set_ylabel('Galactic Latitude')
+        plt.tight_layout()
+        plt.savefig(path, dpi = 500)
+
+    def plot_2d_map_gaussian(self, lat, long, path):
+        # Extract coordinates
+        coords = SkyCoord(long, lat, frame='galactic', unit='rad')
+        coord_stacked = np.stack((coords.l.wrap_at('180d').radian, coords.b.radian), axis = -1)
+
+        # Define grid
+        x = np.linspace(-np.pi, np.pi, 480)
+        y = np.linspace(-np.pi / 2, np.pi / 2, 240)
+        X, Y = np.meshgrid(x, y)
+
+        positions = np.vstack([X.ravel(), Y.ravel()])
+
+        # Calculate Mean
+        mean_lat = np.mean(coords.b.radian)
+        mean_long = np.mean(coords.l.wrap_at('180d').radian)
+        mean = [mean_long, mean_lat]
+
+        # Calculate Covariance Matrix
+        covariance = np.cov(coords.l.wrap_at('180d').radian, coords.b.radian)
+
+        # print("Mean:", mean)
+        # print("Covariance:", covariance)
+
+        # Define Gaussian Distribution
+        gaussian_model = multivariate_normal(mean, covariance)
+
+        # Evaluate the Gaussian model at grid points
+        gaussian_pdf = gaussian_model.pdf(np.dstack((X, Y)))
+
+        # Normalize the Gaussian PDF for comparison
+        gaussian_pdf = gaussian_pdf / np.sum(gaussian_pdf)
+
+        # calculate cdf
+        # define desired percentage contours to be calculated
+        percentages_desired = [10, 20, 40, 60, 80]
+        # percentages_desired = [10, 20, 30]
+        # initialize variables that will be filled in the loop later
+        percentages_diff = np.full(len(percentages_desired), np.inf)
+        percentages_cont = np.zeros(len(percentages_desired))
+        percentages_cont_collections = np.empty(len(percentages_desired), dtype = object)
+
+        # calculate the desired percentage contours with matplotlib
+        fig_cdf = plt.figure(figsize = config["Figure_size"]["double_column"])
+        ax_cdf = fig_cdf.add_subplot(111, projection="aitoff")
+        # extract the PDF contours
+        levels = np.linspace(gaussian_pdf.min(), gaussian_pdf.max(), 150)
+        # levels = np.linspace(pdf.min(), pdf.max(), 30)
+        cont = ax_cdf.contour(X, Y, gaussian_pdf, levels = levels)
+
+        # Get the contour collections
+        cont_collections = cont.collections
+
+        # Loop through each contour collection
+        for collection in cont_collections:
+            # Get the contour path
+            cont_path = collection.get_paths()
+            if cont_path: # check if the contour is not empty
+                cont_path = cont_path[0]
+                # Get the grid points within the contour path
+                mask = cont_path.contains_points(positions.T)
+                # Get the sum of PDF values within the contour path
+                cont_percentage = gaussian_pdf.flatten()[mask].sum() * 100
+                # Check if the current contour is closer to the desired percentage than the previous one and update the variables
+                for i, percentage in enumerate(percentages_desired):
+                    if np.abs(percentage - cont_percentage) < percentages_diff[i]:
+                        percentages_cont[i] = cont_percentage
+                        percentages_cont_collections[i] = collection
+                        percentages_diff[i] = np.abs(percentage - cont_percentage)
+
+        plt.close()
+
+        # Plot in Aitoff projection
+        fig = plt.figure(figsize = config["Figure_size"]["double_column"])
+        ax = fig.add_subplot(111, projection="aitoff")
+        ax.grid(True, alpha = 0.5)
+        # plot the PDF
+        im = ax.pcolormesh(X, Y, gaussian_pdf, cmap = LinearSegmentedColormap.from_list("", config["Colors"]["cmap_r"]), edgecolors = "face", linewidth = 0, rasterized=True)
+
+        # plot the contours
+        x_max_previous = 0
+        for i, collection in enumerate(percentages_cont_collections):
+            cont_path = collection.get_paths()[0]
+            x, y = zip(*cont_path.vertices)
+            x_max, y_min = np.max(x), np.min(y)
+            ax.plot(x, y, color = "white", alpha = 0.8)
+            ax.text(
+                x_max_previous + np.abs(x_max - x_max_previous) / 2, 
+                - 5 * (2*np.pi/360), 
+                r"${0:.0f}$".format(percentages_cont[i]), 
+                color = "white",
+                horizontalalignment = "center", 
+                verticalalignment = "center",
+                alpha = 0.8,
+                fontsize = 8
+                )
+            x_max_previous = x_max
+
+        # Add colorbar
+        cbar = fig.colorbar(im, shrink = 0.5)
+        cbar.set_label(r"PDF [sr$^{-1}$]")
 
         # Plot the individual BHs as points on the map
         ax.scatter(coords.l.wrap_at('180d').radian, coords.b.radian, color = "white", marker='o', s = config["Plots"]["markersize"], alpha = 0.15, edgecolor = "None")
@@ -633,6 +746,25 @@ class BlackHolePlotter:
             plt.savefig(path + f"{filename}.pdf", dpi = 500)
             plt.close()
 
+    @staticmethod
+    def gaussian(params, x):
+        norm, mu, sigma = params
+        return norm * (1 / (sigma * np.sqrt(2 * np.pi))) * np.exp(-0.5 * ((x - mu) / sigma)**2)
+
+    @staticmethod
+    def lognorm(params, x):
+        norm, mu, sigma = params
+        return norm * (1 / (x * sigma * np.sqrt(2 * np.pi))) * np.exp(-0.5 * ((np.log(x) - mu) / sigma)**2)
+
+    @staticmethod
+    def non_central_chi2_pdf(params, x):
+        norm, df, nc = params
+        return norm * scipy.stats.ncx2.pdf(x, df, nc)
+
+    @staticmethod
+    def chi_squared(observed, expected, errors):
+        return np.sum(((observed - expected) ** 2) / errors ** 2)
+
     def plot_number_dist(self, path):
         galaxy_ids, n_bh = np.unique(self.table_bh["galaxy_id"].values, return_counts = True)
         n_bh_median = np.median(n_bh)
@@ -646,21 +778,45 @@ class BlackHolePlotter:
         bins_centre = (bins[1:] + bins[:-1]) / 2
         hist_err = np.sqrt(hist)
 
+        # fit lognormal pdf to the distribution
+        # Create a Model
+        lognorm_model = Model(self.lognorm)
+
+        # Create a RealData object
+        data = RealData(bins_centre, hist, sy=hist_err)
+
+        # Set up ODR with the model and data
+        odr_lognorm = ODR(data, lognorm_model, beta0=[2000, np.mean(n_bh), np.std(bins_centre)])
+
+        # Run the regression
+        out_lognorm = odr_lognorm.run()
+
+        # Use the fitted parameters to plot the fitted curve
+        x_fit = np.linspace(0.1, max(bins_centre) + 20, 1000)
+        y_fit_lognorm = self.lognorm(out_lognorm.beta, x_fit)
+
         # Format the values for display
         formatted_median = "{:.0f}".format(n_bh_median)
         formatted_upper_error = "{:.0f}".format(n_bh_median_upper_error)
         formatted_lower_error = "{:.0f}".format(n_bh_median_lower_error)
         
-        label = r"$\tilde{{\mu}} = {0}^{{+{1}}}_{{-{2}}}$".format(formatted_median, formatted_upper_error, formatted_lower_error)
+        label_median = r"$\tilde{{\mu}} = {0}^{{+{1}}}_{{-{2}}}$".format(formatted_median, formatted_upper_error, formatted_lower_error)
+        # label_fit = f"Fit\n$\\mu$ = {np.round(out_lognorm.beta[1], 1)}\n$\\sigma$ = {np.round(out_lognorm.beta[2], 1)}"
+        # label_fit = r"$f_\mathrm{ln}(N_\mathrm{BH}| \alpha, \mu, \sigma)$"
+        label_fit = r"$f_\mathrm{ln}(N_\mathrm{BH})$"
 
         plt.figure(figsize = config["Figure_size"]["single_column"])
         plt.bar(bins_centre, hist, width = bins_width, color = config["Colors"]["darkblue"], yerr = hist_err, ecolor = config["Colors"]["lightblue"], edgecolor = config["Plots"]["bar_edge_color"], linewidth = config["Plots"]["bar_edge_width"])
+        x_min, x_max = plt.xlim()
+        plt.plot(x_fit, y_fit_lognorm, color = config["Colors"]["black"], linestyle = "solid", label = label_fit)
+
         ymin, ymax = plt.ylim()
-        plt.vlines(n_bh_median, ymin = ymin, ymax = ymax, color = config["Colors"]["red"], linestyle = "solid", label = label)
+        plt.vlines(n_bh_median, ymin = ymin, ymax = ymax, color = config["Colors"]["red"], linestyle = "solid", label = label_median)
         plt.axvspan(lower_percentile, upper_percentile, alpha = 0.25, facecolor = config["Colors"]["red"], edgecolor = "None")
         plt.xlabel(r"$N_\mathrm{BH}$")
         plt.ylabel(r"$N_\mathrm{g}$")
         plt.ylim(ymin, ymax)
+        plt.xlim(x_min, x_max)
         plt.legend(loc = "upper right")
         plt.tight_layout()
         plt.savefig(path + "number_dist.pdf", dpi = 500)
@@ -672,7 +828,7 @@ class BlackHolePlotter:
         plt.figure(figsize=config["Figure_size"]["single_column_squeezed"])
         plt.loglog(radii, rho_total, color = config["Colors"]["black"])
         ymin, ymax = plt.ylim()
-        plt.vlines(4*r_schw.value, ymin, ymax, color=config["Colors"]["red"], linestyle='--', label = "$r_\mathrm{ISCO}$")
+        plt.vlines(3*r_schw.value, ymin, ymax, color=config["Colors"]["red"], linestyle='--', label = "$r_\mathrm{ISCO}$")
         plt.vlines(r_cut.value, ymin, ymax, color=config["Colors"]["red"], linestyle='-.', label = "$r_\mathrm{cut}$")
         plt.vlines(r_sp.value, ymin, ymax, color=config["Colors"]["red"], linestyle='dotted', label = "$r_\mathrm{sp}$")
         plt.ylim(ymin, ymax)
@@ -688,8 +844,12 @@ class FluxPlotter:
         self.flux_catalogue = flux_catalogue
 
     @staticmethod
-    def flux_thresholds(flux):
-        flux_th = np.logspace(np.log10(np.min(flux.value)), np.log10(np.max(flux.value)), 30) * flux.unit
+    def flux_thresholds(flux, flux_min = None, flux_max = None):
+        if flux_min is None:
+            flux_min = np.min(flux.value)
+        if flux_max is None:
+            flux_max = np.max(flux.value)
+        flux_th = np.logspace(np.log10(flux_min), np.log10(flux_max), 30) * flux.unit
         return(flux_th)
 
     @staticmethod
@@ -712,13 +872,17 @@ class FluxPlotter:
         int_lum_mean_error = int_lum_std / np.sqrt(len(int_lum_list))
         return(int_lum_mean, int_lum_mean_error)
  
-    def plot_integrated_luminosity(self, flux_th, m_dm, color):
+    def plot_integrated_luminosity(self, flux_th, m_dm, color, marker, marker_size, args):
         int_lum_mean, int_lum_error = self.integrated_luminosity_mean(flux_th)
-        plt.errorbar(flux_th, int_lum_mean, yerr = int_lum_error, label = f"$m_{{\chi}}$ = {np.round(m_dm.to(u.TeV).value, 1)} TeV", linestyle = "", marker = ".", capsize = 3, color = color, markersize = 3)
+        if args.instrument_comparison == "hess":
+            plt.errorbar(flux_th, int_lum_mean, yerr = int_lum_error, label = f"$m_{{\chi}}$ = {np.round(m_dm.to(u.TeV).value, 1)} TeV", linestyle = "", marker = marker, capsize = 3, color = color, markersize = marker_size)
+        elif args.instrument_comparison == "fermi":
+            plt.errorbar(flux_th, int_lum_mean, yerr = int_lum_error, label = f"$m_{{\chi}}$ = {np.round(m_dm.to(u.GeV).value, 1)} GeV", linestyle = "", marker = marker, capsize = 3, color = color, markersize = marker_size)
 
-    def plot_integrated_luminosity_comparison(self, flux_th, label, color):
+
+    def plot_integrated_luminosity_comparison(self, flux_th, label, color,  marker, marker_size):
         int_lum_mean, int_lum_error = self.integrated_luminosity_mean(flux_th)
-        plt.errorbar(flux_th, int_lum_mean, yerr = int_lum_error, label = label, linestyle = "", marker = ".", capsize = 3, color = color, markersize = 3)
+        plt.errorbar(flux_th, int_lum_mean, yerr = int_lum_error, label = label, linestyle = "", marker = marker, capsize = 3, color = color, markersize = marker_size)
 
     def plot_cuttoff_radius_dist(self, path):
         r_cut = self.flux_catalogue["r_cut [pc]"].values
