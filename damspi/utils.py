@@ -22,8 +22,9 @@ def add_dark_matter_args(parser):
     parser.add_argument("-mdms", "--m_dm_scaling", type = str, required = False, default = "linear", metavar = "-", help = "Scaling of dark matter particle mass. Can be linear or log. Default: linear")
     parser.add_argument("-sv", "--sigma_v", type = float, required = False, nargs = "+", default = [3e-26], metavar = "-", help = "Dark matter (velocity weighted) annihilation cross section in cm3/s. Default: 3e-26")
     # parser.add_argument("-svs", "--sigma_v_scaling", type = str, required = False, default = "log", metavar = "-", help = "Scaling of dark matter (velocity weighted) annihilation cross section. Can be linear or log. Default: log")
-    parser.add_argument("-c", "--channel", type = str, required = False, default = "b", metavar = "-", help = "Dark matter annihilation channel. Can be: 'V->e', 'V->mu', 'V->tau', 'W', 'WL', 'WT', 'Z', 'ZL', 'ZT', 'b', 'c', 'e', 'eL', 'eR', 'g', 'gamma', 'h', 'mu', 'muL', 'muR', 'nu_e', 'nu_mu', 'nu_tau', 'q', 't', 'tau', 'tauL', 'tauR'. Default: b")
+    parser.add_argument("-c", "--channel", type = str, required = False, nargs = "+", default = ["b"], metavar = "-", help = "Dark matter annihilation channel. Can be: 'V->e', 'V->mu', 'V->tau', 'W', 'WL', 'WT', 'Z', 'ZL', 'ZT', 'b', 'c', 'e', 'eL', 'eR', 'g', 'gamma', 'h', 'mu', 'muL', 'muR', 'nu_e', 'nu_mu', 'nu_tau', 'q', 't', 'tau', 'tauL', 'tauR'. Default: b")
     parser.add_argument("-eth", "--E_th", type = float, required = False, default = 100, metavar = "-", help = "Lower energy threshold to calculate number of gamma rays per dark matter annihilation in GeV. Default: 100")
+    parser.add_argument("-ic", "--instrument_comparison", type = str, required = False, default = "hess", choices = ["hess", "fermi"], metavar = "-", help = "Instrument to which the results are compared to. Default: hess")
 
 def add_plot_args(parser):
     parser.add_argument("-plt", "--plot", type = str, required = False, default = "n", metavar = "-", help = "Bool if plots are saved [y, n], default: n")
@@ -91,6 +92,9 @@ def parse_args(include_name = True, include_cat = False, include_dm = False, inc
                 args.sigma_v = np.logspace(np.log10(args.sigma_v[0]), np.log10(args.sigma_v[1]), int(args.sigma_v[2])) * u.cm**3 / u.s
         else:
             args.sigma_v = args.sigma_v * u.cm**3 / u.s
+
+        if len(args.channel) == 1:
+            args.channel = args.channel[0]
 
     return args
 
@@ -239,9 +243,9 @@ def spike_profile(params, r):
 def imbh_profile(params, r):
     rho_0, r_schw, r_cut, r_s, r_sp, gamma_sp = params
 
-    if r <= 4 * r_schw:
+    if r <= 3 * r_schw:
         return None
-    elif 4 * r_schw < r <= r_cut:
+    elif 3 * r_schw < r <= r_cut:
         y = spike_profile((rho_0, r_s, r_sp, gamma_sp), r_cut)
         y = (y * const.c ** 2).to(u.GeV / u.cm ** 3).value
         return y
