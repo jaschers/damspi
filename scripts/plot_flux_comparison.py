@@ -32,6 +32,10 @@ if __name__ == "__main__":
 
     args = parse_args(include_dm = True, include_labels = True)
     exp_names = args.name
+    channels = args.channel
+
+    if type(channels) is list and type(exp_names) is list:
+        raise ValueError("Only one channel can be plotted at a time if mutliple --name inputs are specified.")
     # exp_names = ["nfw", "cored_gamma_free", "cored_gamma_0p4", "cored_gamma_0p0"]
     # labels = ["NFW", r"Cored (free $\gamma_\mathrm{c}$)", r"Cored ($\gamma_\mathrm{c} = 0.4$)", r"Cored ($\gamma_\mathrm{c} = 0.0$)"]
     # labels = ["NFW", r"free $\gamma_\mathrm{c}$", r"$\gamma_\mathrm{c} = 0.4$", r"$\gamma_\mathrm{c} = 0.0$"]
@@ -39,18 +43,35 @@ if __name__ == "__main__":
     m_dm = int(args.m_dm.value[0])
 
     print("Start plotting...")
-    path_plots = f"plots/{args.sim_name}/flux/comparison/{args.channel}_channel/"
-    os.makedirs(path_plots, exist_ok = True)
 
     cmap = LinearSegmentedColormap.from_list("", config["Colors"]["cmap_flux"])
-    indices = np.linspace(0, 1, len(exp_names))
-    colors = cmap(indices)
+    markers = config["Plots"]["markers"]
+    marker_sizes = config["Plots"]["marker_sizes"]
 
     # open relevant flux catalogues
     flux_catalogues = []
-    for exp_name in exp_names:
-        filename = f"catalogue/{args.sim_name}/flux/{exp_name}/{args.channel}_channel/m_dm_{m_dm}GeV.h5"
-        flux_catalogues.append(pd.read_hdf(filename, key = "table"))
+    # if multiple channels are specified, plot them all in one plot
+    if type(channels) is list:
+        path_plots = f"plots/{args.sim_name}/flux/comparison/"
+        os.makedirs(path_plots, exist_ok = True)
+
+        indices = np.linspace(0, 1, len(channels))
+        colors = cmap(indices)
+
+        for channel in channels:
+            filename = f"catalogue/{args.sim_name}/flux/{exp_names}/{channel}_channel/m_dm_{m_dm}GeV.h5"
+            flux_catalogues.append(pd.read_hdf(filename, key = "table"))
+    # if multiple exp_names are specified, plot them all in one plot
+    else:
+        path_plots = f"plots/{args.sim_name}/flux/comparison/{args.channel}_channel/"
+        os.makedirs(path_plots, exist_ok = True)
+
+        indices = np.linspace(0, 1, len(exp_names))
+        colors = cmap(indices)
+
+        for exp_name in exp_names:
+            filename = f"catalogue/{args.sim_name}/flux/{exp_name}/{args.channel}_channel/m_dm_{m_dm}GeV.h5"
+            flux_catalogues.append(pd.read_hdf(filename, key = "table"))
 
     flux_catalogues_conat = pd.concat(flux_catalogues, ignore_index = True)
     flux_plotter = damplot.FluxPlotter(flux_catalogues_conat)
@@ -58,10 +79,10 @@ if __name__ == "__main__":
     flux_th = flux_plotter.flux_thresholds(flux)
 
     plt.figure(figsize = config["Figure_size"]["single_column_legend"])
-    for flux_catalogue, label, color in zip(flux_catalogues, labels, colors):
+    for flux_catalogue, label, color, marker, marker_size in zip(flux_catalogues, labels, colors, markers, marker_sizes):
         flux_plotter = damplot.FluxPlotter(flux_catalogue)
-        flux_plotter.plot_integrated_luminosity_comparison(flux_th, label, color)
-    plt.xlabel(f"$\Phi (E_\mathrm{{th}} > {int(np.rint(args.E_th.value))}$ GeV) [cm$^{{-2}}$ s$^{{-1}}$]")
+        flux_plotter.plot_integrated_luminosity_comparison(flux_th, label, color, marker, marker_size)
+    plt.xlabel(f"$\Phi (E > {int(np.rint(args.E_th.value))}$ GeV) [cm$^{{-2}}$ s$^{{-1}}$]")
     plt.ylabel(r"$N_{{\mathrm{BH}}}(>\Phi)$")
     ymin, ymax = 1, 30 #TODO: set automatically
     plt.vlines(config["HESS"]["flux_sensitivity"], ymin, ymax, color = "grey", linestyle = "dashed")
@@ -74,5 +95,5 @@ if __name__ == "__main__":
     plt.legend(bbox_to_anchor=(0, 1.05, 1, 0.2), loc="center", mode="expand", borderaxespad=0, ncol=2, alignment="center")
     plt.tight_layout()
     plt.savefig(path_plots + "integrated_luminosity_comparison.pdf", dpi = 300)
-    plt.show()
+    # plt.show()
     plt.close()
