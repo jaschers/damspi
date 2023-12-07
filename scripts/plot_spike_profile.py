@@ -37,7 +37,9 @@ if __name__ == "__main__":
     rho_0 = config["Spike_profile_example"]["rho_0"] * u.GeV / u.cm**3  
     rho_0 = (rho_0 / const.c ** 2).to(u.M_sun / u.kpc ** 3)
     r_s = config["Spike_profile_example"]["r_s"] * u.kpc    
-    r_sp = float(config["Spike_profile_example"]["r_sp"]) * u.kpc   
+    r_sp = float(config["Spike_profile_example"]["r_sp"]) * u.kpc
+    rho_at_r_sp = config["Spike_profile_example"]["rho_at_r_sp"] * u.GeV / u.cm**3
+    rho_at_r_sp = (rho_at_r_sp / const.c ** 2).to(u.M_sun / u.kpc ** 3)
     gamma_sp = config["Spike_profile_example"]["gamma_sp"]  
     r_cut = float(config["Spike_profile_example"]["r_cut"]) * u.kpc  
     M_bh = float(config["Spike_profile_example"]["M_bh"]) * u.M_sun
