@@ -15,6 +15,7 @@ class FluxCalculator:
         self.rho_r_sp = self.bh_catalogue['rho(r_sp) [GeV/cm3]'].values * u.GeV / u.cm**3
         self.distance = self.bh_catalogue['d_Sun [kpc]'].values * u.kpc
         self.M_bh = self.bh_catalogue['m [M_solar]'].values * u.M_sun
+        self.r_schw = self.radius_schw(self.M_bh)
 
     @staticmethod
     def redshift_to_time(z):
@@ -55,4 +56,42 @@ class FluxCalculator:
         y = y.to(1 / (u.cm**2 * u.s))
 
         return(y)
+
+    # def gamma_flux(self, m_dm, channel, E_th, sigma_v):
+    #     N = self.N_gamma(m_dm, channel, E_th)
+
+    #     print("N", N)
+    #     print("sigma_v", sigma_v)
+    #     print("m_dm", m_dm)
+    #     print("self.distance", self.distance)
+    #     print("self.rho_r_sp", self.rho_r_sp)
+    #     print("self.r_sp", self.r_sp)
+    #     print("self.gamma_sp", self.gamma_sp)
+    #     print("self.r_cut", self.r_cut)
+    #     print("self.r_schw", self.r_schw)
+
+    #     # prefactor
+    #     alpha = 0.5 * sigma_v * N / (m_dm**2 * self.distance**2)
+    #     # term for 4r_schw < r < r_cut
+    #     # y1 = alpha * 0.5 * self.rho_r_sp**2 * (self.r_cut / self.r_sp)**(-2*self.gamma_sp) * self.r_cut * (self.r_cut**2 - 16 * self.r_schw**2)
+    #     # y1 = 0.5 * alpha * self.rho_r_sp**2 * (self.r_cut / self.r_sp)**(-2*self.gamma_sp) * self.r_cut * (self.r_cut**2 - 16 * self.r_schw**2)
+    #     y1 = 0.5 * alpha * self.rho_r_sp**2 * self.r_cut * (self.r_sp / self.r_cut)**(2*self.gamma_sp) * (self.r_cut**2 - 16 * self.r_schw**2)
+    #     # y1 = 1/3 * alpha * self.rho_r_sp**2 * (self.r_cut / self.r_sp)**(-2 * self.gamma_sp) * (self.r_cut**3 - 64 * self.r_schw**3)
+    #     # print("y1", np.unique(y1.to(1 / (u.cm**2 * u.s))))
+
+    #     # term for r_cut < r < r_sp
+    #     # reference: https://journals.aps.org/prd/pdf/10.1103/PhysRevD.72.103517?casa_token=-e4eEEaCw5oAAAAA%3A9KIbORPLYWRlSVC5MyI3HSIslOLws15IjLMCUkoM2E3uD9PaUV_cXtfBta2anEGB9Epsa-J9DZ9qUiI
+    #     # y2 = N * (self.rho_r_sp**2 * sigma_v * self.r_sp**3) / ((4 * self.gamma_sp - 6) * m_dm**2 * self.distance**2) * (self.r_cut / self.r_sp)**(-2 * self.gamma_sp + 3)
+    #     y2 = 2 * alpha * self.rho_r_sp**2 * self.r_sp**3 / (4*self.gamma_sp - 6) * (self.r_cut / self.r_sp)**(-2*self.gamma_sp + 3)
+        
+    #     print("y2", np.unique(y2.to(1 / (u.cm**2 * u.s))))
+    #     print("y1/y2", np.unique(y1/y2))
+    #     print("###################")
+    #     exit()
+
+    #     y = y1 + y2
+
+    #     y = y.to(1 / (u.cm**2 * u.s))
+
+    #     return(y)
 
