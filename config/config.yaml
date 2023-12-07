@@ -5,6 +5,10 @@ User_input:
 HESS:
   flux_sensitivity: 4.6e-13
 
+Fermi:
+  flux_sensitivity_l0_b0: 2.95e-08
+  flux_sensitivity_l120_b45: 1.64e-09
+
 Figure_size:
   single_column: 
     - 2.75591  
@@ -27,6 +31,8 @@ Plots:
   bar_edge_color: "white"
   bar_edge_width: 0.4
   number_bins: 11
+  markers: [".", "s", "D", "v", "^", "<", ">"]
+  marker_sizes: [3, 1.5, 1.5, 1.5, 1.5, 1.5, 1.5]
 
 Colors:
   black: "#171b1d"
@@ -40,9 +46,17 @@ Colors:
   cmap_flux: ["#fca311", "#e83151", "#003049"]
 
 Spike_profile_example:
-  rho_0: 0.33 # * u.GeV / u.cm**3
-  r_s: 20 # u.kpc  
-  r_sp: 1e-3 # u.kpc 
+  bh_id: 7904228777413
+  rho_0: 1.884277114017146 # * u.GeV / u.cm**3
+  r_s: 2.282547543470143 # u.kpc  
+  r_sp: 0.0042294261325850945 # u.kpc 
+  rho_at_r_sp: 1013.1534002734178 # * u.GeV / u.cm**3
   gamma_sp: 2.3333 # 7/3
-  r_cut: 1e-6 # u.kpc
-  M_bh: 1e5 # u.M_sun
+  M_bh: 155765.79943821664 # u.Msun
+  m_dm: 500 # GeV
+  r_cut: 0.002278e-3 # u.pc
+
+Milky_way:
+  halo_mass_range: [10**(11.7), 10**(12.5)] # u.Msun
+  # halo_mass_range: [1.41e11, 5.4e11] # u.Msun
+  stellar_mass_range: [10**(10.4), 10**(11.2)] # u.Msun
