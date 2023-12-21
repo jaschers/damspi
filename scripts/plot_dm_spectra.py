@@ -36,6 +36,8 @@ if __name__ == "__main__":
     fig, ax = plt.subplots(1, 1, figsize = config["Figure_size"]["single_column_legend"])
     for channel, color, label in zip(args.channel, colors, args.labels):
         fluxes = PrimaryFlux(mDM = m_dm, channel = channel)
+        if m_dm != fluxes.mDM:
+            raise ValueError("Specified DM mass does is not available in gammapy!" + "m_dm: " + str(m_dm) + ", Closest gammapy dark matter mass: " + str(fluxes.mDM))
         fluxes.table_model.plot(
             energy_bounds = [m_dm / 100, m_dm], 
             ax = ax, 
@@ -48,5 +50,6 @@ if __name__ == "__main__":
     ax.set_yscale("log")
     plt.legend(bbox_to_anchor=(0, 1.05, 1, 0.2), loc="center", mode="expand", borderaxespad=0, ncol=2, alignment="center")
     plt.tight_layout()
-    plt.show()
+    # plt.show()
     plt.savefig(path_plots + "dm_spectra.pdf")
+    print("Plot saved to", path_plots + "dm_spectra.pdf")
