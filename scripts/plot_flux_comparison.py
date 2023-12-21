@@ -60,6 +60,7 @@ if __name__ == "__main__":
 
         for channel in channels:
             filename = f"catalogue/{args.sim_name}/flux/{exp_names}/{channel}_channel/m_dm_{m_dm}GeV.h5"
+            print("Loading flux catalogue from", filename)
             flux_catalogues.append(pd.read_hdf(filename, key = "table"))
     # if multiple exp_names are specified, plot them all in one plot
     else:
@@ -71,12 +72,28 @@ if __name__ == "__main__":
 
         for exp_name in exp_names:
             filename = f"catalogue/{args.sim_name}/flux/{exp_name}/{args.channel}_channel/m_dm_{m_dm}GeV.h5"
+            print("Loading flux catalogue from", filename)
             flux_catalogues.append(pd.read_hdf(filename, key = "table"))
 
     flux_catalogues_conat = pd.concat(flux_catalogues, ignore_index = True)
+
+    sigma_v_catalogue = np.unique(flux_catalogues_conat["sigma_v [cm3 s-1]"].values) * u.Unit("cm3 s-1")
+
+    if len(sigma_v_catalogue) > 1:
+        raise ValueError("Multiple sigma_v values in flux catalogue.")
+    if sigma_v_catalogue != args.sigma_v:
+        raise ValueError("sigma_v value in flux catalogue does not match input. Catalogue = " + str(sigma_v_catalogue) + ". Input = " + str(args.sigma_v))
+
     flux_plotter = damplot.FluxPlotter(flux_catalogues_conat)
     flux = flux_catalogues_conat["flux [cm-2 s-1]"].values * u.Unit("cm-2 s-1")
-    flux_th = flux_plotter.flux_thresholds(flux)
+
+    hess_flux_sensitivity = config["HESS"]["flux_sensitivity"] * u.Unit("cm-2 s-1")
+
+    flux_min = np.min(flux)
+    if flux_min < hess_flux_sensitivity:
+        flux_th = flux_plotter.flux_thresholds(flux)
+    else:
+        flux_th = flux_plotter.flux_thresholds(flux, flux_min = hess_flux_sensitivity.value)
 
     plt.figure(figsize = config["Figure_size"]["single_column_legend"])
     for flux_catalogue, label, color, marker, marker_size in zip(flux_catalogues, labels, colors, markers, marker_sizes):
@@ -85,12 +102,12 @@ if __name__ == "__main__":
     plt.xlabel(f"$\Phi (E > {int(np.rint(args.E_th.value))}$ GeV) [cm$^{{-2}}$ s$^{{-1}}$]")
     plt.ylabel(r"$N_{{\mathrm{BH}}}(>\Phi)$")
     ymin, ymax = 1, 30 #TODO: set automatically
-    plt.vlines(config["HESS"]["flux_sensitivity"], ymin, ymax, color = "grey", linestyle = "dashed")
+    plt.vlines(hess_flux_sensitivity.value, ymin, ymax, color = "grey", linestyle = "dashed")
     plt.xscale("log")
     plt.yscale("log")
     plt.ylim(ymin = ymin, ymax = ymax) #TODO: set automatically
     xmin, xmax = plt.xlim()
-    plt.xlim(xmin = xmin, xmax = 1e-8) #TODO: set automatically
+    plt.xlim(xmin = xmin, xmax = 2e-8) #TODO: set automatically
     # plt.legend(loc = "upper right", frameon = False, fontsize = 7)
     plt.legend(bbox_to_anchor=(0, 1.05, 1, 0.2), loc="center", mode="expand", borderaxespad=0, ncol=2, alignment="center")
     plt.tight_layout()
