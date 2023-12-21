@@ -28,7 +28,8 @@ import yaml
 with open("config/config.yaml", "r") as f:
     config = yaml.load(f, Loader=yaml.FullLoader)
 
-def extract_flux_catalogue(bh_catalogue, flux_calculator, args, m_dm):
+def extract_flux_catalogue(bh_catalogue, args, m_dm):
+    flux_calculator = damflux.FluxCalculator(bh_catalogue = bh_catalogue)
     flux_catalogue = pd.DataFrame()
     for sigma_v in args.sigma_v:
         table = bh_catalogue.copy()[["galaxy_id", "bh_id"]]
@@ -54,8 +55,6 @@ if __name__ == "__main__":
     print(f"Load black hole catalogue from {path_catalogue + f'catalogue_{args.name}.csv'}")
     bh_catalogue = pd.read_csv(path_catalogue + f"catalogue_{args.name}.csv")
 
-    flux_calculator = damflux.FluxCalculator(bh_catalogue = bh_catalogue)
-
     path = f"catalogue/{args.sim_name}/flux/{args.name}/{args.channel}_channel/"
     os.makedirs(path, exist_ok = True)
 
@@ -73,7 +72,6 @@ if __name__ == "__main__":
         extract_flux_catalogue_with_args = partial(
             extract_flux_catalogue, 
             bh_catalogue,
-            flux_calculator, 
             args
             )
         # Use tqdm to visualize the progress of the loop
@@ -134,10 +132,12 @@ if __name__ == "__main__":
             plt.yscale("log")
             plt.ylim(ymin = ymin, ymax = ymax)
             xmin, xmax = plt.xlim()
+            # plt.hlines(2.3, xmin, xmax, color = "grey", linestyle = "dashed")
             # TODO: set xlims automatically
             if args.instrument_comparison == "hess":
                 if args.channel == "b":
-                    plt.xlim(xmin = xmin, xmax = 1e-7)
+                    plt.xlim(xmin = xmin, xmax = 1e-6)
+                    # plt.xlim(xmin = xmin, xmax = 1e-7)
                 elif args.channel == "tau":
                     plt.xlim(xmin = xmin, xmax = 1e-6)
                 else:
@@ -145,11 +145,13 @@ if __name__ == "__main__":
             elif args.instrument_comparison == "fermi":
                 if args.channel == "tau":
                     plt.xlim(xmin = fermi_flux_sensitivity_l120_b45.value * 0.5, xmax = 1e-1)
-                else:
+                    # plt.xlim(xmin = 1e-11, xmax = 1e-3)
+                else: 
                     plt.xlim(xmin = fermi_flux_sensitivity_l120_b45.value * 0.5, xmax = 1e-1)
             plt.legend(loc = "upper right", frameon = False, fontsize = 7)
             plt.tight_layout()
             plt.savefig(path_plots + "integrated_luminosity.pdf", dpi = 300)
+            # plt.show()
             plt.close()
 
             # plot r_cut distribution for highest DM mass
