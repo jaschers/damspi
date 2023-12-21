@@ -33,6 +33,7 @@ import yaml
 from scipy.optimize import curve_fit
 import scipy.stats
 from scipy.odr import Model, RealData, ODR, Data
+from sklearn.neighbors import KernelDensity
 
 with open("config/config.yaml", "r") as f:
     config = yaml.load(f, Loader=yaml.FullLoader)
@@ -116,27 +117,28 @@ class GalaxyPlotter:
     def plot_3d_map(self, coordinates, galaxy_spin, galaxy_id, path, shifted = False, save_animation = False):
         plot_max = np.max(np.abs(coordinates))
 
-        fig = plt.figure(figsize = config["Figure_size"]["single_column"])
+        fig = plt.figure(figsize = config["Figure_size"]["quadruple_column"])
         ax = fig.add_subplot(projection='3d')
         colors = cm.rainbow(np.linspace(0, 1, len(coordinates)))
         for coord, color in zip(coordinates, colors):
-            ax.scatter(coord[0], coord[1], coord[2], color = color, s = 10)
+            ax.scatter(coord[0], coord[1], coord[2], color = "black", s = 40)
         if shifted:
             ax.scatter(0, 0, 0, color = "yellow", s = 40, label = "Sun")
             ax.scatter(-self.distance_sun, 0, 0, color = "black", s = 40, label = "Galaxy centre")
-            ax.quiver(-self.distance_sun, 0, 0, *galaxy_spin * np.max(coordinates), color = "black", label = "Galaxy spin vector")
+            ax.quiver(-self.distance_sun, 0, 0, *galaxy_spin *  np.max(coordinates), color = "black", label = "Galaxy spin vector")
         else:
-            ax.scatter(0, 0, 0, color = "black", s = 40, label = "Galaxy centre")
+            ax.scatter(0, 0, 0, color = "grey", s = 120, label = "Galaxy centre")
             ax.quiver(0, 0, 0, *galaxy_spin * np.max(coordinates), color = "black", label = "Galaxy spin vector")
         text = str(int(galaxy_spin[0] * np.max(coordinates))) + ', ' + str(int(galaxy_spin[1] * np.max(coordinates))) + ', ' + str(int(galaxy_spin[2] * np.max(coordinates)))
-        ax.text(*galaxy_spin * np.max(coordinates), text)
-        ax.set_xlabel("x [kpc]")
-        ax.set_ylabel("y [kpc]")
-        ax.set_zlabel("z [kpc]")
+        # ax.text(*galaxy_spin * np.max(coordinates), text)
+        ax.set_xlabel("x [kpc]", fontsize = 18)
+        ax.set_ylabel("y [kpc]", fontsize = 18)
+        ax.set_zlabel("z [kpc]", fontsize = 18)
         ax.set_xlim(np.array([-plot_max, plot_max]))
         ax.set_ylim(np.array([-plot_max, plot_max]))
         ax.set_zlim(np.array([-plot_max, plot_max]))
-        plt.legend(loc = "upper left")
+        ax.tick_params(axis='both', which='major', labelsize=18)
+        plt.legend(loc = "upper left", fontsize = 18)
         plt.savefig(path + ".pdf", dpi = 500)
         if save_animation:
             ani = animation.FuncAnimation(fig, self.update, fargs = [ax], frames=72, interval=50)
@@ -371,52 +373,73 @@ class BlackHolePlotter:
         plt.savefig(path, dpi = 500)
         plt.close()
 
-
     def plot_2d_map_contours(self, lat, long, path):
-        # Extract coordinates
+        # Extract IMBH coordinates
         coords = SkyCoord(long, lat, frame='galactic', unit='rad')
-        coord_stacked = np.stack((coords.l.wrap_at('180d').radian, coords.b.radian), axis = -1)
+        coord_stacked = np.vstack([lat, coords.l.wrap_at('180d').radian]).T
+        coord_stacked_contours = np.vstack([coords.l.wrap_at('180d').radian, lat])
 
-        # Calculate kernel density estimation
-        kde = gaussian_kde([coords.l.wrap_at('180d').radian, coords.b.radian])
+        # define grid for kernel density estimation
+        num_grid = 250
+        lat_min, lat_max = -np.pi / 2, np.pi / 2
+        long_min, long_max = -np.pi, np.pi
+        dlat = (lat_max - lat_min) / num_grid
+        dlon = (long_max - long_min) / num_grid
+        lat_grid = np.linspace(lat_min, lat_max, num_grid)
+        long_grid = np.linspace(long_min, long_max, num_grid)
+        Lat_grid, Long_grid = np.meshgrid(lat_grid, long_grid)
+        coord_grid = np.vstack([Lat_grid.flatten(), Long_grid.flatten()]).T
 
-        # Define grid for evaluating KDE
-        x = np.linspace(-np.pi, np.pi, 480)
-        y = np.linspace(-np.pi / 2, np.pi / 2, 240)
-        X, Y = np.meshgrid(x, y)
+        # define grid for contours
+        coord_grid_contours = np.vstack([Long_grid.flatten(), Lat_grid.flatten()])
 
-        # HESS galactic plane survey
-        hess_lat_min, hess_lat_max = -3, 3
-        hess_long_min, hess_long_max = -65, 110
+        # calculate kernel density estimation on IMBH coordinates
+        kde = KernelDensity(bandwidth="scott", metric='haversine')
+        kde.fit(coord_stacked)
 
-        # CTA galactic plane survey
-        cta_lat_min, cta_lat_max = -6, 6
-        cta_long_min, cta_long_max = -90, 90
+        # evaluate kde on grid coordinates
+        pdf = np.exp(kde.score_samples(coord_grid))
+        pdf = pdf.reshape(Lat_grid.shape)
 
-        # convert coordinates to rad
-        hess_lat_min, hess_lat_max = hess_lat_min * np.pi / 180, hess_lat_max * np.pi / 180
-        hess_long_min, hess_long_max = hess_long_min * np.pi / 180, hess_long_max * np.pi / 180
-        cta_lat_min, cta_lat_max = cta_lat_min * np.pi / 180, cta_lat_max * np.pi / 180
-        cta_long_min, cta_long_max = cta_long_min * np.pi / 180, cta_long_max * np.pi / 180
+        # get HESS galactic plane survey values and convert them to radians
+        num_grid_survey = 100
+        hess_lat_min, hess_lat_max = config["HESS"]["gps_lat_min"], config["HESS"]["gps_lat_max"]
+        hess_long_min, hess_long_max = config["HESS"]["gps_long_min"], config["HESS"]["gps_long_max"]
+        hess_lat_min, hess_lat_max = hess_lat_min * np.pi / 180, hess_lat_max * np.pi / 180 # rad
+        hess_long_min, hess_long_max = hess_long_min * np.pi / 180, hess_long_max * np.pi / 180 # rad
 
-        positions = np.vstack([X.ravel(), Y.ravel()])
+        # CTA galactic plane survey values and convert them to radians
+        cta_lat_min, cta_lat_max = config["CTA"]["gps_lat_min"], config["CTA"]["gps_lat_max"]
+        cta_long_min, cta_long_max = config["CTA"]["gps_long_min"], config["CTA"]["gps_long_max"]
+        cta_lat_min, cta_lat_max = cta_lat_min * np.pi / 180, cta_lat_max * np.pi / 180 # rad
+        cta_long_min, cta_long_max = cta_long_min * np.pi / 180, cta_long_max * np.pi / 180 # rad
 
-        # Evaluate KDE at grid points, i.e. estimating the probability density function (PDF)
-        pdf = np.reshape(kde(positions).T, X.shape)
+        # get expected number of IMBHs within HESS and CTA galactic plane surveys
+        self.expected_number_within_region(
+            coord_stacked, 
+            hess_lat_min, 
+            hess_lat_max, 
+            hess_long_min, 
+            hess_long_max, 
+            kde, 
+            num_grid_survey, 
+            "HESS"
+            )
 
-        # normalize pdf
-        pdf = pdf / np.sum(pdf)
-
-        # sum up all values in pdf within HESS/CTA galactic plane survey
-        pdf_galactic_plane_hess = np.sum(pdf[(Y > hess_lat_min) & (Y < hess_lat_max) & (X > hess_long_min) & (X < hess_long_max)])
-        pdf_galactic_plane_cta = np.sum(pdf[(Y > cta_lat_min) & (Y < cta_lat_max) & (X > cta_long_min) & (X < cta_long_max)])
-        print("PDF integral HESS galactic plane survey", np.round(pdf_galactic_plane_hess * 100), "%")
-        print("PDF integral CTA galactic plane survey", np.round(pdf_galactic_plane_cta * 100), "%")
+        self.expected_number_within_region(
+            coord_stacked,
+            cta_lat_min,
+            cta_lat_max,
+            cta_long_min,
+            cta_long_max,
+            kde,
+            num_grid_survey,
+            "CTA"
+            )
 
         # calculate cdf
         # define desired percentage contours to be calculated
-        percentages_desired = [10, 20, 40, 60, 80]
-        # percentages_desired = [10, 20, 30]
+        percentages_desired = [10, 20, 30, 40, 50]
         # initialize variables that will be filled in the loop later
         percentages_diff = np.full(len(percentages_desired), np.inf)
         percentages_cont = np.zeros(len(percentages_desired))
@@ -426,9 +449,12 @@ class BlackHolePlotter:
         fig_cdf = plt.figure(figsize = config["Figure_size"]["double_column"])
         ax_cdf = fig_cdf.add_subplot(111, projection="aitoff")
         # extract the PDF contours
-        levels = np.linspace(pdf.min(), pdf.max(), 150)
-        # levels = np.linspace(pdf.min(), pdf.max(), 30)
-        cont = ax_cdf.contour(X, Y, pdf, levels = levels)
+        levels = np.linspace(pdf.min(), pdf.max(), 500) #150
+        cont = ax_cdf.contour(Long_grid, Lat_grid, pdf, levels = levels)
+
+        def is_path_closed(path):
+            """Check if a Matplotlib path is closed."""
+            return path.codes is not None and path.codes[-1] == mpl.path.Path.CLOSEPOLY
 
         # Get the contour collections
         cont_collections = cont.collections
@@ -439,25 +465,39 @@ class BlackHolePlotter:
             cont_path = collection.get_paths()
             if cont_path: # check if the contour is not empty
                 cont_path = cont_path[0]
-                # Get the grid points within the contour path
-                mask = cont_path.contains_points(positions.T)
-                # Get the sum of PDF values within the contour path
-                cont_percentage = pdf.flatten()[mask].sum() * 100
-                # Check if the current contour is closer to the desired percentage than the previous one and update the variables
-                for i, percentage in enumerate(percentages_desired):
-                    if np.abs(percentage - cont_percentage) < percentages_diff[i]:
-                        percentages_cont[i] = cont_percentage
-                        percentages_cont_collections[i] = collection
-                        percentages_diff[i] = np.abs(percentage - cont_percentage)
+                
+                if is_path_closed(cont_path) == True:
+                    mask = cont_path.contains_points(coord_grid_contours.T)
+                    coord_grid_contours_masked = coord_grid_contours.T[mask]
+                    lat_contours_masked = coord_grid_contours_masked[:, 1]
+                    area_element = np.cos(lat_contours_masked) * dlat * dlon
+
+                    pdf_masked = pdf.flatten()[mask]
+                    pdf_integrated = np.sum(pdf_masked * area_element.ravel())
+                    cont_percentage = pdf_integrated * 100
+
+                    # Check if the current contour is closer to the desired percentage than the previous one and update the variables
+                    for i, percentage in enumerate(percentages_desired):
+                        if np.abs(percentage - cont_percentage) < percentages_diff[i]:
+                            percentages_cont[i] = cont_percentage
+                            percentages_cont_collections[i] = collection
+                            percentages_diff[i] = np.abs(percentage - cont_percentage)
 
         plt.close()
+
+        # # check if countors percentages agree with number of IMBHs
+        # for cont_collection, percentage in zip(percentages_cont_collections, percentages_cont):
+        #     cont_collections_path = cont_collection.get_paths()[0]
+        #     mask = cont_collections_path.contains_points(coord_stacked_contours.T)
+        #     print("Contours percentage:", percentage, "%")
+        #     print("Number of IMBHs within contour:", np.sum(mask) / len(mask) * 100, "%")
 
         # Plot in Aitoff projection
         fig = plt.figure(figsize = config["Figure_size"]["double_column"])
         ax = fig.add_subplot(111, projection="aitoff")
         ax.grid(True, alpha = 0.5)
         # plot the PDF
-        im = ax.pcolormesh(X, Y, pdf, cmap = LinearSegmentedColormap.from_list("", config["Colors"]["cmap_r"]), edgecolors = "face", linewidth = 0, rasterized=True)
+        im = ax.pcolormesh(Long_grid, Lat_grid, pdf, cmap = LinearSegmentedColormap.from_list("", config["Colors"]["cmap_2d_map"]), edgecolors = "face", linewidth = 0, rasterized=True)
 
         # plot the contours
         x_max_previous = 0
@@ -465,7 +505,7 @@ class BlackHolePlotter:
             cont_path = collection.get_paths()[0]
             x, y = zip(*cont_path.vertices)
             x_max, y_min = np.max(x), np.min(y)
-            ax.plot(x, y, color = "white", alpha = 0.8)
+            ax.plot(x, y, color = "white", alpha = 0.6, linestyle = "dashed")
             ax.text(
                 x_max_previous + np.abs(x_max - x_max_previous) / 2, 
                 - 5 * (2*np.pi/360), 
@@ -473,7 +513,7 @@ class BlackHolePlotter:
                 color = "white",
                 horizontalalignment = "center", 
                 verticalalignment = "center",
-                alpha = 0.8,
+                alpha = 0.6,
                 fontsize = 8
                 )
             x_max_previous = x_max
@@ -491,6 +531,33 @@ class BlackHolePlotter:
         plt.tight_layout()
         plt.savefig(path, dpi = 500)
 
+    @staticmethod
+    def expected_number_within_region(coord_stacked, lat_min, lat_max, long_min, long_max, kde, num_grid, name):
+        # define the grids for the galactic plane surveys
+        lat_grid = np.linspace(lat_min, lat_max, num_grid)
+        long_grid = np.linspace(long_min, long_max, num_grid)
+        Lat_grid, Long_grid = np.meshgrid(lat_grid, long_grid)
+        coord_grid = np.vstack([Lat_grid.flatten(), Long_grid.flatten()]).T
+
+        # evaluate kde on grid coordinates
+        likelihood = np.exp(kde.score_samples(coord_grid))
+        likelihood = likelihood.reshape(Lat_grid.shape)
+
+        # determine the probability density function (PDF) by multiplying the likelihood with the area element
+        dlat = (lat_max - lat_min) / num_grid
+        dlon = (long_max - long_min) / num_grid
+        area_element = np.cos(lat_grid) * dlat * dlon
+
+        likelihood_integrated = np.sum(likelihood * area_element.ravel())
+
+        coord_stacked_region = coord_stacked[(coord_stacked[:, 0] > lat_min) & (coord_stacked[:, 0] < lat_max) & (coord_stacked[:, 1] > long_min) & (coord_stacked[:, 1] < long_max)]
+
+        percentage = len(coord_stacked_region) / len(coord_stacked) * 100
+
+        print(f"Percentage of sources in {name} galactic plane survey:", np.round(percentage, 1), "%")
+        print(f"Likelihood integral {name} galactic plane survey", np.round(likelihood_integrated * 100, 1), "%")
+
+
     def plot_2d_map_gaussian(self, lat, long, path):
         # Extract coordinates
         coords = SkyCoord(long, lat, frame='galactic', unit='rad')
@@ -505,11 +572,20 @@ class BlackHolePlotter:
 
         # Calculate Mean
         mean_lat = np.mean(coords.b.radian)
+        mean_lat_err = np.std(coords.b.radian) / np.sqrt(len(coords.b.radian))
         mean_long = np.mean(coords.l.wrap_at('180d').radian)
+        mean_long_err = np.std(coords.l.wrap_at('180d').radian) / np.sqrt(len(coords.l.wrap_at('180d').radian))
         mean = [mean_long, mean_lat]
+
+        print("Mean galactic latitude [deg]:", mean_lat * 180 / np.pi, "+-", mean_lat_err * 180 / np.pi)
+        print("Mean galactic longitude [deg]:", mean_long * 180 / np.pi, "+-", mean_long_err * 180 / np.pi)
 
         # Calculate Covariance Matrix
         covariance = np.cov(coords.l.wrap_at('180d').radian, coords.b.radian)
+
+        print("Covariance matrix [deg]:")
+        print(covariance * 180 / np.pi)
+
 
         # print("Mean:", mean)
         # print("Covariance:", covariance)
@@ -672,6 +748,7 @@ class BlackHolePlotter:
             data = self.table_bh[parameter].values
             data_sorted = np.sort(data)
             data_mean = np.mean(data)
+            data_std = np.std(data, ddof = 1)
             data_mean_error = np.std(data, ddof = 1) / np.sqrt(len(data))
             data_median = np.median(data)
             # Calculate the values at the 16th and 84th percentiles to get the error on the median
@@ -790,6 +867,10 @@ class BlackHolePlotter:
 
         # Run the regression
         out_lognorm = odr_lognorm.run()
+        print("Best fit values for lognorm number distribution fit:")
+        print("Norm = {0:.2f} +- {1:.2f}".format(out_lognorm.beta[0], out_lognorm.sd_beta[0]))
+        print("Mu = {0:.2f} +- {1:.2f}".format(out_lognorm.beta[1], out_lognorm.sd_beta[1]))
+        print("Sigma = {0:.2f} +- {1:.2f}".format(out_lognorm.beta[2], out_lognorm.sd_beta[2]))
 
         # Use the fitted parameters to plot the fitted curve
         x_fit = np.linspace(0.1, max(bins_centre) + 20, 1000)
@@ -803,7 +884,7 @@ class BlackHolePlotter:
         label_median = r"$\tilde{{\mu}} = {0}^{{+{1}}}_{{-{2}}}$".format(formatted_median, formatted_upper_error, formatted_lower_error)
         # label_fit = f"Fit\n$\\mu$ = {np.round(out_lognorm.beta[1], 1)}\n$\\sigma$ = {np.round(out_lognorm.beta[2], 1)}"
         # label_fit = r"$f_\mathrm{ln}(N_\mathrm{BH}| \alpha, \mu, \sigma)$"
-        label_fit = r"$f_\mathrm{ln}(N_\mathrm{BH})$"
+        label_fit = r"$f^0_\mathrm{ln}(N_\mathrm{BH})$"
 
         plt.figure(figsize = config["Figure_size"]["single_column"])
         plt.bar(bins_centre, hist, width = bins_width, color = config["Colors"]["darkblue"], yerr = hist_err, ecolor = config["Colors"]["lightblue"], edgecolor = config["Plots"]["bar_edge_color"], linewidth = config["Plots"]["bar_edge_width"])
@@ -824,17 +905,22 @@ class BlackHolePlotter:
 
     @staticmethod
     def plot_spike_profile(radii, rho_total, r_schw, r_cut, r_sp, path):
+        radii = radii.to(u.pc)
+        r_schw = r_schw.to(u.pc)
+        r_cut = r_cut.to(u.pc)
+        r_sp = r_sp.to(u.pc)
         # Generate a log-log plot
-        plt.figure(figsize=config["Figure_size"]["single_column_squeezed"])
+        plt.figure(figsize=config["Figure_size"]["single_column_extended"])
         plt.loglog(radii, rho_total, color = config["Colors"]["black"])
         ymin, ymax = plt.ylim()
-        plt.vlines(3*r_schw.value, ymin, ymax, color=config["Colors"]["red"], linestyle='--', label = "$r_\mathrm{ISCO}$")
+        plt.vlines(2*r_schw.value, ymin, ymax, color=config["Colors"]["red"], linestyle='--', label = "$2r_\mathrm{schw}$")
         plt.vlines(r_cut.value, ymin, ymax, color=config["Colors"]["red"], linestyle='-.', label = "$r_\mathrm{cut}$")
         plt.vlines(r_sp.value, ymin, ymax, color=config["Colors"]["red"], linestyle='dotted', label = "$r_\mathrm{sp}$")
         plt.ylim(ymin, ymax)
-        plt.xlabel(r'$r$ [kpc]')
+        plt.xlabel(r'$r$ [pc]')
         plt.ylabel(r'$\rho(r)$ [GeV cm$^{-3}$]')
         plt.legend()
+        # plt.legend(bbox_to_anchor = (0, 1.02, 1, 0.2), loc = "lower left", mode = "expand", borderaxespad = 0, ncol = 3)
         plt.tight_layout()
         plt.savefig(path + "spike_profile.pdf", dpi = 300)
 
@@ -877,7 +963,7 @@ class FluxPlotter:
         if args.instrument_comparison == "hess":
             plt.errorbar(flux_th, int_lum_mean, yerr = int_lum_error, label = f"$m_{{\chi}}$ = {np.round(m_dm.to(u.TeV).value, 1)} TeV", linestyle = "", marker = marker, capsize = 3, color = color, markersize = marker_size)
         elif args.instrument_comparison == "fermi":
-            plt.errorbar(flux_th, int_lum_mean, yerr = int_lum_error, label = f"$m_{{\chi}}$ = {np.round(m_dm.to(u.GeV).value, 1)} GeV", linestyle = "", marker = marker, capsize = 3, color = color, markersize = marker_size)
+            plt.errorbar(flux_th, int_lum_mean, yerr = int_lum_error, label = r"$m_{{\chi}}$ = {0:.0f} GeV".format(m_dm.to(u.GeV).value), linestyle = "", marker = marker, capsize = 3, color = color, markersize = marker_size)
 
 
     def plot_integrated_luminosity_comparison(self, flux_th, label, color,  marker, marker_size):
