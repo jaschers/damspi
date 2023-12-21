@@ -243,10 +243,10 @@ def spike_profile(params, r):
 def imbh_profile(params, r):
     rho_0, r_schw, r_cut, r_s, r_sp, gamma_sp = params
 
-    if r <= 3 * r_schw:
+    if r <= 2 * r_schw:
         return None
-    elif 3 * r_schw < r <= r_cut:
-        y = spike_profile((rho_0, r_s, r_sp, gamma_sp), r_cut)
+    elif 2 * r_schw < r <= r_cut:
+        y = spike_profile((rho_0, r_s, r_sp, gamma_sp), r_cut) * (r/r_cut)**(-0.5)
         y = (y * const.c ** 2).to(u.GeV / u.cm ** 3).value
         return y
     elif r_cut < r <= r_sp:
