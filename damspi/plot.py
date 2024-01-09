@@ -681,7 +681,7 @@ class BlackHolePlotter:
         plt.figure(figsize = config["Figure_size"]["single_column"])
         plt.hist(distance, bins = config["Plots"]["number_bins"], cumulative = True, density = True, color = config["Colors"]["darkblue"])
         plt.xlabel(r"$d_\mathrm{GC}$ [kpc]")
-        plt.ylabel(r"$N(<r) / N_\mathrm{tot}$")
+        plt.ylabel(r"$N(<d_\mathrm{GC}) / N_\mathrm{tot}$")
         plt.tight_layout()
         plt.savefig(path, dpi = 500)
         plt.close()
@@ -749,7 +749,7 @@ class BlackHolePlotter:
             data_sorted = np.sort(data)
             data_mean = np.mean(data)
             data_std = np.std(data, ddof = 1)
-            data_mean_error = np.std(data, ddof = 1) / np.sqrt(len(data))
+            data_mean_error = data_std / np.sqrt(len(data))
             data_median = np.median(data)
             # Calculate the values at the 16th and 84th percentiles to get the error on the median
             lower_percentile = np.percentile(data, 16)
