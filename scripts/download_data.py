@@ -3,6 +3,10 @@ import h5py
 import argparse
 import os
 from astropy import units as u
+import yaml
+
+with open("config/config.yaml", "r") as f:
+    config = yaml.load(f, Loader=yaml.FullLoader)
 
 ######################################## argparse setup ########################################
 script_descr="""
@@ -13,8 +17,8 @@ This script downloads the EAGLE particle data and saves the black hole data into
 parser = argparse.ArgumentParser(description=script_descr)
 
 # Define expected arguments
-parser.add_argument("-sn", "--sim_name", type = str, required = False, default = "RefL0050N0752", metavar = "-", help = "Name of the EAGLE simulation, default: RefL0050N0752")
-parser.add_argument("-nf", "--number_files", type = int, required = False, default = 128, metavar = "-", help = "Number of files for the particle data, default: 128")
+parser.add_argument("-sn", "--sim_name", type = str, required = False, default = "RefL0100N1504", metavar = "-", help = "Name of the EAGLE simulation, default: RefL0100N1504")
+parser.add_argument("-nf", "--number_files", type = int, required = False, default = 256, metavar = "-", help = "Number of files for the particle data, default: 256")
 
 args = parser.parse_args()
 print("####### Setup #######")
@@ -62,18 +66,21 @@ def extract_bh_data(nsnap, sim_name = args.sim_name, nfiles = args.number_files)
         path_new = f"data/{sim_name}/snapshot_{nsnap}_z{redshift_1}p{redshift_2}/snap_{nsnap}_z{redshift_1}p{redshift_2}.%i_new.hdf5"%i
 
         # Open the existing .h5 file
-        with h5py.File(path, 'r') as f:
-            # Create a new .h5 file
-            with h5py.File(path_new, 'w') as new_f:
-                # Copy 'Header' dataset to the new file
-                f.copy('Header', new_f)
-                
-                if 'PartType5' in f.keys():
-                    # Copy 'PartType5' dataset to the new file
-                    f.copy('PartType5', new_f)
-                
-                # Save the new file
-                new_f.flush()
+        try:
+            with h5py.File(path, 'r') as f:
+                # Create a new .h5 file
+                with h5py.File(path_new, 'w') as new_f:
+                    # Copy 'Header' dataset to the new file
+                    f.copy('Header', new_f)
+                    
+                    if 'PartType5' in f.keys():
+                        # Copy 'PartType5' dataset to the new file
+                        f.copy('PartType5', new_f)
+                    
+                    # Save the new file
+                    new_f.flush()
+        except FileNotFoundError:
+            raise FileNotFoundError(f"The file data/{args.sim_name}_snap_{convert_float_to_three_digit(i)}.tar may be corrupted. Please delete it and try again.")
 
         os.remove(path)
         os.rename(path_new, path)
@@ -81,17 +88,21 @@ def extract_bh_data(nsnap, sim_name = args.sim_name, nfiles = args.number_files)
 def nsnap_three_digit(nsnap):
     return convert_float_to_three_digit(nsnap)
 
-os.makedirs("data/", exist_ok = True)
-for i in range(29):
-    if not os.path.exists(f"data/{args.sim_name}_snap_{convert_float_to_three_digit(i)}.tar"):
-        weblink = f"https://dataweb.cosma.dur.ac.uk:8443/eagle-snapshots//download?run={args.sim_name}&snapnum={i}"
 
-        command = f"wget -P data/ --user=dvd351 --password zqfARI55 --content-disposition '{weblink}'"
+if __name__ == "__main__":
+    os.makedirs("data/", exist_ok = True)
+    for i in range(29):
+        if not os.path.exists(f"data/{args.sim_name}_snap_{convert_float_to_three_digit(i)}.tar"):
+            weblink = f"https://dataweb.cosma.dur.ac.uk:8443/eagle-snapshots//download?run={args.sim_name}&snapnum={i}"
 
-        os.system(command)
+            command = f"wget -P data/ --user={config['User_input']['user_name']} --password {config['User_input']['user_password']} --content-disposition '{weblink}'"
 
-    os.system(f"tar -xvf data/{args.sim_name}_snap_{convert_float_to_three_digit(i)}.tar -C hdf")
+            os.system(command)
 
-    extract_bh_data(nsnap = i)
+        print(f"Extracting data/{args.sim_name}_snap_{convert_float_to_three_digit(i)}.tar")
+        os.system(f"tar -xvf data/{args.sim_name}_snap_{convert_float_to_three_digit(i)}.tar -C data") # -C hdf
 
-    os.system(f"rm data/{args.sim_name}_snap_{convert_float_to_three_digit(i)}.tar")
+        extract_bh_data(nsnap = i)
+
+        print(f"Deleting data/{args.sim_name}_snap_{convert_float_to_three_digit(i)}.tar")
+        os.system(f"rm data/{args.sim_name}_snap_{convert_float_to_three_digit(i)}.tar")
