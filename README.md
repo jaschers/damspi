@@ -10,17 +10,13 @@ git clone git@github.com:jaschers/damspi.git
 ```
 Create the conda environment and install the required packages:
 ```
-conda create --name damspi --file requirements.txt
+conda create -n damspi python=3.9.15
 ```
-Active the conda environment:
 ```
 conda activate damspi
 ```
 ```
 pip install -r requirements.txt
-```
-```
-conda activate damspi
 ```
 
 # Usage
@@ -33,7 +29,7 @@ python scripts/download_data.py
 ```
 By default, this will download all the 29 redshift snapshots available for the reference dataset ``RefL0100N1504`` with a box size of 100 cMpc. The data is stored in the HDF5 format in the ``data`` directory. Only the black hole particle data, i.e. ``PartType5``, is downloaded to save storage space. The download may take a while, depending on your internet connection and the specific EAGLE dataset you choose. Other dataset can be downloaded by specifying the ``--sim_name`` (``-sn``) and ``--number_files`` (``-nf``) option:
 ```
-python scripts/download_data.py -sn RefL0050N0752 -nf 128
+python scripts/download_data.py -sn RefL0100N1504 -nf 256
 ```
 The ``--number_files`` option describes the number of files that are present for each snapshot and are fixed by the EAGLE simulation. E.g. ``RefL0100N1504``, ``RefL0050N0752`` and ``RefL0025N0376`` have a number of 256, 128 and 16 files per snapshot, respectively.
 
