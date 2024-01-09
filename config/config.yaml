@@ -75,5 +75,5 @@ Spike_profile_example:
 
 Milky_way:
   halo_mass_range: [10**(11.7), 10**(12.5)] # u.Msun
-  # halo_mass_range: [1.41e11, 5.4e11] # u.Msun
   stellar_mass_range: [10**(10.4), 10**(11.2)] # u.Msun
+  distance_sun: 8.33 # kpc
