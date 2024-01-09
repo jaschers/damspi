@@ -33,53 +33,63 @@ import yaml
 with open("config/config.yaml", "r") as f:
     config = yaml.load(f, Loader=yaml.FullLoader)
 
-# ignore division by zero
-np.seterr(divide='ignore')
+# # ignore division by zero
+# np.seterr(divide='ignore')
 # don't print pandas warning
 pd.options.mode.chained_assignment = None  # default='warn'
 
 class DataCollector:
     """
-    Collects data from the EAGLE simulations.
+    Collect the data of the black holes and their host galaxies.
 
-    The galaxy data is requested from the EAGLE database using the SQL request. The black hole data is read from the hdf5 files stored in the 'data/' folder. The data is stored in pandas DataFrames. 
+    The data of the black holes and their host galaxies is collected from the EAGLE database. The data is stored in pandas DataFrames.
 
     Parameters
     ----------
-    sim_name: str 
+    sim_name: str
         The name of the EAGLE simulation.
     number_files: int
-        The number of files in the EAGLE simulation.
+        The number of hdf5 files.
 
     Attributes
     ----------
     sim_name: str
         The name of the EAGLE simulation.
     number_files: int
-        The number of files in the EAGLE simulation.
+        The number of hdf5 files.
     dict_redshift: dict
-        A dictionary that maps the snapshot number to the redshift.
+        The dictionary of the redshifts of the snapshots.
     hubble_constant: float
         The Hubble constant.
     minimal_galaxy_mass: float
-        The minimal galaxy mass to form a black hole.
-    bh_mass_formation: float
-        The black hole mass at formation.
+        The minimal galaxy mass to form a black hole in the EAGLE simulation.
+    bh_mass_formation: astropy.units.quantity.Quantity
+        The black hole mass at which the black hole forms in the EAGLE simulation.
     stellar_mass_range: list
-        The stellar mass range used to select Milky Way-like galaxies.
+        The stellar mass range of the host galaxies.
     halo_mass_range: list
-        The halo mass range used to select Milky Way-like galaxies.
-    
+        The halo mass range of the host galaxies.
+    bh_mass_limit: astropy.units.quantity.Quantity
+        The black hole mass limit.
+
     Methods
     -------
-    galaxy_data(nsnap)
-        Get the Milky Way-like galaxy data for snapshot nsnap from the EAGLE simulations.
-    read_dataset(itype, att, nsnap)
-        Read a particle data, itype is the PartType and att is the attribute name.
     black_hole_data(nsnap)
         Get the black hole data for snapshot nsnap from the EAGLE simulations.
     find_next_smallest(dictionary, values)
         Find the next smallest value in a dictionary.
+    galaxy_data(nsnap)
+        Get the galaxy data for snapshot nsnap from the EAGLE simulations.
+    read_dataset(itype, att, nsnap)
+        Read a selected dataset, itype is the PartType and att is the attribute name.
+
+    Notes
+    -----
+    The black hole data is read from the hdf5 files stored in the 'data/' folder. The galaxy data is requested from the EAGLE database using the SQL request.
+
+    Examples
+    --------
+    >>> DataCollector(sim_name = "RefL0100N1504", number_files = 256)
     """
 
     def __init__(self, sim_name, number_files):
@@ -119,11 +129,9 @@ class DataCollector:
         """
 
         # extract BH values at z = 0
-        # bh_mass = (self.read_dataset(itype = 5, att = "Mass", nsnap = 28) * u.g).to(u.M_sun).value
         bh_subgrid_mass = (self.read_dataset(itype = 5, att = "BH_Mass", nsnap = nsnap) * u.g).to(u.M_sun).value
         bh_n_merger = self.read_dataset(itype = 5, att = "BH_CumlNumSeeds", nsnap = nsnap) 
         bh_coordinates = (self.read_dataset(itype = 5, att = "Coordinates", nsnap = nsnap) * u.cm).to(u.kpc).value
-        # bh_time_last_merger = redshift(self.read_dataset(itype = 5, att = "BH_TimeLastMerger", nsnap = nsnap)) 
         bh_group_number = self.read_dataset(itype = 5, att = "GroupNumber", nsnap = nsnap)
         bh_subgroup_number = self.read_dataset(itype = 5, att = "SubGroupNumber", nsnap = nsnap)
         bh_id = self.read_dataset(itype = 5, att = "ParticleIDs", nsnap = nsnap)
@@ -156,20 +164,23 @@ class DataCollector:
             The dictionary.
         values: list
             The values.
-
+            
         Returns
         -------
         smallest_keys: list
             The keys of the smallest values.
+        smallest_values: list
+            The smallest values.
         
         Notes
         -----
-        The function is used to find the snapshot number and redshift of the closest snapshot to the formation redshift of the black hole.
-
+        The smallest values are found by looping over the dictionary and comparing the values with the values in the values list.
+        
         Examples
         --------
-        >>> find_next_smallest(dictionary = {0: 20, 1: 15.132, 2: 9.993, 3: 8.988, 4: 8.075, 5: 7.050, 6: 5.971, 7: 5.487, 8: 5.037}, values = [6.0, 10.0])
+        >>> find_next_smallest(dictionary = {"a": 1, "b": 2, "c": 3}, values = [0.5, 1.5, 2.5])
         """
+
         smallest_values = []
         smallest_keys = []
         for value in values:
@@ -185,13 +196,13 @@ class DataCollector:
 
     def galaxy_data(self, nsnap):
         """
-        Get the galaxy data for snapshot nsnap from the EAGLE simulations
+        Get the galaxy data for snapshot nsnap from the EAGLE simulations.
 
         Parameters
         ----------
         nsnap: int
             The snapshot number.
-        
+
         Returns
         -------
         table_galaxy: pandas.DataFrame
@@ -282,20 +293,23 @@ class DataCollector:
             The PartType.
         att: str
             The attribute name.
+        nsnap: int
+            The snapshot number.
 
         Returns
         -------
         data: numpy.ndarray
             The data.
-        
+
         Notes
         -----
         The data is read from the hdf5 files stored in the 'data/' folder.
 
         Examples
         --------
-        >>> read_dataset(itype = 5, att = "Coordinates", nsnap = 28)
+        >>> read_dataset(itype = 5, att = "BH_Mass", nsnap = 28)
         """
+
         # Output array.
         data = []
 
@@ -341,31 +355,37 @@ class DataCollector:
 
 class CoordinateTransformer:
     """
-    Transforms the coordinate system of the black holes.
-
-    The coordinates of the black holes in the EAGLE simulation are given relative to the whole simulation box. Therefore, the coordinate system of the black hole needs to be transformed to the galactic coordinate system of each individual host galaxy of the black holes. The transformation is done in three steps: (1) Shift the coordinate system to the position of the galaxy centre, (2) rotate the coordinate system so that the spin vector of the galaxy is aligned with the z-axis, (3) shift the coordinate system to the position of the Sun. Step (2) aligns the disk of the galaxies with the x-y-plane.
+    The coordinates of the black holes are transformed to the galactic coordinate system.
 
     Parameters
     ----------
     table_galaxy: pandas.DataFrame
-        The galaxy data of single galaxy. Required columns are: "galaxy_id", "cop_x", "cop_y", "cop_z", "spin_x", "spin_y", "spin_z".
+        The galaxy data of a single galaxy. Required columns are: "group number", "subgroup number", "z_f", "z_c", "nsnap_c", "cop_x", "cop_y", "cop_z", "spin_x", "spin_y", "spin_z".
     table_bh: pandas.DataFrame
-        The black hole data of the corresponding galaxy. Required columns are: "coord x", "coord y", "coord z".
+        The black hole data of a single black hole. Required columns are: "group number", "subgroup number", "z_f", "z_c", "nsnap_c", "coord x", "coord y", "coord z".
+    box_size: astropy.units.quantity.Quantity
+        The size of the EAGLE box.
 
     Attributes
     ----------
     distance_sun: float
-        The distance between the sun and the galactic centre.
+        The distance between the Sun and the galactic centre in kpc.
+    box_size: float
+        The size of the EAGLE box in kpc.
     table_galaxy: pandas.DataFrame
         The galaxy data.
     galaxy_id: int
         The galaxy ID.
     galaxy_centre: numpy.ndarray
-        The coordinates of the galaxy centre.
+        The cartesian coordinates of the galaxy centre.
     galaxy_spin: numpy.ndarray
         The spin vector of the galaxy.
     galaxy_spin_rot: numpy.ndarray
-        The rotated spin vector of the galaxy (aligned with the z-axis).
+        The rotated spin vector of the galaxy.
+    rot_matrix_x: numpy.ndarray
+        The rotation matrix around the x-axis.
+    rot_matrix_y: numpy.ndarray
+        The rotation matrix around the y-axis.
     table_bh: pandas.DataFrame
         The black hole data.
     bh_coord: numpy.ndarray
@@ -374,32 +394,34 @@ class CoordinateTransformer:
         The cartesian coordinates of the black holes with respect to the galaxy centre.
     distance_gc: numpy.ndarray
         The distance between the black holes and the galaxy centre.
-    bh_coord_gc_rot: numpy.ndarray
-        The cartesian coordinates of the black holes with respect to the galaxy centre. The coordinate system is rotated so that the spin vector of the galaxy is aligned with the z-axis.
-    bh_coord_sun: numpy.ndarray
-        The cartesian coordinates of the black holes with respect to the Sun. The coordinate system is rotated so that the spin vector of the galaxy is aligned with the z-axis.
     bh_spherical_coord_gc: numpy.ndarray
         The spherical coordinates of the black holes with its origin of coordinates at the position of the galactic centre.
-    bh_galactic_coord: numpy.ndarray
-        The galactic coordinates of the black holes. The origin of coordinates is at the position of the Sun.
-
+    
     Methods
     -------
     rot_angle_x(vec)
-        Get the rotation angle around the x-axis.
+        Get rotation angle around x-axis.
     rot_angle_y(vec)
-        Get the rotation angle around the y-axis.
+        Get rotation angle around y-axis.
     rot_matrices_x_y(vec)
-        Get the rotation matrices around the x- and y-axis.
+        Get rotation matrices around x- and y-axis.
     rotate_x_y(vec, rot_matrix_x, rot_matrix_y)
-        Rotate a vector around the x- and y-axis.
+        Rotate vector around x- and y-axis.
     plot_3d_maps(sim_name, path, save_animation = False)
-        Plot the 3D maps of the black holes.
+        Plot 3d maps of black holes.
+
+    Notes
+    -----
+    The coordinate system is rotated so that the spin vector of the galaxy is aligned with the z-axis.  
+
+    Examples
+    --------
+    >>> CoordinateTransformer(table_galaxy = table_galaxy, table_bh = table_bh, box_size = 100 * u.Mpc)
     """
 
     def __init__(self, table_galaxy, table_bh, box_size):
         # shift coorindates system to position of the sun (8.33 kpc), https://iopscience.iop.org/article/10.1088/1475-7516/2011/03/051/pdf
-        self.distance_sun = 8.33 # kpc
+        self.distance_sun = config["Milky_way"]["distance_sun"] # 8.33 # kpc
         self.box_size = box_size.to(u.kpc).value
 
         self.table_galaxy = table_galaxy
@@ -423,6 +445,7 @@ class CoordinateTransformer:
         bh_coord_gc: numpy.ndarray
             The cartesian coordinates of the black holes with respect to the galaxy centre.
         """
+
         bh_coord_gc = self.bh_coord - self.galaxy_centre
         # Consider periodic boundary conditions
         bh_coord_gc = bh_coord_gc - self.box_size * np.round(bh_coord_gc / self.box_size)
@@ -682,54 +705,75 @@ class CoordinateTransformer:
 
 class DMMiniSpikesCalculator:
     """
-    Calculate the DM mini-spikes.
-
-    The DM mini-spikes are calculated using the NFW profile. The NFW profile is fitted to the DM density profile of the host galaxy. The DM mini-spikes are calculated using the DM density profile of the host galaxy and the NFW profile.
+    Calculate the DM mini-spikes around the black holes.
 
     Parameters
     ----------
     sim_name: str
         The name of the EAGLE simulation.
+    box_size: astropy.units.quantity.Quantity
+        The size of the EAGLE box.
+    dm_profile: str
+        The dark matter profile.
+    core_index: float
+        The core index of the dark matter profile.
     table_bh: pandas.DataFrame
-        The black hole data of a single black hole. Required columns are: "group number", "subgroup number", "z_f", "z_c", "nsnap_c", "coord x", "coord y", "coord z".
+        The black hole data of a single black hole. Required columns are: "group number", "subgroup number", "z_f", "z_c", "nsnap_c", "coord x", "coord y", "coord z", "m [M_solar]".
 
     Attributes
     ----------
     sim_name: str
         The name of the EAGLE simulation.
+    box_size: float
+        The size of the EAGLE box in kpc.
+    dm_profile: str
+        The dark matter profile.
+    core_index: float
+        The core index of the dark matter profile.
     table_bh: pandas.DataFrame
         The black hole data.
+    bh_id: int
+        The EAGLE black hole ID.
     group_number: int
-        The group number of the black hole.
+        The EAGLE group number.
     subgroup_number: int
-        The subgroup number of the black hole.
+        The EAGLE subgroup number.
     z_formation: float
         The formation redshift of the black hole.
     z_closest: float
-        The redshift of the closest snapshot to the formation redshift of the black hole.
+        The redshift of the closest snapshot.
     nsnap_closest: int
-        The snapshot number of the closest snapshot to the formation redshift of the black hole.
+        The snapshot number of the closest snapshot.
     bh_coord: numpy.ndarray
         The cartesian coordinates of the black holes in the EAGLE box coordinate system.
+    bh_mass: astropy.units.quantity.Quantity
+        The black hole mass.
     no_host: bool
-        If True, the black hole does not have a host galaxy at it's formation redshift.
+        If True, the black hole does not have a host galaxy.
     hubble_constant: float
         The Hubble constant.
-    minimal_galaxy_mass: float
+    minimal_galaxy_mass: astropy.units.quantity.Quantity
         The minimal galaxy mass to form a black hole in the EAGLE simulation.
-    bh_mass_formation: float
+    bh_mass_formation: astropy.units.quantity.Quantity
         The black hole mass at which the black hole forms in the EAGLE simulation.
-    rho_0: float
-        The NFW normalisation parameter.
-    r_s: float
-        The NFW scale radius.
-    r_h: float
-        The radius of the gravitational influence of the black hole.
-    r_sp: float
-        The dark matter mini-spike radius.
-    rho_sp: float
-        The dark matter mini-spike density.
+    rho_0: astropy.units.quantity.Quantity
+        The dark matter density at the scale radius.
+    r_s: astropy.units.quantity.Quantity
+        The scale radius.
+    r_c: astropy.units.quantity.Quantity
+        The core radius.
+    gamma_c: float
+        The core index.
+    r_h: astropy.units.quantity.Quantity
+        The radius of gravitational influence.
+    r_sp: astropy.units.quantity.Quantity
+        The spike radius.
+    rho_at_r_sp: astropy.units.quantity.Quantity
+        The dark matter density at the spike radius.
+    spike_index: float
+        The spike index.
 
+    
     Methods
     -------
     redshift_to_scale_factor(redshift)
@@ -738,32 +782,36 @@ class DMMiniSpikesCalculator:
         Calculate the distance between two points.
     query_galaxy_zf(subgroup_number_avail = True)
         Query the galaxy data of the host galaxy at the formation redshift of the black hole.
-    get_table_galaxy_zf(subgroup_number_avail = True)
+    get_table_galaxy_zf()
         Get the galaxy data of the host galaxy at the formation redshift of the black hole.
-    density_within_aperature(r, rho_0, r_s)
-        Calculate the DM density within the aperture.
-    nfw_profile_log(r, rho_0, r_s)
-        Calculate the NFW profile (log).
-    nfw_cost_function(params, r, rho)
-        Calculate the cost function of the NFW fit.
+    density_within_aperature(r)
+        Calculate the dark matter density within a given aperture.
+    nfw_profile_log(params, r)
+        Used to fit the NFW profile to the DM density profile of the host galaxy.
+    cored_profile_log(params, r)
+        Used to fit the cored profile to the DM density profile of the host galaxy.
+    nfw_cost_function(params, r):
+        The cost function for the NFW profile.
+    cored_cost_function(params, r):
+        The cost function for the cored profile.
+    cored_cost_function_fixed_gamma_c(params, r):
+        The cost function for the cored profile with fixed core index.
     nfw_fit()
-        Fit the NFW profile to the DM density profile of the host galaxy.
-    radius_gravitational_influence_equation(r, rho_0, r_s, m_bh)
-        Equation used to calculate the radius of the gravitational influence of the black hole.
-    radius_gravitational_influence(rho_0, r_s, M_bh)
-        Calculate the radius of the gravitational influence of the black hole.
-    plot_nfw_fit(r, rho, r_s, rho_0, path)
-        Plot the NFW fit.
-    plot_radius_gravitational_influence(r, rho, r_s, rho_0, path)
+        Fit the NFW profile to the dark matter density profile.
+    cored_fit()
+        Fit the cored profile to the dark matter density profile.
+    cored_fit_fixed_gamma_c()
+        Fit the cored profile to the dark matter density profile with fixed core index.
+    radius_gravitational_influence_equation(r, rho_0, r_s, M_bh, r_c = None, gamma_c = None):
+        The equation for the radius of gravitational influence.
+    radius_gravitational_influence(rho_0, r_s, M_bh, r_c = None, gamma_c = None):
+        Calculate the radius of gravitational influence.
+    plot_nfw(path):
+        Plot the NFW profile.
+    plot_cored(path):
+        Plot the cored profile.
+    plot_radius_gravitational_influence(path):
         Plot the radius of the gravitational influence of the black hole fit.
-
-    Notes
-    -----
-    The NFW profile is fitted to the DM density profile of the host galaxy. The NFW profile is fitted using the scipy.optimize.minimize function. The radius of the gravitational influence of the black hole is calculated using the scipy.optimize.fsolve function. The dark matter mini-spike radius and density are calculated using the NFW profile.
-
-    Examples
-    --------
-    >>> DMMiniSpikesCalculator(sim_name = "RefL0050N0752", table_bh = table_bh)
     """
 
     def __init__(self, sim_name, box_size, dm_profile, core_index, table_bh):
@@ -1181,37 +1229,6 @@ class DMMiniSpikesCalculator:
         output = self.cored_profile_log((rho_0, r_s, r_c, self.core_index), r)
         return output
 
-    def cored_cost_function(self, params, r):
-        """
-        Used to fit the cored profile to the DM density profile of the host galaxy.
-
-        Parameters
-        ----------
-        r: numpy.ndarray
-            The radius.
-        rho_0, r_s, r_c, gamma_c: float
-            The cored parameters.
-
-        Returns
-        -------
-        predicted: numpy.ndarray
-            The predicted DM density profile of the host galaxy (log).
-
-        Notes
-        -----
-        The cored profile (log) is calculated using the cored parameters and the radius.
-
-        Examples
-        --------
-        >>> cored_cost_function(10 * u.kpc, 5e6 * u.Msun / u.kpc**3, 40 * u.kpc, 0.2, 1.0)
-        """
-        rho_0, r_s, r_c, gamma_c = params
-        # set conditions for parameters due to physical constraints
-        if rho_0 <= 0 or r_s <= 0 or r_c <= 0 or gamma_c < 0 or gamma_c >= 1:
-            return np.inf
-        output = self.cored_profile_log((rho_0, r_s, r_c, gamma_c), r)
-        return output
-
     def nfw_fit(self):
         """
         Fit the NFW profile to the DM density profile of the host galaxy.
@@ -1268,8 +1285,10 @@ class DMMiniSpikesCalculator:
             The cored normalisation parameter.
         r_s: astropy.units.quantity.Quantity
             The cored scale radius.
-        alpha: float
-            The cored shape parameter.
+        r_c: astropy.units.quantity.Quantity
+            The core radius.
+        gamma_c: float
+            The cored core index.
 
         Notes
         -----
@@ -1314,7 +1333,7 @@ class DMMiniSpikesCalculator:
 
     def cored_fit_fixed_gamma_c(self):
         """
-        Fit the cored profile to the DM density profile of the host galaxy.
+        Fit the cored profile with fixed core index to the DM density profile of the host galaxy.
 
         Returns
         -------
@@ -1322,8 +1341,10 @@ class DMMiniSpikesCalculator:
             The cored normalisation parameter.
         r_s: astropy.units.quantity.Quantity
             The cored scale radius.
-        alpha: float
-            The cored shape parameter.
+        r_c: astropy.units.quantity.Quantity
+            The core radius.
+        gamma_c: float
+            The cored core index.
 
         Notes
         -----
@@ -1376,6 +1397,10 @@ class DMMiniSpikesCalculator:
             The NFW scale radius.
         M_bh: astropy.units.quantity.Quantity
             The black hole mass.
+        r_c: astropy.units.quantity.Quantity
+            The core radius.
+        gamma_c: float
+            The core index.
 
         Returns
         -------
@@ -1416,6 +1441,10 @@ class DMMiniSpikesCalculator:
             The NFW scale radius.
         M_bh: astropy.units.quantity.Quantity
             The black hole mass.
+        r_c: astropy.units.quantity.Quantity
+            The core radius.
+        gamma_c: float
+            The core index.
 
         Returns
         -------
