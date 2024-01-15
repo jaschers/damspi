@@ -34,6 +34,7 @@ from scipy.optimize import curve_fit
 import scipy.stats
 from scipy.odr import Model, RealData, ODR, Data
 from sklearn.neighbors import KernelDensity
+import healpy as hp
 
 with open("config/config.yaml", "r") as f:
     config = yaml.load(f, Loader=yaml.FullLoader)
@@ -373,7 +374,196 @@ class BlackHolePlotter:
         plt.savefig(path, dpi = 500)
         plt.close()
 
-    def plot_2d_map_contours(self, lat, long, path):
+    # def plot_2d_map_contours(self, lat, long, path):
+    #     # Extract IMBH coordinates
+    #     coords = SkyCoord(long, lat, frame='galactic', unit='rad')
+    #     coord_stacked = np.vstack([lat, coords.l.wrap_at('180d').radian]).T
+    #     coord_stacked_contours = np.vstack([coords.l.wrap_at('180d').radian, lat])
+
+    #     # define grid for kernel density estimation
+    #     num_grid = 250
+    #     lat_min, lat_max = -np.pi / 2, np.pi / 2
+    #     long_min, long_max = -np.pi, np.pi
+    #     dlat = (lat_max - lat_min) / num_grid
+    #     dlon = (long_max - long_min) / num_grid
+    #     lat_grid = np.linspace(lat_min, lat_max, num_grid)
+    #     long_grid = np.linspace(long_min, long_max, num_grid)
+    #     Lat_grid, Long_grid = np.meshgrid(lat_grid, long_grid)
+    #     coord_grid = np.vstack([Lat_grid.flatten(), Long_grid.flatten()]).T
+
+    #     # define grid for contours
+    #     coord_grid_contours = np.vstack([Long_grid.flatten(), Lat_grid.flatten()])
+
+    #     # calculate kernel density estimation on IMBH coordinates
+    #     kde = KernelDensity(bandwidth="scott", metric='haversine')
+    #     kde.fit(coord_stacked)
+
+    #     # evaluate kde on grid coordinates
+    #     pdf = np.exp(kde.score_samples(coord_grid))
+    #     pdf = pdf.reshape(Lat_grid.shape)
+
+    #     # get HESS galactic plane survey values and convert them to radians
+    #     num_grid_survey = 100
+    #     hess_lat_min, hess_lat_max = config["HESS"]["gps_lat_min"], config["HESS"]["gps_lat_max"]
+    #     hess_long_min, hess_long_max = config["HESS"]["gps_long_min"], config["HESS"]["gps_long_max"]
+    #     hess_lat_min, hess_lat_max = hess_lat_min * np.pi / 180, hess_lat_max * np.pi / 180 # rad
+    #     hess_long_min, hess_long_max = hess_long_min * np.pi / 180, hess_long_max * np.pi / 180 # rad
+
+    #     # CTA galactic plane survey values and convert them to radians
+    #     cta_lat_min, cta_lat_max = config["CTA"]["gps_lat_min"], config["CTA"]["gps_lat_max"]
+    #     cta_long_min, cta_long_max = config["CTA"]["gps_long_min"], config["CTA"]["gps_long_max"]
+    #     cta_lat_min, cta_lat_max = cta_lat_min * np.pi / 180, cta_lat_max * np.pi / 180 # rad
+    #     cta_long_min, cta_long_max = cta_long_min * np.pi / 180, cta_long_max * np.pi / 180 # rad
+
+    #     # get expected number of IMBHs within HESS and CTA galactic plane surveys
+    #     self.expected_number_within_region(
+    #         coord_stacked, 
+    #         hess_lat_min, 
+    #         hess_lat_max, 
+    #         hess_long_min, 
+    #         hess_long_max, 
+    #         kde, 
+    #         num_grid_survey, 
+    #         "HESS"
+    #         )
+
+    #     self.expected_number_within_region(
+    #         coord_stacked,
+    #         cta_lat_min,
+    #         cta_lat_max,
+    #         cta_long_min,
+    #         cta_long_max,
+    #         kde,
+    #         num_grid_survey,
+    #         "CTA"
+    #         )
+
+    #     # calculate cdf
+    #     # define desired percentage contours to be calculated
+    #     percentages_desired = [10, 20, 30, 40, 50]
+    #     # initialize variables that will be filled in the loop later
+    #     percentages_diff = np.full(len(percentages_desired), np.inf)
+    #     percentages_cont = np.zeros(len(percentages_desired))
+    #     percentages_cont_collections = np.empty(len(percentages_desired), dtype = object)
+
+    #     # calculate the desired percentage contours with matplotlib
+    #     fig_cdf = plt.figure(figsize = config["Figure_size"]["double_column"])
+    #     ax_cdf = fig_cdf.add_subplot(111, projection="aitoff")
+    #     # extract the PDF contours
+    #     levels = np.linspace(pdf.min(), pdf.max(), 500) #150
+    #     cont = ax_cdf.contour(Long_grid, Lat_grid, pdf, levels = levels)
+
+    #     def is_path_closed(path):
+    #         """Check if a Matplotlib path is closed."""
+    #         return path.codes is not None and path.codes[-1] == mpl.path.Path.CLOSEPOLY
+
+    #     # Get the contour collections
+    #     cont_collections = cont.collections
+
+    #     # Loop through each contour collection
+    #     for collection in cont_collections:
+    #         # Get the contour path
+    #         cont_path = collection.get_paths()
+    #         if cont_path: # check if the contour is not empty
+    #             cont_path = cont_path[0]
+                
+    #             if is_path_closed(cont_path) == True:
+    #                 mask = cont_path.contains_points(coord_grid_contours.T)
+    #                 coord_grid_contours_masked = coord_grid_contours.T[mask]
+    #                 lat_contours_masked = coord_grid_contours_masked[:, 1]
+    #                 area_element = np.cos(lat_contours_masked) * dlat * dlon
+
+    #                 pdf_masked = pdf.flatten()[mask]
+    #                 pdf_integrated = np.sum(pdf_masked * area_element.ravel())
+    #                 cont_percentage = pdf_integrated * 100
+
+    #                 # Check if the current contour is closer to the desired percentage than the previous one and update the variables
+    #                 for i, percentage in enumerate(percentages_desired):
+    #                     if np.abs(percentage - cont_percentage) < percentages_diff[i]:
+    #                         percentages_cont[i] = cont_percentage
+    #                         percentages_cont_collections[i] = collection
+    #                         percentages_diff[i] = np.abs(percentage - cont_percentage)
+
+    #     plt.close()
+
+    #     # # check if countors percentages agree with number of IMBHs
+    #     # for cont_collection, percentage in zip(percentages_cont_collections, percentages_cont):
+    #     #     cont_collections_path = cont_collection.get_paths()[0]
+    #     #     mask = cont_collections_path.contains_points(coord_stacked_contours.T)
+    #     #     print("Contours percentage:", percentage, "%")
+    #     #     print("Number of IMBHs within contour:", np.sum(mask) / len(mask) * 100, "%")
+
+    #     # Plot in Aitoff projection
+    #     fig = plt.figure(figsize = config["Figure_size"]["double_column"])
+    #     ax = fig.add_subplot(111, projection="aitoff")
+    #     ax.grid(True, alpha = 0.5)
+    #     # plot the PDF
+    #     im = ax.pcolormesh(Long_grid, Lat_grid, pdf, cmap = LinearSegmentedColormap.from_list("", config["Colors"]["cmap_2d_map"]), edgecolors = "face", linewidth = 0, rasterized=True)
+
+    #     # plot the contours
+    #     x_max_previous = 0
+    #     for i, collection in enumerate(percentages_cont_collections):
+    #         cont_path = collection.get_paths()[0]
+    #         x, y = zip(*cont_path.vertices)
+    #         x_max, y_min = np.max(x), np.min(y)
+    #         ax.plot(x, y, color = "white", alpha = 0.6, linestyle = "dashed")
+    #         ax.text(
+    #             x_max_previous + np.abs(x_max - x_max_previous) / 2, 
+    #             - 5 * (2*np.pi/360), 
+    #             r"${0:.0f}$".format(percentages_cont[i]), 
+    #             color = "white",
+    #             horizontalalignment = "center", 
+    #             verticalalignment = "center",
+    #             alpha = 0.6,
+    #             fontsize = 8
+    #             )
+    #         x_max_previous = x_max
+
+    #     # Add colorbar
+    #     cbar = fig.colorbar(im, shrink = 0.5)
+    #     cbar.set_label(r"PDF [sr$^{-1}$]")
+
+    #     # Plot the individual BHs as points on the map
+    #     ax.scatter(coords.l.wrap_at('180d').radian, coords.b.radian, color = "white", marker='o', s = config["Plots"]["markersize"], alpha = 0.15, edgecolor = "None")
+
+    #     # Set labels and title
+    #     ax.set_xlabel('Galactic Longitude')
+    #     ax.set_ylabel('Galactic Latitude')
+    #     plt.tight_layout()
+    #     plt.savefig(path, dpi = 500)
+
+    @staticmethod
+    def random_rotate_z(phi):
+        # Random angle between 0 and 2*pi for rotation
+        random_angle = np.random.rand() * 2 * np.pi
+
+        # Rotate phi by the random angle
+        phi_rotated = phi + random_angle
+
+        # Ensuring phi_rotated is within the range [0, 2*pi]
+        phi_rotated = np.mod(phi_rotated, 2 * np.pi)
+
+        return(phi_rotated)
+    
+    def random_upsampling(self, lat, long, upsampling_factor):
+        # add original coordinates to the upsampled coordinates
+        lat_upsampled = lat
+        long_upsampled = long
+
+        for _ in range(upsampling_factor):
+            # rotate the coordinates
+            long_rotated = self.random_rotate_z(long)
+
+            # add the rotated coordinates to the upsampled coordinates
+            lat_upsampled = np.append(lat_upsampled, lat)
+            long_upsampled = np.append(long_upsampled, long_rotated)
+
+        return(lat_upsampled, long_upsampled)
+
+
+    def plot_2d_map_contours(self, lat, long, path, upsampling = False, upsampling_factor = 0):
+        if upsampling:
+            lat, long = self.random_upsampling(lat, long, upsampling_factor)
         # Extract IMBH coordinates
         coords = SkyCoord(long, lat, frame='galactic', unit='rad')
         coord_stacked = np.vstack([lat, coords.l.wrap_at('180d').radian]).T
@@ -531,6 +721,37 @@ class BlackHolePlotter:
         plt.tight_layout()
         plt.savefig(path, dpi = 500)
 
+    def plot_healpix_map(self, lat, long, path):
+        # creat healpix map
+        # Resolution of the HEALPix map
+        nside = 32
+        npix = hp.nside2npix(nside)
+
+        # Adjust phi to range from -180 to 180 degrees
+        long = np.degrees(long)  
+        long[long > 180] -= 360  
+        long = np.radians(long)
+
+        # Convert theta and phi to HEALPix pixel indices
+        lat = np.radians(90) - lat 
+        pixels = hp.ang2pix(nside, lat, long)
+
+        # Create a HEALPix map (histogram of pixel indices)
+        hpx_map = np.bincount(pixels, minlength=npix)
+
+        # Visualize the map with grid and labels
+        hp.mollview(hpx_map, coord=['G'], unit='Number of Points', cbar=True, cmap = LinearSegmentedColormap.from_list("", config["Colors"]["cmap_2d_map"]), flip = "geo")
+        hp.graticule()  # Add grid lines
+        # Add longitude and latitude labels
+        for lon_label in np.arange(-150, 210, 30):
+            hp.projtext(lon_label, 0, f'{lon_label}°', lonlat=True, fontsize=8)
+
+        for lat_label in np.arange(-60, 90, 30):
+            hp.projtext(0, lat_label, f'{lat_label}°', lonlat=True, fontsize=8, verticalalignment='bottom')
+
+        plt.savefig(path, dpi = 500)
+        plt.close()
+
     @staticmethod
     def expected_number_within_region(coord_stacked, lat_min, lat_max, long_min, long_max, kde, num_grid, name):
         # define the grids for the galactic plane surveys
@@ -596,8 +817,8 @@ class BlackHolePlotter:
         # Evaluate the Gaussian model at grid points
         gaussian_pdf = gaussian_model.pdf(np.dstack((X, Y)))
 
-        # Normalize the Gaussian PDF for comparison
-        gaussian_pdf = gaussian_pdf / np.sum(gaussian_pdf)
+        # # Normalize the Gaussian PDF for comparison
+        # gaussian_pdf = gaussian_pdf / np.sum(gaussian_pdf)
 
         # calculate cdf
         # define desired percentage contours to be calculated
@@ -716,7 +937,7 @@ class BlackHolePlotter:
         plt.figure(figsize = config["Figure_size"]["single_column"])
         plt.bar(bins_centre, cumulative_hist_mean, yerr = cumulative_hist_mean_error, width = bins_width, color = config["Colors"]["darkblue"], edgecolor = config["Plots"]["bar_edge_color"], linewidth = config["Plots"]["bar_edge_width"], ecolor = config["Colors"]["lightblue"])
         plt.xlabel(r"$d_\mathrm{GC}$ [kpc]")
-        plt.ylabel(r"$N(<r) / N_\mathrm{tot}$")
+        plt.ylabel(r"$N(<d_\mathrm{GC}) / N_\mathrm{tot}$")
         plt.tight_layout()
         plt.savefig(path, dpi = 500)
         plt.close()
