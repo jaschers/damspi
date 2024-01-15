@@ -1,7 +1,7 @@
 # DAMSPI
 <img src="https://github.com/jaschers/damspi/blob/main/logo/logo_text.png" width="750">
 
-DArk Matter SPIkes (DAMSPI) is a python package for the analysis of dark matter spikes around Intermediate Mass Black Holes (IMBHs) in the Milky Way. It allows to extract an IMBH catalogue and their corresponding dark matter spikes parameters from the EAGLE simulations in order to probe a potential gamma-ray signal from dark matter self-annihilation. For more details, see our published article at TBA
+DArk Matter SPIkes (DAMSPI) is a fully Python-based software for the analysis of dark matter spikes around Intermediate Mass Black Holes (IMBHs) in the Milky Way. It allows to extract an IMBH catalogue and their corresponding dark matter spike parameters from the EAGLE simulations in order to probe a potential gamma-ray signal from dark matter self-annihilation. For more details, see our published article at TBA
 
 # Installation
 Clone the repository to your prefered directory:
@@ -18,6 +18,15 @@ conda activate damspi
 ```
 pip install -r requirements.txt
 ```
+Download the dark matter spectra from gammapy via:
+```
+gammapy download datasets
+```
+Add the following line to your ``.bashrc`` file:
+```
+export GAMMAPY_DATA=gammapy-datasets/1.0
+```
+
 
 # Usage
 Every script has a help option ``-h`` or ``--help`` in order to get basic instructions on how to use the script. Some details will be discussed in the following.
