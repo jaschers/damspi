@@ -33,8 +33,8 @@ import yaml
 with open("config/config.yaml", "r") as f:
     config = yaml.load(f, Loader=yaml.FullLoader)
 
-# # ignore division by zero
-# np.seterr(divide='ignore')
+# ignore division by zero
+np.seterr(divide='ignore')
 # don't print pandas warning
 pd.options.mode.chained_assignment = None  # default='warn'
 
