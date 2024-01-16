@@ -14,7 +14,7 @@ mpl.rc_file("config/mpl_config.rc")
 import damspi.catalogue as damcat
 import damspi.plot as damplot
 import damspi.flux as damflux
-from damspi.utils import parse_args
+from damspi.utils import parse_args, format_energy
 import pandas as pd
 import numpy as np
 import astropy.units as u
@@ -28,7 +28,7 @@ import yaml
 with open("config/config.yaml", "r") as f:
     config = yaml.load(f, Loader=yaml.FullLoader)
 
-def extract_flux_catalogue(bh_catalogue, args, m_dm):
+def extract_flux_catalogue(bh_catalogue, args, path, m_dm):
     flux_calculator = damflux.FluxCalculator(bh_catalogue = bh_catalogue)
     flux_catalogue = pd.DataFrame()
     for sigma_v in args.sigma_v:
@@ -43,7 +43,14 @@ def extract_flux_catalogue(bh_catalogue, args, m_dm):
 
         flux_catalogue = pd.concat([flux_catalogue, table], ignore_index = True)
 
-    flux_catalogue.to_hdf(path + f"m_dm_{int(np.rint(m_dm.value))}GeV.h5", key = "table", mode = "w")
+    # check if any flux value is zero or close to zero
+    if np.any(flux_catalogue["flux [cm-2 s-1]"].values <= 1e-30):
+        print("WARNING: Flux catalogue contains zero (or close to zero) or negative flux values!")
+        # print row with zero flux value
+        print(flux_catalogue.loc[flux_catalogue["flux [cm-2 s-1]"].values <= 1e-30])
+
+    m_dm_string = format_energy(m_dm)
+    flux_catalogue.to_hdf(path + f"m_dm_{m_dm_string}.h5", key = "table", mode = "w")
 
 
 if __name__ == "__main__":
@@ -55,8 +62,10 @@ if __name__ == "__main__":
     print(f"Load black hole catalogue from {path_catalogue + f'catalogue_{args.name}.csv'}")
     bh_catalogue = pd.read_csv(path_catalogue + f"catalogue_{args.name}.csv")
 
-    path = f"catalogue/{args.sim_name}/flux/{args.name}/{args.channel}_channel/"
-    os.makedirs(path, exist_ok = True)
+    E_th_string = format_energy(args.E_th)
+
+    path_flux_catalogue = f"catalogue/{args.sim_name}/flux/{args.name}/{args.channel}_channel/e_th_{E_th_string}/"
+    os.makedirs(path_flux_catalogue, exist_ok = True)
 
     print("Start calculating fluxes...")
     print("Number of black holes:", len(bh_catalogue))
@@ -72,7 +81,8 @@ if __name__ == "__main__":
         extract_flux_catalogue_with_args = partial(
             extract_flux_catalogue, 
             bh_catalogue,
-            args
+            args,
+            path_flux_catalogue
             )
         # Use tqdm to visualize the progress of the loop
         # loop over all individual DM masses to calculate fluxes and save them to a file
@@ -80,12 +90,14 @@ if __name__ == "__main__":
             pass
 
     print("Finished calculating fluxes!")
-    print(f"Flux catalogue(s) saved to: {path}")
+    print(f"Flux catalogue(s) saved to: {path_flux_catalogue}")
 
     if args.plot:
+        if len(args.sigma_v) != 1:
+            raise ValueError("Plotting is currently only possible for a single cross section value!")
         if len(args.sigma_v) == 1:
             print("Start plotting...")
-            path_plots = f"plots/{args.sim_name}/flux/{args.name}/{args.channel}_channel/"
+            path_plots = f"plots/{args.sim_name}/flux/{args.name}/{args.channel}_channel/e_th_{E_th_string}/"
             os.makedirs(path_plots, exist_ok = True)
 
             cmap = LinearSegmentedColormap.from_list("", config["Colors"]["cmap_flux"])
@@ -101,7 +113,8 @@ if __name__ == "__main__":
             # open relevant flux catalogues
             flux_catalogues = []
             for m_dm in args.m_dm:
-                flux_catalogues.append(pd.read_hdf(path + f"m_dm_{int(np.rint(m_dm.value))}GeV.h5", key = "table"))
+                m_dm_string = format_energy(m_dm)
+                flux_catalogues.append(pd.read_hdf(path_flux_catalogue + f"m_dm_{m_dm_string}.h5", key = "table"))
             
             flux_catalogues_conat = pd.concat(flux_catalogues, ignore_index = True)
             flux_plotter = damplot.FluxPlotter(flux_catalogues_conat)
