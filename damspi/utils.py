@@ -39,6 +39,18 @@ def add_catalogue_args(parser):
     parser.add_argument("-sa", "--save_animation", type = str, required = False, default = "n", metavar = "-", help = "Bool if animations for individual galaxies are saved (takes a lot of time) [y, n], default: n")
     parser.add_argument("-ltc", "--load_temporary_catalogue", type = str, required = False, default = "n", metavar = "-", help = "Yes, if temporary catalogue extracted in a previous run should be loaded. Only possible if create_catalogue.py was already run with the same -n <name> option in the past. Can be: 'y' or 'n'. Default: 'n'")
 
+def add_upsampling_args(parser):
+    """
+    Adds relevant upsampling arguments to the parser in the parse_args function
+
+    Parameters
+    ----------
+    parser : argparse.ArgumentParser
+        Argument parser
+    """
+
+    parser.add_argument("-uf", "--upsampling_factor", type = int, required = False, default = 1, metavar = "-", help = "Upsampling factor of IMBHs for 2D map. Default: 1 (no upsampling)")
+
 def add_dark_matter_args(parser):
     """
     Adds relevant dark matter arguments to the parser in the parse_args function
@@ -52,7 +64,7 @@ def add_dark_matter_args(parser):
     parser.add_argument("-mdm", "--m_dm", type = float, required = False, nargs = "+", default = [500, 1500, 3], metavar = "-", help = "Mass of dark matter particle in GeV. Can be single input or mass range + number of masses (three inputs). If mass range is given, scaling can be specified by the mass_dm_scaling argument. Default: 500 1500 3")
     parser.add_argument("-mdms", "--m_dm_scaling", type = str, required = False, default = "linear", metavar = "-", help = "Scaling of dark matter particle mass. Can be linear or log. Default: linear")
     parser.add_argument("-sv", "--sigma_v", type = float, required = False, nargs = "+", default = [3e-26], metavar = "-", help = "Dark matter (velocity weighted) annihilation cross section in cm3/s. Default: 3e-26")
-    # parser.add_argument("-svs", "--sigma_v_scaling", type = str, required = False, default = "log", metavar = "-", help = "Scaling of dark matter (velocity weighted) annihilation cross section. Can be linear or log. Default: log")
+    parser.add_argument("-svs", "--sigma_v_scaling", type = str, required = False, default = "log", metavar = "-", help = "Scaling of dark matter (velocity weighted) annihilation cross section. Can be linear or log. Default: log")
     parser.add_argument("-c", "--channel", type = str, required = False, nargs = "+", default = ["b"], metavar = "-", help = "Dark matter annihilation channel. Can be: 'V->e', 'V->mu', 'V->tau', 'W', 'WL', 'WT', 'Z', 'ZL', 'ZT', 'b', 'c', 'e', 'eL', 'eR', 'g', 'gamma', 'h', 'mu', 'muL', 'muR', 'nu_e', 'nu_mu', 'nu_tau', 'q', 't', 'tau', 'tauL', 'tauR'. Default: b")
     parser.add_argument("-eth", "--E_th", type = float, required = False, default = 100, metavar = "-", help = "Lower energy threshold to calculate number of gamma rays per dark matter annihilation in GeV. Default: 100")
     parser.add_argument("-ic", "--instrument_comparison", type = str, required = False, default = "hess", choices = ["hess", "fermi"], metavar = "-", help = "Instrument to which the results are compared to. Default: hess")
@@ -93,7 +105,7 @@ def add_name_args(parser):
 
     parser.add_argument("-n", "--name", type = str, required = True,  nargs = "+", metavar = "-", help = "Suffix of the output filenames, e.g. catalogue_<name>.csv.")
 
-def parse_args(include_name = True, include_cat = False, include_dm = False, include_plot = False, include_labels = False):
+def parse_args(include_name = True, include_cat = False, include_dm = False, include_plot = False, include_labels = False, include_upsampling = False):
     """
     Parses the arguments of the command line
 
@@ -137,6 +149,8 @@ def parse_args(include_name = True, include_cat = False, include_dm = False, inc
         add_labels_args(parser)
     if include_name:
         add_name_args(parser)
+    if include_upsampling:
+        add_upsampling_args(parser)
 
     # Define expected arguments
     args = parser.parse_args()
@@ -162,6 +176,7 @@ def parse_args(include_name = True, include_cat = False, include_dm = False, inc
                 args.m_dm = np.linspace(args.m_dm[0], args.m_dm[1], int(args.m_dm[2])) * u.GeV
             elif args.m_dm_scaling == 'log':
                 args.m_dm = np.logspace(np.log10(args.m_dm[0]), np.log10(args.m_dm[1]), int(args.m_dm[2])) * u.GeV
+            print("Dark matter masses: ", args.m_dm)
         else:
             args.m_dm = args.m_dm * u.GeV
 
@@ -170,11 +185,17 @@ def parse_args(include_name = True, include_cat = False, include_dm = False, inc
                 args.sigma_v = np.linspace(args.sigma_v[0], args.sigma_v[1], int(args.sigma_v[2])) * u.cm**3 / u.s
             elif args.sigma_v_scaling == 'log':
                 args.sigma_v = np.logspace(np.log10(args.sigma_v[0]), np.log10(args.sigma_v[1]), int(args.sigma_v[2])) * u.cm**3 / u.s
+            print("Dark matter (velocity weighted) annihilation cross sections: ", args.sigma_v)
         else:
             args.sigma_v = args.sigma_v * u.cm**3 / u.s
 
         if len(args.channel) == 1:
             args.channel = args.channel[0]
+
+    if include_upsampling:
+        if args.upsampling_factor < 1:
+            raise ValueError('Upsampling factor must be >= 1')
+        args.upsampling_factor = args.upsampling_factor - 1
 
     return args
 
@@ -581,3 +602,16 @@ def imbh_profile(params, r):
         y = nfw_profile((rho_0, r_s), r)
         y = (y * const.c ** 2).to(u.GeV / u.cm ** 3).value
         return y
+
+def format_energy(energy):
+    """
+    Formats any energy value to a string expressed in GeV.
+
+    Parameters:
+    energy (Quantity): The energy value with its unit.
+
+    Returns:
+    str: Formatted string representation of the energy value in GeV.
+    """
+    energy_gev = energy.to(u.GeV).value
+    return f"{energy_gev:.1f}GeV"
