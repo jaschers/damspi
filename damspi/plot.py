@@ -234,7 +234,7 @@ class BlackHolePlotter:
     def plot_bh_dist_galaxy(self, path):
         os.makedirs(path, exist_ok = True)
 
-        parameters = ["m [M_solar]", "z_f", "d_GC [kpc]", "lat_GC [rad]", "long_GC [rad]", "d_Sun [kpc]", "lat_Sun [rad]", "long_Sun [rad]"]
+        parameters = ["m", "z_f", "d_GC", "lat_GC", "long_GC", "d_Sun", "lat_Sun", "long_Sun"]
         x_labels = [r"$m_\mathrm{BH}$ [$M_{\odot}$]", r"$z_f$", r"$d_\mathrm{GC}$ [kpc]", r"$b_\mathrm{GC}$ [rad]", r"$l_\mathrm{GC}$ [rad]", r"$d_\mathrm{Sun}$ [kpc]", r"$b_\mathrm{Sun}$ [rad]", r"$l_\mathrm{Sun}$ [rad]"]
         filenames = ["mass", "redshift", "distance_GC", "latitude_GC", "longitude_GC", "distance_Sun", "latitude_Sun", "longitude_Sun"]
         
@@ -242,7 +242,7 @@ class BlackHolePlotter:
             # plot galaxy mass distribution
             data = self.table_bh[parameter].values
             plt.figure(figsize = config["Figure_size"]["single_column"])
-            if parameter == "m [M_solar]":
+            if parameter == "m":
                 bins = np.logspace(np.log10(np.min(data)), np.log10(np.max(data)), 5)
                 plt.xscale("log")
             else:
@@ -324,9 +324,9 @@ class BlackHolePlotter:
         plt.close()
 
     def plot_dist_total(self, path):
-        parameters = ["m [M_solar]", "z_f", "d_GC [kpc]", "lat_GC [rad]", "long_GC [rad]", "d_Sun [kpc]", "lat_Sun [rad]", "long_Sun [rad]", "r_sp [pc]", "rho(r_sp) [GeV/cm3]"]
-        log_parameters = ["m [M_solar]", "r_sp [pc]", "rho(r_sp) [GeV/cm3]"]
-        x_labels = [r"$m_\mathrm{BH}$ [$M_{\odot}$]", r"$z_f$", r"$d_\mathrm{GC}$ [kpc]", r"$b_\mathrm{GC}$ [rad]", r"$l_\mathrm{GC}$ [rad]", r"$d_\mathrm{Sun}$ [kpc]", r"$b_\mathrm{Sun}$ [rad]", r"$l_\mathrm{Sun}$ [rad]", "r_sp [pc]", r"$\rho(r_\mathrm{sp})$ [GeV/cm$^3$]"]
+        parameters = ["m", "z_f", "d_GC", "lat_GC", "long_GC", "d_Sun", "lat_Sun", "long_Sun", "r_sp", "rho(r_sp)"]
+        log_parameters = ["m", "r_sp", "rho(r_sp)"]
+        x_labels = [r"$m_\mathrm{BH}$ [$M_{\odot}$]", r"$z_f$", r"$d_\mathrm{GC}$ [kpc]", r"$b_\mathrm{GC}$ [rad]", r"$l_\mathrm{GC}$ [rad]", r"$d_\mathrm{Sun}$ [kpc]", r"$b_\mathrm{Sun}$ [rad]", r"$l_\mathrm{Sun}$ [rad]", "r_sp", r"$\rho(r_\mathrm{sp})$ [GeV/cm$^3$]"]
         filenames = ["mass", "redshift", "distance_gc", "latitude_GC", "longitude_GC", "distance_sun", "latitude_Sun", "longitude_Sun", "r_sp", "rho_sp"]
         
         for parameter, x_label, filename in zip(parameters, x_labels, filenames):
@@ -344,12 +344,12 @@ class BlackHolePlotter:
             plt.savefig(path + f"{filename}.pdf", dpi = 500)
             plt.close()
 
-            if parameter == "lat_GC [rad]" or parameter == "lat_Sun [rad]":
+            if parameter == "lat_GC" or parameter == "lat_Sun":
                 data = np.cos(data)
-                if parameter == "lat_GC [rad]":
+                if parameter == "lat_GC":
                     x_label = r"$\cos(b_\mathrm{GC})$"
                     filename = "latitude_GC_cos"
-                if parameter == "lat_Sun [rad]":
+                if parameter == "lat_Sun":
                     x_label = r"$\cos(b_\mathrm{Sun})$"
                     filename = "latitude_Sun_cos"
                 plt.figure(figsize = config["Figure_size"]["single_column"])
@@ -814,7 +814,7 @@ class BlackHolePlotter:
         return cumulative_hist
 
     def plot_cumulative_radial_distribution_mean(self, path):
-        distance = self.table_bh["d_GC [kpc]"].values
+        distance = self.table_bh["d_GC"].values
         galaxy_ids = np.unique(self.table_bh["galaxy_id"].values)
         d_min, d_max = np.min(distance), np.max(distance)
         # bins = np.logspace(np.log10(d_min), np.log10(d_max), config["Plots"]["number_bins"])
@@ -856,10 +856,10 @@ class BlackHolePlotter:
 
 
     def plot_dist_total_mean(self, path):
-        parameters = ["m [M_solar]", "z_f", "d_GC [kpc]", "lat_GC [rad]", "long_GC [rad]", "d_Sun [kpc]", "lat_Sun [rad]", "long_Sun [rad]", "r_sp [pc]", "rho(r_sp) [GeV/cm3]", "gamma_sp", "gamma_c"]
+        parameters = ["m", "z_f", "d_GC", "lat_GC", "long_GC", "d_Sun", "lat_Sun", "long_Sun", "r_sp", "rho(r_sp)", "gamma_sp", "gamma_c"]
         units = ["$M_{\odot}$", "", "kpc", "rad", "rad", "kpc", "rad", "rad", "pc", "GeV/cm$^3$", "", ""]
-        log_parameters = ["m [M_solar]", "r_sp [pc]", "rho(r_sp) [GeV/cm3]"]
-        # log_parameters = ["m [M_solar]"]
+        log_parameters = ["m", "r_sp", "rho(r_sp)"]
+        # log_parameters = ["m"]
         x_labels = [r"$m_\mathrm{BH}$ [$M_{\odot}$]", r"$z_f$", r"$d_\mathrm{GC}$ [kpc]", r"$b_\mathrm{GC}$ [rad]", r"$l_\mathrm{GC}$ [rad]", r"$d_\mathrm{Sun}$ [kpc]", r"$b_\mathrm{Sun}$ [rad]", r"$l_\mathrm{Sun}$ [rad]", "$r_\mathrm{sp}$ [pc]", r"$\rho(r_\mathrm{sp})$ [GeV/cm$^3$]", "$\gamma_\mathrm{sp}$", "$\gamma_\mathrm{c}$"]
         filenames = ["mass_mean", "redshift_mean", "distance_gc_mean", "latitude_GC_mean", "longitude_GC_mean", "distance_sun_mean", "latitude_Sun_mean", "longitude_Sun_mean", "r_sp_mean", "rho_sp_mean", "gamma_sp_mean", "gamma_c_mean"]
         
@@ -932,12 +932,12 @@ class BlackHolePlotter:
             ax.set_ylim(ymin, ymax)
             ax.set_xlabel(x_label)
             ax.set_ylabel("$N_\mathrm{BH}$")
-            if parameter in ["r_sp [pc]", "rho(r_sp) [GeV/cm3]"]:
+            if parameter in ["r_sp", "rho(r_sp)"]:
                 legend = plt.legend(bbox_to_anchor = (0, 1.02, 1, 0.2), loc = "center", mode = "expand", borderaxespad = 0, ncol = 1, alignment = "center")
             else:
                 legend = plt.legend(loc = "upper right")
             plt.tight_layout()
-            if parameter == "m [M_solar]":
+            if parameter == "m":
                 plt.xticks([2e5, 3e5, 4e5, 6e5], [r'$2 \times 10^5$', "", "", r'$6 \times 10^5$']) # TODO: find a better way to do this, plt.xticks() does not work
             plt.savefig(path + f"{filename}.pdf", dpi = 500)
             plt.close()
@@ -1069,7 +1069,7 @@ class FluxPlotter:
         galaxy_ids = np.unique(self.flux_catalogue["galaxy_id"].values)
         for galaxy_id in galaxy_ids:
             flux_catalogue_id = self.flux_catalogue[self.flux_catalogue["galaxy_id"] == galaxy_id]
-            flux_id = flux_catalogue_id["flux [cm-2 s-1]"].values * u.Unit("cm-2 s-1")
+            flux_id = flux_catalogue_id["flux"].values * u.Unit("cm-2 s-1")
             int_lum_id = self.integrated_luminosity(flux_id, flux_th)
             int_lum_list.append(int_lum_id)
         int_lum_mean = np.mean(int_lum_list, axis = 0)
@@ -1090,7 +1090,7 @@ class FluxPlotter:
         plt.errorbar(flux_th, int_lum_mean, yerr = int_lum_error, label = label, linestyle = "", marker = marker, capsize = 3, color = color, markersize = marker_size)
 
     def plot_cuttoff_radius_dist(self, path):
-        r_cut = self.flux_catalogue["r_cut [pc]"].values
+        r_cut = self.flux_catalogue["r_cut"].values
         r_cut_mean = np.mean(r_cut)
         r_cut_mean_error = np.std(r_cut, ddof = 1) / np.sqrt(len(r_cut))
         r_cut_median = np.median(r_cut)
@@ -1122,7 +1122,7 @@ class FluxPlotter:
         error_x_position = np.sqrt(bins[1:] * bins[:-1])
 
         plt.figure(figsize = config["Figure_size"]["single_column"])
-        hist_mean, hist_mean_error = parameter_distr_mean(table = self.flux_catalogue, parameter = "r_cut [pc]", bins = bins)
+        hist_mean, hist_mean_error = parameter_distr_mean(table = self.flux_catalogue, parameter = "r_cut", bins = bins)
         plt.bar(bins_centre, hist_mean, width = bins_width, color = config["Colors"]["darkblue"], edgecolor = config["Plots"]["bar_edge_color"], linewidth = config["Plots"]["bar_edge_width"])
         plt.errorbar(error_x_position, hist_mean, yerr = hist_mean_error, color = config["Colors"]["lightblue"], linestyle = "")
         ymin, ymax = plt.ylim()

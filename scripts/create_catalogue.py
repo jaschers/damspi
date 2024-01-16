@@ -45,28 +45,28 @@ def determine_coordinates(table_galaxy_z0_total, table_bh_z0_total, args, lst, g
 
     # add id, radial distances, latitude and longitude, (sub)groupnumber 2^30, and satellite information to table
     table_bh_z0["galaxy_id"] = galaxy_id
-    table_bh_z0["d_GC [kpc]"] = r_gc
-    table_bh_z0["lat_GC [rad]"] = lat_gc
-    table_bh_z0["long_GC [rad]"] = long_gc
-    table_bh_z0["d_Sun [kpc]"] = r_sun
-    table_bh_z0["lat_Sun [rad]"] = lat_sun
-    table_bh_z0["long_Sun [rad]"] = long_sun
+    table_bh_z0["d_GC"] = r_gc
+    table_bh_z0["lat_GC"] = lat_gc
+    table_bh_z0["long_GC"] = long_gc
+    table_bh_z0["d_Sun"] = r_sun
+    table_bh_z0["lat_Sun"] = lat_sun
+    table_bh_z0["long_Sun"] = long_sun
     table_bh_z0["satellite"] = table_bh_z0["subgroup number"] != 0
 
     # keep only relevant columns
     table_bh_z0 = table_bh_z0[[
         "galaxy_id", 
         "bh_id", 
-        "m [M_solar]", 
+        "m", 
         "z_f",
         "z_c",
         "nsnap_c", 
-        "d_GC [kpc]",
-        "lat_GC [rad]", 
-        "long_GC [rad]",  
-        "d_Sun [kpc]", 
-        "lat_Sun [rad]", 
-        "long_Sun [rad]", 
+        "d_GC",
+        "lat_GC", 
+        "long_GC",  
+        "d_Sun", 
+        "lat_Sun", 
+        "long_Sun", 
         "satellite" 
         ]].reset_index(drop = True)
 
@@ -127,8 +127,8 @@ def calculate_spikes(args, lst, row_tuple):
 
         # add mini spike parameters to table
         table["bh_id"] = [bh_id]
-        table["r_sp [pc]"] = [r_sp.to(u.pc).value]
-        table["rho(r_sp) [GeV/cm3]"] = [rho_at_r_sp.value]
+        table["r_sp"] = [r_sp.to(u.pc).value]
+        table["rho(r_sp)"] = [rho_at_r_sp.value]
         table["gamma_sp"] = [gamma_sp]
         table["no_host"] = [no_host]
 

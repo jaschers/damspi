@@ -77,7 +77,7 @@ if __name__ == "__main__":
 
     flux_catalogues_conat = pd.concat(flux_catalogues, ignore_index = True)
 
-    sigma_v_catalogue = np.unique(flux_catalogues_conat["sigma_v [cm3 s-1]"].values) * u.Unit("cm3 s-1")
+    sigma_v_catalogue = np.unique(flux_catalogues_conat["sigma_v"].values) * u.Unit("cm3 s-1")
 
     if len(sigma_v_catalogue) > 1:
         raise ValueError("Multiple sigma_v values in flux catalogue.")
@@ -85,7 +85,7 @@ if __name__ == "__main__":
         raise ValueError("sigma_v value in flux catalogue does not match input. Catalogue = " + str(sigma_v_catalogue) + ". Input = " + str(args.sigma_v))
 
     flux_plotter = damplot.FluxPlotter(flux_catalogues_conat)
-    flux = flux_catalogues_conat["flux [cm-2 s-1]"].values * u.Unit("cm-2 s-1")
+    flux = flux_catalogues_conat["flux"].values * u.Unit("cm-2 s-1")
 
     hess_flux_sensitivity = config["HESS"]["flux_sensitivity"] * u.Unit("cm-2 s-1")
 

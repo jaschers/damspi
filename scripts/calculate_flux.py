@@ -37,17 +37,17 @@ def extract_flux_catalogue(bh_catalogue, args, path, m_dm):
         r_cut = flux_calculator.radius_cut(m_dm, sigma_v)
         flux = flux_calculator.gamma_flux(m_dm, args.channel, args.E_th, sigma_v)
 
-        table["sigma_v [cm3 s-1]"] = sigma_v.value
-        table["r_cut [pc]"] = r_cut.to(u.pc).value
-        table["flux [cm-2 s-1]"] = flux.to(1 / (u.cm**2 * u.s)).value
+        table["sigma_v"] = sigma_v.value
+        table["r_cut"] = r_cut.to(u.pc).value
+        table["flux"] = flux.to(1 / (u.cm**2 * u.s)).value
 
         flux_catalogue = pd.concat([flux_catalogue, table], ignore_index = True)
 
     # check if any flux value is zero or close to zero
-    if np.any(flux_catalogue["flux [cm-2 s-1]"].values <= 1e-30):
+    if np.any(flux_catalogue["flux"].values <= 1e-30):
         print("WARNING: Flux catalogue contains zero (or close to zero) or negative flux values!")
         # print row with zero flux value
-        print(flux_catalogue.loc[flux_catalogue["flux [cm-2 s-1]"].values <= 1e-30])
+        print(flux_catalogue.loc[flux_catalogue["flux"].values <= 1e-30])
 
     m_dm_string = format_energy(m_dm)
     flux_catalogue.to_hdf(path + f"m_dm_{m_dm_string}.h5", key = "table", mode = "w")
@@ -118,7 +118,7 @@ if __name__ == "__main__":
             
             flux_catalogues_conat = pd.concat(flux_catalogues, ignore_index = True)
             flux_plotter = damplot.FluxPlotter(flux_catalogues_conat)
-            flux = flux_catalogues_conat["flux [cm-2 s-1]"].values * u.Unit("cm-2 s-1")
+            flux = flux_catalogues_conat["flux"].values * u.Unit("cm-2 s-1")
             flux_min = np.min(flux)
             if flux_min < hess_flux_sensitivity:
                 flux_th = flux_plotter.flux_thresholds(flux)

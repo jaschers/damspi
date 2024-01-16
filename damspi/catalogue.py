@@ -143,13 +143,13 @@ class DataCollector:
         data_bh = np.dstack((bh_id, bh_group_number, bh_subgroup_number, bh_subgrid_mass, bh_coordinates[:,0], bh_coordinates[:,1], bh_coordinates[:,2], bh_formation_redshift, z_closest, nsnap_closest, bh_n_merger))[0]
 
         # put data into pandas DataFrame
-        table_bh = pd.DataFrame(data_bh, columns = ["bh_id", "group number", "subgroup number", "m [M_solar]", "coord x", "coord y", "coord z", "z_f", "z_c", "nsnap_c", "n merger"]).reset_index(drop = True)
+        table_bh = pd.DataFrame(data_bh, columns = ["bh_id", "group number", "subgroup number", "m", "coord x", "coord y", "coord z", "z_f", "z_c", "nsnap_c", "n merger"]).reset_index(drop = True)
 
         # select only BHs that did not merge
         table_bh = table_bh[table_bh["n merger"] == 1].reset_index(drop = True)
 
         # select only BHs that are in the IMBH mass range, i.e. < 10^6 M_solar
-        table_bh = table_bh[table_bh["m [M_solar]"] < self.bh_mass_limit.to(u.Msun).value].reset_index(drop = True)
+        table_bh = table_bh[table_bh["m"] < self.bh_mass_limit.to(u.Msun).value].reset_index(drop = True)
 
         return(table_bh)
 
@@ -718,7 +718,7 @@ class DMMiniSpikesCalculator:
     core_index: float
         The core index of the dark matter profile.
     table_bh: pandas.DataFrame
-        The black hole data of a single black hole. Required columns are: "group number", "subgroup number", "z_f", "z_c", "nsnap_c", "coord x", "coord y", "coord z", "m [M_solar]".
+        The black hole data of a single black hole. Required columns are: "group number", "subgroup number", "z_f", "z_c", "nsnap_c", "coord x", "coord y", "coord z", "m".
 
     Attributes
     ----------
@@ -827,7 +827,7 @@ class DMMiniSpikesCalculator:
         self.z_closest = table_bh["z_c"].values[0]
         self.nsnap_closest = table_bh["nsnap_c"].values[0]
         self.bh_coord = table_bh[["coord x", "coord y", "coord z"]].values[0]
-        self.bh_mass = table_bh["m [M_solar]"].values[0] * u.Msun
+        self.bh_mass = table_bh["m"].values[0] * u.Msun
         self.no_host = (self.group_number == 2**30) or (self.subgroup_number == 2**30)
         self.hubble_constant = cosmo.H0.value / 100
         self.minimal_galaxy_mass = 10**10 * u.Msun / self.hubble_constant
