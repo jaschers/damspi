@@ -25,7 +25,7 @@ from damspi.utils import (
     M_bh_2
     )
 from scipy.spatial.transform import Rotation as R
-from astropy.coordinates import cartesian_to_spherical, spherical_to_cartesian
+from astropy.coordinates import cartesian_to_spherical
 from scipy.odr import Model, RealData, ODR, Data
 import damspi.plot as damplot
 import yaml
