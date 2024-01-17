@@ -1,7 +1,3 @@
-User_input:
-  user_name: <your_VirgoDB_username>
-  user_password: <your_VirgoDB_password>
-
 HESS:
   flux_sensitivity: 4.6e-13
   gps_lat_min: -3 # deg
@@ -76,4 +72,4 @@ Spike_profile_example:
 Milky_way:
   halo_mass_range: [10**(11.7), 10**(12.5)] # u.Msun
   stellar_mass_range: [10**(10.4), 10**(11.2)] # u.Msun
-  distance_sun: 8.33 # kpc test
+  distance_sun: 8.33 # kpc
