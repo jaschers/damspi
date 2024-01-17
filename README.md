@@ -36,7 +36,7 @@ The IMBH catalogue is available at TBA and provides the IMBH coordinates, dark m
 Every script has a help option ``-h`` or ``--help`` in order to get basic instructions on how to use the script. Some details will be discussed in the following.
 
 
-# Download data
+# Download EAGLE data
 First, an account on VirgoDB needs to be requested to get access to the EAGLE data, [here](https://virgodb.dur.ac.uk/). After sucessfully receiving your username and password, open the ``config/config.yaml`` file and enter your credentials under ``User_input``. Then, the EAGLE particle data can be downloaded with the following command:
 ```
 python scripts/download_data.py
@@ -72,13 +72,15 @@ The catalogue contains the following information for each IMBH:
 | `d_GC`          | kpc          | Distance of the black hole to the centre of potential of the host galaxy                                                                                                     |
 | `lat_GC`        | rad          | Galactic latitude of the black hole with the centre of potential of the host galaxy being the origin of the coordinate system                                                |
 | `long_GC`       | rad          | Galactic longitude of the black hole with the centre of potential of the host galaxy being the origin of the coordinate system                                               |
-| `d_Sun`         | kpc          | Distance of the black hole to the Sun                                                                                                                                       |
+| `d_Sun`         | kpc          | Distance of the black hole to the Sun                                                                                                                                        |
 | `lat_Sun`       | rad          | Galactic latitude of the black hole with the Sun being the origin of the coordinate system                                                                                   |
 | `long_Sun`      | rad          | Galactic longitude of the black hole with the Sun being the origin of the coordinate system                                                                                  |
+| `gamma_sp`      | -            | Spike index                                                                                                                                                                  |
 | `r_sp`          | pc           | Spike radius                                                                                                                                                                 |
-| `rho(r_sp)`     | GeV/cm³      | Dark matter density at the spike radius                                                                                                                                     |
-| `satellite`     | -            | `True` if the black hole is located in one of the satellite galaxies of the host galaxy                                                                                     |
-| `no_host`       | -            | `True` if black hole was not assigned to any host at its formation redshift                                                                                                 |
+| `rho(r_sp)`     | GeV/cm³      | Dark matter density at the spike radius                                                                                                                                      |
+| `satellite`     | -            | `True` if the black hole is located in one of the satellite galaxies of the host galaxy                                                                                      |
+| `no_host`       | -            | `True` if black hole was not assigned to any host at its formation redshift                                                                                                  |
+| `r_c`           | -            | Core radius (only available for cored dark matter profile)                                                                                                                   |
 
 ## Create plots for IMBH catalogue
 A bunch of usueful plots for the IMBH catalogue can be created with the following command:
