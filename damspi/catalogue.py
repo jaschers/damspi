@@ -33,11 +33,6 @@ import yaml
 with open("config/config.yaml", "r") as f:
     config = yaml.load(f, Loader=yaml.FullLoader)
 
-# ignore division by zero
-np.seterr(divide='ignore')
-# don't print pandas warning
-pd.options.mode.chained_assignment = None  # default='warn'
-
 class DataCollector:
     """
     Collect the data of the black holes and their host galaxies.
