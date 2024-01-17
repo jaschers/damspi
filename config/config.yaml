@@ -1,0 +1,79 @@
+User_input:
+  user_name: <your_VirgoDB_username>
+  user_password: <your_VirgoDB_password>
+
+HESS:
+  flux_sensitivity: 4.6e-13
+  gps_lat_min: -3 # deg
+  gps_lat_max: 3 # deg
+  gps_long_min: -65 # deg
+  gps_long_max: 110 # deg
+
+CTA:
+  gps_lat_min: -6 # deg
+  gps_lat_max: 6 # deg
+  gps_long_min: -90 # deg
+  gps_long_max: 90 # deg
+
+Fermi:
+  flux_sensitivity_l0_b0: 2.95e-08
+  flux_sensitivity_l120_b45: 1.64e-09
+
+Figure_size:
+  single_column: 
+    - 2.75591  
+    - 2.06693 
+  single_column_legend:
+    - 2.75591
+    - 2.41142
+  single_column_squeezed:
+    - 3.5
+    - 2.06693 
+  single_column_extended: 
+    - 3.58  
+    - 2.69
+  double_column:
+    - 5.70866 
+    - 4.28150
+  double_column_squeezed:
+    - 7.22441
+    - 3.61221
+  quadruple_column:
+    - 11.42 
+    - 8.56
+
+Plots:
+  markersize: 2
+  bar_edge_color: "white"
+  bar_edge_width: 0.4
+  number_bins: 11
+  markers: [".", "s", "D", "v", "^", "<", ">"]
+  marker_sizes: [3, 1.5, 1.5, 1.5, 1.5, 1.5, 1.5]
+
+Colors:
+  black: "#171b1d"
+  red: "#e83151"
+  red_presentation: "#F44D4D"
+  darkblue: "#003049"
+  lightblue: "#6c8ead"
+  yellow: "#fca311"
+  cmap: ["#FFF275", "#E83151", "#003049", "#171B1D"]
+  cmap_r: ["#171B1D", "#003049", "#E83151", "#FFF275"]
+  cmap_2d_map: ["#003049", "#E83151", "#FFF275"]
+  cmap_flux: ["#fca311", "#e83151", "#003049"]
+
+Spike_profile_example:
+  bh_id: 7904228777413
+  rho_0: 1.884277114017146 # * u.GeV / u.cm**3
+  r_s: 2.282547543470143 # u.kpc  
+  r_sp: 0.0042294261325850945 # u.kpc 
+  rho_at_r_sp: 1013.1534002734178 # * u.GeV / u.cm**3
+  gamma_sp: 2.3333 # 7/3
+  M_bh: 155765.79943821664 # u.Msun
+  m_dm: 500 # GeV
+  r_cut: 0.002278e-3 # u.pc
+
+Milky_way:
+  halo_mass_range: [10**(11.7), 10**(12.5)] # u.Msun
+  stellar_mass_range: [10**(10.4), 10**(11.2)] # u.Msun
+  distance_sun: 8.33 # kpc
