@@ -30,6 +30,9 @@ from scipy.odr import Model, RealData, ODR, Data
 import damspi.plot as damplot
 import yaml
 
+username = os.getenv("VIRGODB_USERNAME")
+password = os.getenv("VIRGODB_PASSWORD")
+
 with open("config/config.yaml", "r") as f:
     config = yaml.load(f, Loader=yaml.FullLoader)
 
@@ -249,7 +252,7 @@ class DataCollector:
                     and MH.Spurious = 0'
 
         # Execute query.
-        con = sql.connect(config["User_input"]["user_name"], password=config["User_input"]["user_password"]) # username, password
+        con = sql.connect(username, password=password) # username, password
         # load galaxy data
         data_galaxy = sql.execute_query(con, query)
         # put data into pandas DataFrame
@@ -983,7 +986,7 @@ class DMMiniSpikesCalculator:
             query = self.query_galaxy_zf(subgroup_number_avail = True)
 
         # Execute query.
-        con = sql.connect(config["User_input"]["user_name"], password=config["User_input"]["user_password"])
+        con = sql.connect(username, password=password)
         # load galaxy data
         data_galaxy = sql.execute_query(con, query)
         # put data into pandas DataFrame
@@ -1013,7 +1016,7 @@ class DMMiniSpikesCalculator:
             query = self.query_galaxy_zf(subgroup_number_avail = True)
 
             # Execute query.
-            con = sql.connect(config["User_input"]["user_name"], password=config["User_input"]["user_password"])
+            con = sql.connect(username, password=password)
             # load galaxy data
             data_galaxy = sql.execute_query(con, query)
             # put data into pandas DataFrame

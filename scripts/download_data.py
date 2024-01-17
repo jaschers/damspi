@@ -5,6 +5,9 @@ import os
 from astropy import units as u
 import yaml
 
+username = os.getenv("VIRGODB_USERNAME")
+password = os.getenv("VIRGODB_PASSWORD")
+
 with open("config/config.yaml", "r") as f:
     config = yaml.load(f, Loader=yaml.FullLoader)
 
@@ -95,7 +98,7 @@ if __name__ == "__main__":
         if not os.path.exists(f"data/{args.sim_name}_snap_{convert_float_to_three_digit(i)}.tar"):
             weblink = f"https://dataweb.cosma.dur.ac.uk:8443/eagle-snapshots//download?run={args.sim_name}&snapnum={i}"
 
-            command = f"wget -P data/ --user={config['User_input']['user_name']} --password {config['User_input']['user_password']} --content-disposition '{weblink}'"
+            command = f"wget -P data/ --user={username} --password {password} --content-disposition '{weblink}'"
 
             os.system(command)
 
