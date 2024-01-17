@@ -11,23 +11,22 @@ sys.path.append(module_dir)
 import damspi.plot as damplot
 from damspi.utils import parse_args, gamma_core
 import pandas as pd
-import numpy as np
 
 if __name__ == '__main__':
     # get user input
     args = parse_args(include_upsampling = True)
 
     # open the catalogue
-    filename = f"catalogue/{args.sim_name}/imbh/catalogue_{args.name}.csv"
-    bh_catalogue = pd.read_csv(filename)
+    filename = f"catalogue/{args.sim_name}/imbh/catalogue_{args.name}.h5"
+    bh_catalogue = pd.read_hdf(filename, key = "table")
 
     # get the latitude and longitude of the black holes
-    d_gc = bh_catalogue['d_GC [kpc]']
-    lat_gc = bh_catalogue['lat_GC [rad]']
-    long_gc = bh_catalogue['long_GC [rad]']
-    d_sun = bh_catalogue['d_Sun [kpc]']
-    lat_sun = bh_catalogue['lat_Sun [rad]']
-    long_sun = bh_catalogue['long_Sun [rad]']
+    d_gc = bh_catalogue['d_GC']
+    lat_gc = bh_catalogue['lat_GC']
+    long_gc = bh_catalogue['long_GC']
+    d_sun = bh_catalogue['d_Sun']
+    lat_sun = bh_catalogue['lat_Sun']
+    long_sun = bh_catalogue['long_Sun']
     gamma_sp = bh_catalogue['gamma_sp']
     gamma_c = gamma_core(gamma_sp)
     bh_catalogue['gamma_c'] = gamma_c
@@ -59,15 +58,15 @@ if __name__ == '__main__':
 
     # Plotting BH 2D maps
     print("Plotting BH 2D maps...")
-    bh_plotter.plot_2d_map(lat_gc, long_gc, path + "2d_map_gc.pdf")
+    # bh_plotter.plot_2d_map(lat_gc, long_gc, path + "2d_map_gc.pdf")
     bh_plotter.plot_2d_map(lat_sun, long_sun, path + "2d_map_sun.pdf")
 
-    bh_plotter.plot_2d_map_contours(lat_gc, long_gc, path + "2d_map_gc_contours.pdf")
+    # bh_plotter.plot_2d_map_contours(lat_gc, long_gc, args.upsampling_factor, path + "2d_map_gc_contours.pdf")
     bh_plotter.plot_2d_map_contours(lat_sun_upsampled, long_sun_upsampled, args.upsampling_factor, path + "2d_map_sun_contours.pdf")
 
-    bh_plotter.plot_healpix_map(lat_sun_upsampled, long_sun_upsampled, path + "2d_healpix_map_sun.pdf")
+    # bh_plotter.plot_healpix_map(lat_sun_upsampled, long_sun_upsampled, path + "2d_healpix_map_sun.pdf")
 
     # Plot a 2D gaussian pdf of the BH distribution
-    bh_plotter.plot_2d_map_gaussian(lat_sun_upsampled, long_sun_upsampled, args.upsampling_factor, path + "2d_map_sun_gaussian.pdf")
+    # bh_plotter.plot_2d_map_gaussian(lat_sun_upsampled, long_sun_upsampled, args.upsampling_factor, path + "2d_map_sun_gaussian.pdf")
 
     print(f"Plots saved in {path}")
