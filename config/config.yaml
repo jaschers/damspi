@@ -1,6 +1,6 @@
 User_input:
-  user_name: dvd351
-  user_password: zqfARI55
+  user_name: <your_username>
+  user_password: <your_password>
 
 HESS:
   flux_sensitivity: 4.6e-13
