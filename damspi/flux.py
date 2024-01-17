@@ -48,11 +48,11 @@ class FluxCalculator:
         self.z_f = self.bh_catalogue['z_f'].values
         self.t_0 = self.redshift_to_time(0)
         self.t_f = self.redshift_to_time(self.z_f)
-        self.r_sp = self.bh_catalogue['r_sp [pc]'].values * u.pc
+        self.r_sp = self.bh_catalogue['r_sp'].values * u.pc
         self.gamma_sp = self.bh_catalogue['gamma_sp'].values
-        self.rho_r_sp = self.bh_catalogue['rho(r_sp) [GeV/cm3]'].values * u.GeV / u.cm**3
-        self.distance = self.bh_catalogue['d_Sun [kpc]'].values * u.kpc
-        self.M_bh = self.bh_catalogue['m [M_solar]'].values * u.M_sun
+        self.rho_r_sp = self.bh_catalogue['rho(r_sp)'].values * u.GeV / u.cm**3
+        self.distance = self.bh_catalogue['d_Sun'].values * u.kpc
+        self.M_bh = self.bh_catalogue['m'].values * u.M_sun
         self.r_schw = self.radius_schw(self.M_bh)
 
     @staticmethod
@@ -201,17 +201,7 @@ class FluxCalculator:
 
         N = self.N_gamma(m_dm, channel, E_th)
 
-        # prefactor
-        alpha = 0.5 * sigma_v * N / (m_dm**2 * self.distance**2)
-
-        # term for 2r_schw < r < r_cut
-        y1 = 0.5 * alpha * self.rho_r_sp**2 * self.r_cut * (self.r_sp / self.r_cut)**(2*self.gamma_sp) * (self.r_cut**2 - 4 * self.r_schw**2)
-
-        # term for r_cut < r < r_sp
-        # reference: https://journals.aps.org/prd/pdf/10.1103/PhysRevD.72.103517?casa_token=-e4eEEaCw5oAAAAA%3A9KIbORPLYWRlSVC5MyI3HSIslOLws15IjLMCUkoM2E3uD9PaUV_cXtfBta2anEGB9Epsa-J9DZ9qUiI
-        y2 = 2 * alpha * self.rho_r_sp**2 * self.r_sp**3 / (4*self.gamma_sp - 6) * (self.r_cut / self.r_sp)**(-2*self.gamma_sp + 3)
-
-        y = y1 + y2
+        y = N * sigma_v / (m_dm**2 * self.distance**2) * self.rho_r_sp**2 * self.r_sp**3 * (2* self.gamma_sp - 1) / (8*self.gamma_sp - 12) * (self.r_cut / self.r_sp)**(3 - 2*self.gamma_sp)
 
         y = y.to(1 / (u.cm**2 * u.s))
 
