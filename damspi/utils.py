@@ -103,7 +103,7 @@ def add_name_args(parser):
         Argument parser
     """
 
-    parser.add_argument("-n", "--name", type = str, required = True,  nargs = "+", metavar = "-", help = "Suffix of the output filenames, e.g. catalogue_<name>.csv.")
+    parser.add_argument("-n", "--name", type = str, required = True,  nargs = "+", metavar = "-", help = "Suffix of the output filenames, e.g. catalogue_<name>.h5.")
 
 def parse_args(include_name = True, include_cat = False, include_dm = False, include_plot = False, include_labels = False, include_upsampling = False):
     """
