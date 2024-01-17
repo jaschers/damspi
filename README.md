@@ -37,7 +37,12 @@ Every script has a help option ``-h`` or ``--help`` in order to get basic instru
 
 
 # Download EAGLE data
-First, an account on VirgoDB needs to be requested to get access to the EAGLE data, [here](https://virgodb.dur.ac.uk/). After sucessfully receiving your username and password, open the ``config/config.yaml`` file and enter your credentials under ``User_input``. Then, the EAGLE particle data can be downloaded with the following command:
+First, an account on VirgoDB needs to be requested to get access to the EAGLE data, [here](https://virgodb.dur.ac.uk/). After sucessfully receiving your username and password, add the credentials to your ``.bashrc`` file: 
+```
+export VIRGODB_USERNAME=<your_username>
+export VIRGODB_PASSWORD=<your_password>
+```
+Then, the EAGLE particle data can be downloaded with the following command:
 ```
 python scripts/download_data.py
 ```
