@@ -134,7 +134,7 @@ def calculate_spikes(args, lst, row_tuple):
 
         if args.dark_matter_profile == "cored":
             r_c = dm_mini_spikes.r_c
-            table["r_c [kpc]"] = [r_c.to(u.kpc).value]
+            table["r_c"] = [r_c.to(u.kpc).value]
 
         lst.append(table)
 
@@ -164,7 +164,7 @@ if __name__ == "__main__":
 
     # load temporary catalogue if requested
     if args.load_temporary_catalogue:
-        bh_catalogue = pd.read_csv(path_catalogue_temp + f"catalogue_temp_{args.name}.csv")
+        bh_catalogue = pd.read_hdf(path_catalogue_temp + f"catalogue_temp_{args.name}.h5", key = "table")
         print("Temporary catalogue sucessfully loaded!")
     # else create new catalogue
     else:
@@ -209,7 +209,7 @@ if __name__ == "__main__":
         bh_catalogue = pd.concat(coord_list, ignore_index=True)
 
         # save current catalogue as temporary file so that it can be loaded by the same script if needed
-        bh_catalogue.to_csv(path_catalogue_temp + f"catalogue_temp_{args.name}.csv", index=False)
+        bh_catalogue.to_hdf(path_catalogue_temp + f"catalogue_temp_{args.name}.h5", key = "table")
 
     print(f"Number of unmerged black holes in MW-like galaxies in simulation {args.sim_name}: {len(bh_catalogue)}")
     print("Start extracting black hole dark matter mini spike parameter for each BH...")
@@ -237,4 +237,4 @@ if __name__ == "__main__":
     bh_catalogue = bh_catalogue.dropna()
 
     # save BH catalogue
-    bh_catalogue.to_csv(path_catalogue + f"catalogue_{args.name}.csv", index=False)
+    bh_catalogue.to_hdf(path_catalogue + f"catalogue_{args.name}.h5", key = "table")
