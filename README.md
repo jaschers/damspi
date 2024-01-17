@@ -1,7 +1,7 @@
 # DAMSPI
 <img src="https://github.com/jaschers/damspi/blob/main/logo/logo_text.png" width="750">
 
-DArk Matter SPIkes (DAMSPI) is a fully Python-based software for the analysis of dark matter spikes around Intermediate Mass Black Holes (IMBHs) in the Milky Way. It allows to extract an IMBH catalogue and their corresponding dark matter spike parameters from the EAGLE simulations in order to probe a potential gamma-ray signal from dark matter self-annihilation. For more details, see our published article at TBA
+DArk Matter SPIkes (DAMSPI) is a fully Python-based software for the analysis of dark matter spikes around Intermediate Mass Black Holes (IMBHs) in the Milky Way. It allows to extract an IMBH mock catalogue and their corresponding dark matter spike parameters from the EAGLE simulations in order to probe a potential gamma-ray signal from dark matter self-annihilation. For more details, see our published article at TBA. The IMBH catalogue can be downloaded from TBA.
 
 # Installation
 Clone the repository to your prefered directory:
@@ -29,7 +29,12 @@ export GAMMAPY_DATA=gammapy-datasets/1.0
 
 
 # Usage
+The IMBH catalogue is available at TBA and provides the IMBH coordinates, dark matter spike parameters and the expected gamma-ray flux for a variety of dark matter masses and dark matter cross sections. If you would like to calculate the gamma-ray flux for a different dark matter mass or cross section, you have two options:
+1. Follow the instructions below to create the IMBH catalogue completely from scratch. This requires to download the EAGLE data, which, depending on the EAGLE dataset you choose, can take several days.
+2. Download the ``catalogue_nfw.h5`` file from TBA, put it into the ``catalogue/RefL0100N1504/imbh/`` directory and use the ``calculate_flux.py`` script to calculate the gamma-ray flux for your desired dark matter masses or cross sections. See Section "Gamma-ray flux from dark matter self-annihilation" below for more details.
+
 Every script has a help option ``-h`` or ``--help`` in order to get basic instructions on how to use the script. Some details will be discussed in the following.
+
 
 # Download data
 First, an account on VirgoDB needs to be requested to get access to the EAGLE data, [here](https://virgodb.dur.ac.uk/). After sucessfully receiving your username and password, open the ``config/config.yaml`` file and enter your credentials under ``User_input``. Then, the EAGLE particle data can be downloaded with the following command:
@@ -47,10 +52,10 @@ The IMBH catalogue for a given EAGLE dataset can be extracted with the following
 ```
 python scripts/create_catalogue.py -n nfw
 ```
-By default, this will create the IMBH catalogue for the reference dataset ``RefL0100N1504``. The catalogue is stored in the HDF5 format in ``catalogue/<sim_name>/imbh/catalogue_<name>.csv``. It is required to provide the ``--name`` (``-n``) option, which specifies the suffix of the output filenames. Additional options are:
+By default, this will create the IMBH catalogue for the reference dataset ``RefL0100N1504``. The catalogue is stored in the HDF5 format in ``catalogue/<sim_name>/imbh/catalogue_<name>.h5``. It is required to provide the ``--name`` (``-n``) option, which specifies the suffix of the output filenames. Additional options are:
 * ``--dark_matter_profile`` (``-dmp``): Dark matter profile to be used for the dark matter spike calculation. Options are ``nfw`` (default) and ``cored``.
 * if ``-dmp cored`` is chosen, the core index ``--core_index`` (``-ci``) can be specified. Default is ``None``, which means that the the best fit core index is determined from the EAGLE data. Otherwise, the core index is fixed to the specified value.
-* ``--load_temporary_catalogue`` (``-ltc``): If this option is specified, the IMBH catalogue is loaded from the temporary catalogue file ``catalogue/<sim_name>/imbh_temp/catalogue_temp_<name>.csv``. This is useful if the catalogue has already been created and the dark matter spike parameters should be extracted again with different options. In this case, the ``--name`` option should be the same as for the temporary catalogue file.
+* ``--load_temporary_catalogue`` (``-ltc``): If this option is specified, the IMBH catalogue is loaded from the temporary catalogue file ``catalogue/<sim_name>/imbh_temp/catalogue_temp_<name>.h5``. This is useful if the catalogue has already been created and the dark matter spike parameters should be extracted again with different options. In this case, the ``--name`` option should be the same as for the temporary catalogue file.
 * ``--plot`` (``-pl``): If this option is specified, some cross-check plots are extracted and stored in ``plots/<sim_name>/galaxy_id_<galaxy_id>/black_holes/coordinates``, ``plots/<sim_name>/galaxy_id_<galaxy_id>/black_holes/distributions`` and ``plots/sim_name/galaxy_id_<galaxy_id>/black_holes/spikes/id_<bh_id>``. This option should be treated with great care, since it will create a lot of plots and therefore requires a lot of storage space. The plots are not required for the analysis and are only used for cross-checks.
 * ``--save_animation`` (``-sa``): If this option is specified, an animation IMBH coordinates is stored in ``plots/<sim_name>/galaxy_id_<galaxy_id>/black_holes/coordinates``. Again, this option should be treated with great care, since it will create a lot of animations and therefore requires a lot of storage space. The animations are not required for the analysis and are only used for cross-checks.
 
@@ -107,7 +112,7 @@ The following options are available:
 * ``--E_th`` (``-eth``): Lower energy threshold to calculate number of gamma rays per dark matter annihilation in GeV. Default: 100
 * ``--plot`` (``-pl``): Bool if plots are saved [y, n], default: n. If y, plots are saved in ``plots/<sim_name>/flux/<name>/<channel>_channel/``.
 
-The following example extracts flux catalogues based on the ``catalogue/<sim_name>/imbh/catalogue_<name>.csv`` file for dark matter masses of 1000, 1500 and 2000 GeV for a cross section of $10^{28}$ cm3/s assuming the tau channel:
+The following example extracts flux catalogues based on the ``catalogue/<sim_name>/imbh/catalogue_<name>.h5`` file for dark matter masses of 1000, 1500 and 2000 GeV for a cross section of $10^{28}$ cm3/s assuming the tau channel:
 ```
 python scripts/calculate_flux.py -n nfw -mdm 100 2000 3 -mdms linear -sv 1e-28 -c tau
 ```
@@ -134,7 +139,7 @@ The dark matter profile of an example IMBH formation galaxy can be extracted wit
 ```
 python scripts/plot_halo_profile.py -n nfw
 ```
-It will show the dark matter density versus the distance to the galactic centre and the best fit NFW profile and cored profile. The plots are stored in ``plots/<sim_name>/dm_profiles/``. It requires that the ``catalogue_temp/<sim_name>/catalogue_temp_<name>.csv`` is available.
+It will show the dark matter density versus the distance to the galactic centre and the best fit NFW profile and cored profile. The plots are stored in ``plots/<sim_name>/dm_profiles/``. It requires that the ``catalogue_temp/<sim_name>/catalogue_temp_<name>.h5`` is available.
 
 ## Spike dark matter profile
 The dark matter profile of an typical IMBH can be plotted with the following command:
