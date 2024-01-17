@@ -112,7 +112,7 @@ python scripts/calculate_flux.py -n nfw
 ```
 The ``--name`` option should specifies for which catalogue the flux should be calculated. The flux catalogues are stored in the HDF5 format in ``catalogue/<sim_name>/flux/<name>/<channel>_channel/m_dm_<mass>GeV.h5``. By default, this will calculate the flux for a dark matter mass of 500, 1000 and 1500 GeV and a cross section of $3 \times 10^{-26}$ cm3/s assuming the b-channel.
 The following options are available:
-* ``--m_dm`` (``-mdm``): Mass of dark matter particle in GeV. Can be single input or mass range + number of masses (three inputs). If mass range is given, scaling can be specified by the mass_dm_scaling argument. Default: 500.
+* ``--m_dm`` (``-mdm``): Mass of dark matter particle in GeV. Can be single input or mass range + number of masses (three inputs). If mass range is given, scaling can be specified by the mass_dm_scaling argument. Default: 500 1500 3.
 * ``--mass_dm_scaling`` (``-mdms``): Scaling of dark matter particle mass. Can be linear or log. Default: linear.
 * ``--sigma_v`` (``-sv``):  Dark matter (velocity weighted) annihilation cross section in cm3/s. Default: 3e-26
 * ``--channel`` (``-c``): Dark matter annihilation channel. Can be: 'V->e', 'V->mu', 'V->tau', 'W', 'WL', 'WT', 'Z', 'ZL', 'ZT', 'b', 'c', 'e', 'eL', 'eR', 'g', 'gamma', 'h', 'mu', 'muL', 'muR', 'nu_e', 'nu_mu', 'nu_tau', 'q', 't', 'tau', 'tauL', 'tauR'. Default: b.
