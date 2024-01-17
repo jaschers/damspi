@@ -44,13 +44,13 @@ def extract_flux_catalogue(bh_catalogue, args, path, m_dm):
         flux_catalogue = pd.concat([flux_catalogue, table], ignore_index = True)
 
     # check if any flux value is zero or close to zero
-    if np.any(flux_catalogue["flux"].values <= 1e-30):
+    if np.any(flux_catalogue["flux"].values <= 0):
         print("WARNING: Flux catalogue contains zero (or close to zero) or negative flux values!")
-        # print row with zero flux value
-        print(flux_catalogue.loc[flux_catalogue["flux"].values <= 1e-30])
-
-    m_dm_string = format_energy(m_dm)
-    flux_catalogue.to_hdf(path + f"m_dm_{m_dm_string}.h5", key = "table", mode = "w")
+        print("Catalogue will not be saved!")
+        print(flux_catalogue.loc[flux_catalogue["flux"].values <= 0])
+    else:
+        m_dm_string = format_energy(m_dm)
+        flux_catalogue.to_hdf(path + f"m_dm_{m_dm_string}.h5", key = "table", mode = "w")
 
 
 if __name__ == "__main__":
@@ -59,8 +59,8 @@ if __name__ == "__main__":
 
     # define directory for catalogue
     path_catalogue = f"catalogue/{args.sim_name}/imbh/"
-    print(f"Load black hole catalogue from {path_catalogue + f'catalogue_{args.name}.csv'}")
-    bh_catalogue = pd.read_csv(path_catalogue + f"catalogue_{args.name}.csv")
+    print(f"Load black hole catalogue from {path_catalogue + f'catalogue_{args.name}.h5'}")
+    bh_catalogue = pd.read_hdf(path_catalogue + f"catalogue_{args.name}.h5", key = "table")
 
     E_th_string = format_energy(args.E_th)
 
