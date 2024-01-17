@@ -43,8 +43,8 @@ if __name__ == "__main__":
 
     # load temporary catalogue
     print("Loading temporary catalogue...")
-    path_catalogue_temp = f"catalogue_temp/{args.sim_name}/"
-    bh_catalogue = pd.read_csv(path_catalogue_temp + f"catalogue_temp_{args.name}.csv")
+    path_catalogue_temp = f"catalogue/{args.sim_name}/imbh_temp/"
+    bh_catalogue = pd.read_hdf(path_catalogue_temp + f"catalogue_temp_{args.name}.h5", key = "table")
 
     # select first row of catalogue (as an example)
     row = bh_catalogue.iloc[0]
