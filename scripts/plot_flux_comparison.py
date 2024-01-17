@@ -14,7 +14,7 @@ mpl.rc_file("config/mpl_config.rc")
 import damspi.catalogue as damcat
 import damspi.plot as damplot
 import damspi.flux as damflux
-from damspi.utils import parse_args
+from damspi.utils import parse_args, format_energy
 import pandas as pd
 import numpy as np
 import astropy.units as u
@@ -40,7 +40,8 @@ if __name__ == "__main__":
     # labels = ["NFW", r"Cored (free $\gamma_\mathrm{c}$)", r"Cored ($\gamma_\mathrm{c} = 0.4$)", r"Cored ($\gamma_\mathrm{c} = 0.0$)"]
     # labels = ["NFW", r"free $\gamma_\mathrm{c}$", r"$\gamma_\mathrm{c} = 0.4$", r"$\gamma_\mathrm{c} = 0.0$"]
     labels = args.labels
-    m_dm = int(args.m_dm.value[0])
+    m_dm_string = format_energy(args.m_dm[0])
+    E_th_string = format_energy(args.E_th)
 
     print("Start plotting...")
 
@@ -59,19 +60,19 @@ if __name__ == "__main__":
         colors = cmap(indices)
 
         for channel in channels:
-            filename = f"catalogue/{args.sim_name}/flux/{exp_names}/{channel}_channel/m_dm_{m_dm}GeV.h5"
+            filename = f"catalogue/{args.sim_name}/flux/{exp_names}/{channel}_channel/e_th_{E_th_string}/m_dm_{m_dm_string}.h5"
             print("Loading flux catalogue from", filename)
             flux_catalogues.append(pd.read_hdf(filename, key = "table"))
     # if multiple exp_names are specified, plot them all in one plot
     else:
-        path_plots = f"plots/{args.sim_name}/flux/comparison/{args.channel}_channel/"
+        path_plots = f"plots/{args.sim_name}/flux/comparison/{args.channel}_channel/e_th_{E_th_string}/"
         os.makedirs(path_plots, exist_ok = True)
 
         indices = np.linspace(0, 1, len(exp_names))
         colors = cmap(indices)
 
         for exp_name in exp_names:
-            filename = f"catalogue/{args.sim_name}/flux/{exp_name}/{args.channel}_channel/m_dm_{m_dm}GeV.h5"
+            filename = f"catalogue/{args.sim_name}/flux/{exp_name}/{args.channel}_channel/e_th_{E_th_string}/m_dm_{m_dm_string}.h5"
             print("Loading flux catalogue from", filename)
             flux_catalogues.append(pd.read_hdf(filename, key = "table"))
 
