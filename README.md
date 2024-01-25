@@ -1,7 +1,11 @@
 # DAMSPI
 <img src="https://github.com/jaschers/damspi/blob/main/logo/logo_text.png" width="750">
 
-DArk Matter SPIkes (DAMSPI) is a fully Python-based software for the analysis of dark matter spikes around Intermediate Mass Black Holes (IMBHs) in the Milky Way. It allows to extract an IMBH mock catalogue and their corresponding dark matter spike parameters from the EAGLE simulations in order to probe a potential gamma-ray signal from dark matter self-annihilation. For more details, see our published article at TBA. The IMBH catalogue can be downloaded from TBA.
+DArk Matter SPIkes (DAMSPI) is a fully Python-based software for the analysis of dark matter spikes around Intermediate Mass Black Holes (IMBHs) in the Milky Way. It allows to extract an IMBH mock catalogue and their corresponding dark matter spike parameters from the EAGLE simulations in order to probe a potential gamma-ray signal from dark matter self-annihilation. 
+
+The IMBH catalogue can be downloaded here:
+
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.10491705.svg)](https://doi.org/10.5281/zenodo.10491705)
 
 # Installation
 Clone the repository to your prefered directory:
