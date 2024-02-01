@@ -36,12 +36,13 @@ export GAMMAPY_DATA=gammapy-datasets/1.0
 
 
 # Usage
-The IMBH catalogue is available at TBA and provides the IMBH coordinates, dark matter spike parameters and the expected gamma-ray flux for a variety of dark matter masses and dark matter cross sections. If you would like to calculate the gamma-ray flux for a different dark matter mass or cross section, you have two options:
-1. Follow the instructions below to create the IMBH catalogue completely from scratch. This requires to download the EAGLE data, which, depending on the EAGLE dataset you choose, can take several days.
-2. Download the ``catalogue_nfw.h5`` file from TBA, put it into the ``catalogue/RefL0100N1504/imbh/`` directory and use the ``calculate_flux.py`` script to calculate the gamma-ray flux for your desired dark matter masses or cross sections. See Section "Gamma-ray flux from dark matter self-annihilation" below for more details.
+The IMBH catalogue provides the IMBH coordinates, dark matter spike parameters and the expected gamma-ray flux for a variety of dark matter masses and dark matter cross sections. If you would like to calculate the gamma-ray flux for a different dark matter mass or cross section, you have two options:
+1. No VirgoDB account required: Download the ``catalogue_nfw.h5`` file from [here](https://doi.org/10.5281/zenodo.10491705), put it into the ``catalogue/RefL0100N1504/imbh/`` directory and use the ``calculate_flux.py`` script to calculate the gamma-ray flux for your desired dark matter masses or cross sections. See Section "Gamma-ray flux from dark matter self-annihilation" below for more details.
+2. VirgoDB account required: Follow all the instructions below to create the IMBH catalogue completely from scratch. This requires to download the EAGLE data, which, depending on the EAGLE dataset you choose, can take several days.
+
+Note: Requesting an VirgoDB account is only required if you would like to create the IMBH catalogue from scratch or if you would like to adjust specific analysis steps for creating the IMBH catalogue. If you only want to calculate the gamma-ray flux for a different dark matter mass or cross section, you can use the ``catalogue_nfw.h5`` file from [here](https://doi.org/10.5281/zenodo.10491705) and jump directly to Section "Gamma-ray flux from dark matter self-annihilation".
 
 Every script has a help option ``-h`` or ``--help`` in order to get basic instructions on how to use the script. Some details will be discussed in the following.
-
 
 # Download EAGLE data
 First, an account on VirgoDB needs to be requested to get access to the EAGLE data, [here](https://virgodb.dur.ac.uk/). After sucessfully receiving your username and password, add the credentials to your ``.bashrc`` file: 
@@ -92,7 +93,7 @@ The catalogue contains the following information for each IMBH:
 | `rho(r_sp)`     | GeV/cm³      | Dark matter density at the spike radius                                                                                                                                      |
 | `satellite`     | -            | `True` if the black hole is located in one of the satellite galaxies of the host galaxy                                                                                      |
 | `no_host`       | -            | `True` if black hole was not assigned to any host at its formation redshift                                                                                                  |
-| `r_c`           | -            | Core radius (only available for cored dark matter profile)                                                                                                                   |
+| `r_c`           | kpc            | Core radius (only available for cored dark matter profile)                                                                                                                   |
 
 ## Create plots for IMBH catalogue
 A bunch of usueful plots for the IMBH catalogue can be created with the following command:
