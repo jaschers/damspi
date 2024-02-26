@@ -34,7 +34,6 @@ from scipy.optimize import curve_fit
 import scipy.stats
 from scipy.odr import Model, RealData, ODR, Data
 from sklearn.neighbors import KernelDensity
-import healpy as hp
 
 with open("config/config.yaml", "r") as f:
     config = yaml.load(f, Loader=yaml.FullLoader)
@@ -587,42 +586,6 @@ class BlackHolePlotter:
         ax.set_ylabel('Galactic Latitude')
         plt.tight_layout()
         plt.savefig(path, dpi = 500)
-
-    def plot_healpix_map(self, lat, long, path):
-        # creat healpix map
-        # Resolution of the HEALPix map
-        nside = 8
-        npix = hp.nside2npix(nside)
-
-        # Adjust phi to range from -180 to 180 degrees
-        long = np.degrees(long)  
-        long[long > 180] -= 360  
-        long = np.radians(long)
-
-        # Convert theta and phi to HEALPix pixel indices
-        lat = np.radians(90) - lat 
- 
-        #convert lat and long to lists
-        lat = lat.tolist()
-        long = long.tolist()
-
-        pixels = hp.ang2pix(nside, lat, long)
-
-        # Create a HEALPix map (histogram of pixel indices)
-        hpx_map = np.bincount(pixels, minlength=npix)
-
-        # Visualize the map with grid and labels
-        hp.mollview(hpx_map, coord=['G'], unit='Number of Points', cbar=True, cmap = LinearSegmentedColormap.from_list("", config["Colors"]["cmap_2d_map"]), flip = "geo")
-        hp.graticule()  # Add grid lines
-        # Add longitude and latitude labels
-        for lon_label in np.arange(-150, 210, 30):
-            hp.projtext(lon_label, 0, f'{lon_label}°', lonlat=True, fontsize=8)
-
-        for lat_label in np.arange(-60, 90, 30):
-            hp.projtext(0, lat_label, f'{lat_label}°', lonlat=True, fontsize=8, verticalalignment='bottom')
-
-        plt.savefig(path, dpi = 500)
-        plt.close()
 
     @staticmethod
     def expected_number_within_region(coord_stacked, lat_min, lat_max, long_min, long_max, kde, num_grid, name):
