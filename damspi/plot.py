@@ -34,6 +34,7 @@ from scipy.optimize import curve_fit
 import scipy.stats
 from scipy.odr import Model, RealData, ODR, Data
 from sklearn.neighbors import KernelDensity
+import pandas as pd
 
 with open("config/config.yaml", "r") as f:
     config = yaml.load(f, Loader=yaml.FullLoader)
@@ -455,6 +456,14 @@ class BlackHolePlotter:
         pdf = np.exp(kde.score_samples(coord_grid))
         pdf = pdf.reshape(Lat_grid.shape)
 
+        # save the pdf and grid coordinates in a single csv file with pandas
+        columns = ["Lat", "Long", "pdf"]
+        df = pd.DataFrame(columns = columns)
+        df["Lat"] = Lat_grid.flatten()
+        df["Long"] = Long_grid.flatten()
+        df["pdf"] = pdf.flatten()
+        df.to_csv(path + "pdf.csv", index = False)
+
         # get HESS galactic plane survey values and convert them to radians
         num_grid_survey = 100
         hess_lat_min, hess_lat_max = config["HESS"]["gps_lat_min"], config["HESS"]["gps_lat_max"]
@@ -585,7 +594,7 @@ class BlackHolePlotter:
         ax.set_xlabel('Galactic Longitude')
         ax.set_ylabel('Galactic Latitude')
         plt.tight_layout()
-        plt.savefig(path, dpi = 500)
+        plt.savefig(path + "2d_map_sun_contours.pdf", dpi = 500)
 
     @staticmethod
     def expected_number_within_region(coord_stacked, lat_min, lat_max, long_min, long_max, kde, num_grid, name):
@@ -725,7 +734,7 @@ class BlackHolePlotter:
         ax = fig.add_subplot(111, projection="aitoff")
         ax.grid(True, alpha = 0.5)
         # plot the PDF
-        im = ax.pcolormesh(X, Y, gaussian_pdf, cmap = LinearSegmentedColormap.from_list("", config["Colors"]["cmap_r"]), edgecolors = "face", linewidth = 0, rasterized=True)
+        im = ax.pcolormesh(X, Y, gaussian_pdf, cmap = LinearSegmentedColormap.from_list("", config["Colors"]["cmap_2d_map"]), edgecolors = "face", linewidth = 0, rasterized=True)
 
         # plot the contours
         x_max_previous = 0

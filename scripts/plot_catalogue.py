@@ -62,7 +62,7 @@ if __name__ == '__main__':
     bh_plotter.plot_2d_map(lat_sun, long_sun, path + "2d_map_sun.pdf")
 
     # bh_plotter.plot_2d_map_contours(lat_gc, long_gc, args.upsampling_factor, path + "2d_map_gc_contours.pdf")
-    bh_plotter.plot_2d_map_contours(lat_sun_upsampled, long_sun_upsampled, args.upsampling_factor, path + "2d_map_sun_contours.pdf")
+    bh_plotter.plot_2d_map_contours(lat_sun_upsampled, long_sun_upsampled, args.upsampling_factor, path)
 
     # Plot a 2D gaussian pdf of the BH distribution
     # bh_plotter.plot_2d_map_gaussian(lat_sun_upsampled, long_sun_upsampled, args.upsampling_factor, path + "2d_map_sun_gaussian.pdf")
