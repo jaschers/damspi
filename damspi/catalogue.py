@@ -214,7 +214,7 @@ class DataCollector:
         --------
         >>> galaxy_data(nsnap = 28)
         """
-        
+
         query = f'SELECT \
                     SH.GalaxyID as galaxy_id, \
                     SH.GroupID as group_id, \
@@ -242,12 +242,12 @@ class DataCollector:
                     and MH.SubGroupNumber = 0 \
                     and FOF.Group_M_Crit200 between {self.halo_mass_range[0].value} and {self.halo_mass_range[1].value} \
                     and sqrt(square(MH.CentreOfMass_x - MH.CentreOfPotential_x) + square(MH.CentreOfMass_y - MH.CentreOfPotential_y) + square(MH.CentreOfMass_z - MH.CentreOfPotential_z)) <= 0.07*FOF.Group_R_Crit200 * 1e-3 \
-                    and AP.Mass_Star between {self.stellar_mass_range[0].value} and {self.stellar_mass_range[1].value} \
                     and AP.ApertureSize = 30 \
+                    and AP.Mass_Star between {self.stellar_mass_range[0].value} and {self.stellar_mass_range[1].value} \
                     and FOF.GroupID = MH.GroupID \
                     and MH.Snapnum = SH.Snapnum \
                     and MH.GroupID = SH.GroupID \
-                    and AP.GalaxyID = SH.GalaxyID \
+                    and AP.GalaxyID = MH.GalaxyID \
                     and SH.Spurious = 0 \
                     and MH.Spurious = 0'
 
