@@ -235,7 +235,7 @@ class DataCollector:
                 FROM \
                     {self.sim_name}_SubHalo as MH, \
                     {self.sim_name}_SubHalo as SH, \
-                     {self.sim_name}_Aperture as AP, \
+                    {self.sim_name}_Aperture as AP, \
                     {self.sim_name}_FOF as FOF \
                 WHERE \
                     MH.Snapnum = {nsnap} \
