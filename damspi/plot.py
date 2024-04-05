@@ -35,6 +35,7 @@ import scipy.stats
 from scipy.odr import Model, RealData, ODR, Data
 from sklearn.neighbors import KernelDensity
 import pandas as pd
+from joblib import dump
 
 with open("config/config.yaml", "r") as f:
     config = yaml.load(f, Loader=yaml.FullLoader)
@@ -451,6 +452,9 @@ class BlackHolePlotter:
         # calculate kernel density estimation on IMBH coordinates
         kde = KernelDensity(bandwidth="scott", metric='haversine')
         kde.fit(coord_stacked)
+
+        # save kde
+        dump(kde, path + "kde_model.joblib")
 
         # evaluate kde on grid coordinates
         pdf = np.exp(kde.score_samples(coord_grid))
