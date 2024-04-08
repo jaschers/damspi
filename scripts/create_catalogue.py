@@ -27,13 +27,13 @@ def determine_coordinates(table_galaxy_z0_total, table_bh_z0_total, args, lst, g
     galaxy_group_number = table_galaxy_z0["group_number"].values[0]
 
     # select only BHs of the galaxy
-    table_bh_z0 = table_bh_z0_total[table_bh_z0_total["group number"] == galaxy_group_number].reset_index(drop = True)
+    table_bh_z0 = table_bh_z0_total[table_bh_z0_total["group_number"] == galaxy_group_number].reset_index(drop = True)
 
     # remove BHs that are in satallitle galaxies not within 40 kpc and 300 kpc to match MW-like galaxies
     table_bh_z0 = remove_distant_satellites(table_bh_z0, nsnap = 28, args = args)
 
     # add galaxy id to table
-    table_bh_z0["galaxy_id"] = np.ones(len(table_bh_z0)) * galaxy_id
+    table_bh_z0["main_galaxy_id"] = np.ones(len(table_bh_z0)) * galaxy_id
 
     coordinate_transformer = damcat.CoordinateTransformer(table_galaxy = table_galaxy_z0, table_bh = table_bh_z0, box_size = args.box_size)
 
@@ -44,18 +44,20 @@ def determine_coordinates(table_galaxy_z0_total, table_bh_z0_total, args, lst, g
     r_sun, lat_sun, long_sun = coordinate_transformer.bh_galactic_coord
 
     # add id, radial distances, latitude and longitude, (sub)groupnumber 2^30, and satellite information to table
-    table_bh_z0["galaxy_id"] = galaxy_id
     table_bh_z0["d_GC"] = r_gc
     table_bh_z0["lat_GC"] = lat_gc
     table_bh_z0["long_GC"] = long_gc
     table_bh_z0["d_Sun"] = r_sun
     table_bh_z0["lat_Sun"] = lat_sun
     table_bh_z0["long_Sun"] = long_sun
-    table_bh_z0["satellite"] = table_bh_z0["subgroup number"] != 0
+    table_bh_z0["group_number"] = table_bh_z0["group_number"]
+    table_bh_z0["subgroup_number"] = table_bh_z0["subgroup_number"]
 
     # keep only relevant columns
     table_bh_z0 = table_bh_z0[[
-        "galaxy_id", 
+        "main_galaxy_id", 
+        "group_number",
+        "subgroup_number",
         "bh_id", 
         "m", 
         "z_f",
@@ -66,8 +68,7 @@ def determine_coordinates(table_galaxy_z0_total, table_bh_z0_total, args, lst, g
         "long_GC",  
         "d_Sun", 
         "lat_Sun", 
-        "long_Sun", 
-        "satellite" 
+        "long_Sun"
         ]].reset_index(drop = True)
 
     # add table to list
@@ -91,7 +92,7 @@ def determine_coordinates(table_galaxy_z0_total, table_bh_z0_total, args, lst, g
 def calculate_spikes(args, lst, row_tuple):
     index, row = row_tuple
     bh_id = row["bh_id"]
-    galaxy_id = row["galaxy_id"]
+    galaxy_id = row["main_galaxy_id"]
     nsnap_c = row["nsnap_c"]
 
     # initialize empty table

@@ -4,6 +4,10 @@ import argparse
 import eagleSqlTools as sql
 import pandas as pd
 import astropy.constants as const 
+import yaml
+
+with open("config/config.yaml", "r") as f:
+    config = yaml.load(f, Loader=yaml.FullLoader)
 
 def check_core_index_range(value):
     """
@@ -441,11 +445,11 @@ def remove_distant_satellites(table_bh, nsnap, args):
         Table containing the black hole data
     """
 
-    group_number = table_bh['group number'].values[0]
-    subgroup_numbers = tuple(np.unique(table_bh['subgroup number'].values))
+    group_number = table_bh['group_number'].values[0]
+    subgroup_numbers = tuple(np.unique(table_bh['subgroup_number'].values))
 
     if len(subgroup_numbers) > 1:
-        r_min, r_max = 0.040 * u.Mpc, 0.300 * u.Mpc
+        r_min, r_max = config["Milky_way"]["satellite_rescaled_distance_range"] * 1e-3 * u.Mpc # kpc
 
         query = f"SELECT \
                     SH.GroupNumber as group_number, \
@@ -490,7 +494,7 @@ def remove_distant_satellites(table_bh, nsnap, args):
         # add host galaxy back to valid subgroup numbers
         subgroup_numbers_valid = np.append(subgroup_numbers_close_satellites, 0)
 
-        table_bh = table_bh[table_bh['subgroup number'].isin(subgroup_numbers_valid)].reset_index(drop=True)
+        table_bh = table_bh[table_bh['subgroup_number'].isin(subgroup_numbers_valid)].reset_index(drop=True)
         
         return(table_bh)
 
