@@ -73,3 +73,4 @@ Milky_way:
   halo_mass_range: [10**(11.7), 10**(12.5)] # u.Msun
   stellar_mass_range: [10**(10.4), 10**(11.2)] # u.Msun
   distance_sun: 8.33 # kpc
+  satellite_rescaled_distance_range: [40, 300] # kpc
