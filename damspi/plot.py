@@ -46,7 +46,7 @@ class GalaxyPlotter:
         self.table_galaxy = table_galaxy
         self.table_bh = table_bh
         # shift coorindates system to position of the sun (8.33 kpc), https://iopscience.iop.org/article/10.1088/1475-7516/2011/03/051/pdf
-        self.distance_sun = 8.33 # kpc
+        self.distance_sun = config["Milky_way"]["distance_sun"] # kpc
 
     @staticmethod
     def download_image(url, save_path):
