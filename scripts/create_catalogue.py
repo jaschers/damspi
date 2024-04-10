@@ -29,11 +29,11 @@ def determine_coordinates(table_galaxy_z0_total, table_bh_z0_total, args, lst, g
     # select only BHs of the galaxy
     table_bh_z0 = table_bh_z0_total[table_bh_z0_total["group_number"] == galaxy_group_number].reset_index(drop = True)
 
-    # remove BHs that are in satallitle galaxies not within 40 kpc and 300 kpc to match MW-like galaxies
+    # remove BHs that are in satallitle galaxies not within 40 kpc and 300 kpc to match MW-like galaxies, check for stars and gas and get satellite id if applicable
     table_bh_z0 = remove_distant_satellites(table_bh_z0, nsnap = 28, args = args)
 
     # add galaxy id to table
-    table_bh_z0["main_galaxy_id"] = np.ones(len(table_bh_z0)) * galaxy_id
+    table_bh_z0["main_galaxy_id"] = np.ones(len(table_bh_z0), dtype = "int") * int(galaxy_id)
 
     coordinate_transformer = damcat.CoordinateTransformer(table_galaxy = table_galaxy_z0, table_bh = table_bh_z0, box_size = args.box_size)
 
@@ -50,14 +50,14 @@ def determine_coordinates(table_galaxy_z0_total, table_bh_z0_total, args, lst, g
     table_bh_z0["d_Sun"] = r_sun
     table_bh_z0["lat_Sun"] = lat_sun
     table_bh_z0["long_Sun"] = long_sun
-    table_bh_z0["group_number"] = table_bh_z0["group_number"]
-    table_bh_z0["subgroup_number"] = table_bh_z0["subgroup_number"]
+    table_bh_z0["m_main_galaxy"] = table_galaxy_z0["m"].values[0]
+    table_bh_z0["satellite"] = table_bh_z0["main_galaxy_id"] != table_bh_z0["host_galaxy_id"]
+    table_bh_z0["n_satellites"] = table_galaxy_z0["n_satellites"].values[0]
 
     # keep only relevant columns
     table_bh_z0 = table_bh_z0[[
         "main_galaxy_id", 
-        "group_number",
-        "subgroup_number",
+        "host_galaxy_id",
         "bh_id", 
         "m", 
         "z_f",
@@ -68,7 +68,13 @@ def determine_coordinates(table_galaxy_z0_total, table_bh_z0_total, args, lst, g
         "long_GC",  
         "d_Sun", 
         "lat_Sun", 
-        "long_Sun"
+        "long_Sun",
+        "m_main_galaxy",
+        "m_host_galaxy",
+        "has_stars",
+        "has_gas",
+        "satellite",
+        "n_satellites",
         ]].reset_index(drop = True)
 
     # add table to list
@@ -175,6 +181,7 @@ if __name__ == "__main__":
 
         # unique galaxy root ids
         galaxy_id_unique = np.unique(table_galaxy_z0_total["galaxy_id"])
+        # galaxy_id_unique = galaxy_id_unique[:1]
 
         # extract bh data at z = 0
         table_bh_z0_total = data_collector.black_hole_data(nsnap = 28)

@@ -446,60 +446,82 @@ def remove_distant_satellites(table_bh, nsnap, args):
     """
 
     group_number = table_bh['group_number'].values[0]
-    subgroup_numbers = tuple(np.unique(table_bh['subgroup_number'].values))
+    subgroup_numbers_unique = tuple(np.unique(table_bh['subgroup_number'].values))
 
-    if len(subgroup_numbers) > 1:
-        r_min, r_max = config["Milky_way"]["satellite_rescaled_distance_range"] * 1e-3 * u.Mpc # kpc
-
-        query = f"SELECT \
-                    SH.GroupNumber as group_number, \
-                    SH.SubGroupNumber as subgroup_number, \
-                    SH.CentreOfPotential_x as cop_x, \
-                    SH.CentreOfPotential_y as cop_y, \
-                    SH.CentreOfPotential_z as cop_z, \
-                    FOF.Group_M_Crit200 as m200 \
-                FROM \
-                    {args.sim_name}_SubHalo as SH, \
-                    {args.sim_name}_FOF as FOF \
-                WHERE \
-                    SH.Snapnum = {nsnap} \
-                    and SH.GroupNumber = {group_number} \
-                    and SH.SubGroupNumber in {subgroup_numbers} \
-                    and FOF.Snapnum = SH.Snapnum \
-                    and FOF.GroupID = SH.GroupID \
-                    and SH.Spurious = 0"
-
-        # Execute query.
-        con = sql.connect("dvd351", password="zqfARI55") # username, password
-        # load galaxy data
-        data_galaxy = sql.execute_query(con, query)
-        table_galaxy = pd.DataFrame(data_galaxy)
-
-        host_galaxy = table_galaxy[table_galaxy['subgroup_number'] == 0]
-        host_cop = host_galaxy[['cop_x', 'cop_y', 'cop_z']].values[0] * u.Mpc
-
-        r = np.sqrt(
-            (table_galaxy['cop_x'].values * u.Mpc - host_cop[0])**2 + 
-            (table_galaxy['cop_y'].values * u.Mpc - host_cop[1])**2 + 
-            (table_galaxy['cop_z'].values * u.Mpc - host_cop[2])**2
-            )
-
-        m200 = table_galaxy['m200'].values * u.Msun
-        r_rescaled = rescaled_distance(r, m200)
-        table_galaxy['rescaled distance [Mpc]'] = r_rescaled.value
-
-        condition = (r_rescaled > r_min) & (r_rescaled < r_max)
-        table_close_satellites = table_galaxy[condition]
-        subgroup_numbers_close_satellites = np.unique(table_close_satellites['subgroup_number'].values)
-        # add host galaxy back to valid subgroup numbers
-        subgroup_numbers_valid = np.append(subgroup_numbers_close_satellites, 0)
-
-        table_bh = table_bh[table_bh['subgroup_number'].isin(subgroup_numbers_valid)].reset_index(drop=True)
-        
-        return(table_bh)
-
+    # prepare SQL query
+    if len(subgroup_numbers_unique) == 1:
+        subgroup_numbers = f"({subgroup_numbers_unique[0]})"
     else:
-        return(table_bh)
+        subgroup_numbers = subgroup_numbers_unique
+
+    r_min, r_max = np.array(config["Milky_way"]["satellite_rescaled_distance_range"]) * 1e-3 * u.Mpc # kpc
+
+    query = f"SELECT \
+                SH.GalaxyID as galaxy_id, \
+                SH.GroupNumber as group_number, \
+                SH.SubGroupNumber as subgroup_number, \
+                SH.CentreOfPotential_x as cop_x, \
+                SH.CentreOfPotential_y as cop_y, \
+                SH.CentreOfPotential_z as cop_z, \
+                SH.Mass as m_host_galaxy, \
+                SH.MassType_Star as m_star, \
+                SH.MassType_Gas as m_gas, \
+                FOF.Group_M_Crit200 as m200 \
+            FROM \
+                {args.sim_name}_SubHalo as SH, \
+                {args.sim_name}_FOF as FOF \
+            WHERE \
+                SH.Snapnum = {nsnap} \
+                and SH.GroupNumber = {group_number} \
+                and SH.SubGroupNumber in {subgroup_numbers} \
+                and FOF.Snapnum = SH.Snapnum \
+                and FOF.GroupID = SH.GroupID \
+                and SH.Spurious = 0"
+
+    # Execute query.
+    con = sql.connect("dvd351", password="zqfARI55") # username, password
+    # load galaxy data
+    data_galaxy = sql.execute_query(con, query)
+
+    # if only one subgroup number is reshape array so that pandas can put it into a dataframe.
+    if len(subgroup_numbers_unique) == 1:
+        data_galaxy = np.reshape(data_galaxy, (1,))
+    table_galaxy = pd.DataFrame(data_galaxy)
+
+    host_galaxy = table_galaxy[table_galaxy['subgroup_number'] == 0]
+    host_cop = host_galaxy[['cop_x', 'cop_y', 'cop_z']].values[0] * u.Mpc
+
+    r = np.sqrt(
+        (table_galaxy['cop_x'].values * u.Mpc - host_cop[0])**2 + 
+        (table_galaxy['cop_y'].values * u.Mpc - host_cop[1])**2 + 
+        (table_galaxy['cop_z'].values * u.Mpc - host_cop[2])**2
+        )
+
+    m200 = table_galaxy['m200'].values * u.Msun
+    r_rescaled = rescaled_distance(r, m200)
+    table_galaxy['rescaled distance [Mpc]'] = r_rescaled.value
+
+    condition = (r_rescaled > r_min) & (r_rescaled < r_max)
+    table_close_satellites = table_galaxy[condition]
+    subgroup_numbers_close_satellites = np.unique(table_close_satellites['subgroup_number'].values)
+    # add host galaxy back to valid subgroup numbers
+    subgroup_numbers_valid = np.append(subgroup_numbers_close_satellites, 0)
+
+    # get the table_galaxy entries that are valid
+    table_galaxy = table_galaxy[table_galaxy['subgroup_number'].isin(subgroup_numbers_valid)].reset_index(drop=True)
+    # add has_stars and has_gas columns
+    table_galaxy["has_stars"] = table_galaxy["m_star"] > 0
+    table_galaxy["has_gas"] = table_galaxy["m_gas"] > 0
+
+    table_bh = table_bh[table_bh['subgroup_number'].isin(subgroup_numbers_valid)].reset_index(drop=True)
+
+    # add galaxy_id, has_stars and has_gas columns to table_bh
+    table_bh = table_bh.merge(table_galaxy[['subgroup_number', 'galaxy_id', 'm_host_galaxy', 'has_stars', 'has_gas']], on='subgroup_number', how='left').reset_index(drop=True)
+
+    # rename galaxy_id column to host_galaxy_id
+    table_bh = table_bh.rename(columns={"galaxy_id": "host_galaxy_id"})
+
+    return(table_bh)
     
 def parameter_distr_mean(table, parameter, bins):
     """

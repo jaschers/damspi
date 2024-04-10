@@ -343,6 +343,15 @@ class DataCollector:
         # get the satellite galaxies that are part of the host galaxies
         satellite_galaxies = satellite_galaxies[satellite_galaxies['group_number'].isin(host_galaxies['group_number'])].reset_index(drop = True)
 
+        # determine how many satellite galaxies each host galaxy has
+        grouped_satellites = satellite_galaxies.groupby('group_number')['subgroup_number'].count().reset_index()
+        
+        # add the number of satellite galaxies to the host galaxies
+        host_galaxies = host_galaxies.merge(grouped_satellites, on='group_number', suffixes=('', '_count'))
+
+        # rename the column
+        host_galaxies = host_galaxies.rename(columns = {'subgroup_number_count': 'n_satellites'})
+
         return(host_galaxies)
 
     def read_dataset(self, itype, att, nsnap):
