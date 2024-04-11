@@ -317,7 +317,7 @@ class DataCollector:
         r_min, r_max = config["Milky_way"]["satellite_rescaled_distance_range"] # kpc
         satellite_galaxies = satellite_galaxies[(satellite_galaxies['r_rescaled'] > r_min) & (satellite_galaxies['r_rescaled'] < r_max)].reset_index(drop = True)
 
-        # keep only the satellite galaxies that have at least one star particle, i.e. m_star > 0
+        # for the 10% mass cut (later), keep only the satellite galaxies that have at least one star particle, i.e. m_star > 0
         satellite_galaxies_with_stars = satellite_galaxies[satellite_galaxies["m_star"] > 0].reset_index(drop = True)
 
         # merge satellite galaxies with host galaxies into table_galaxy
