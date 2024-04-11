@@ -225,6 +225,7 @@ class DataCollector:
                     SH.Snapnum as nsnap, \
                     SH.Mass as m, \
                     SH.MassType_Star as m_star, \
+                    SH.MassType_Gas as m_gas, \
                     FOF.Group_M_Crit200 as m200, \
                     SH.CentreOfPotential_x as cop_x, \
                     SH.CentreOfPotential_y as cop_y, \
@@ -317,10 +318,10 @@ class DataCollector:
         satellite_galaxies = satellite_galaxies[(satellite_galaxies['r_rescaled'] > r_min) & (satellite_galaxies['r_rescaled'] < r_max)].reset_index(drop = True)
 
         # keep only the satellite galaxies that have at least one star particle, i.e. m_star > 0
-        satellite_galaxies = satellite_galaxies[satellite_galaxies["m_star"] > 0].reset_index(drop = True)
+        satellite_galaxies_with_stars = satellite_galaxies[satellite_galaxies["m_star"] > 0].reset_index(drop = True)
 
         # merge satellite galaxies with host galaxies into table_galaxy
-        table_galaxy = pd.concat([host_galaxies, satellite_galaxies]).reset_index(drop = True)
+        table_galaxy = pd.concat([host_galaxies, satellite_galaxies_with_stars]).reset_index(drop = True)
 
         # Group by 'group_number' and calculate the total mass of host galaxies and their satellite galaxies
         grouped = table_galaxy.groupby('group_number')['m'].sum().reset_index()
@@ -352,7 +353,7 @@ class DataCollector:
         # rename the column
         host_galaxies = host_galaxies.rename(columns = {'subgroup_number_count': 'n_satellites'})
 
-        return(host_galaxies)
+        return(host_galaxies, satellite_galaxies)
 
     def read_dataset(self, itype, att, nsnap):
         """
