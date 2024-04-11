@@ -23,75 +23,104 @@ from functools import partial
 
 # define function to process each MW-like galaxy within the EAGLE simulation with multiprocessing
 def determine_coordinates(table_galaxy_z0_total, table_bh_z0_total, args, lst, galaxy_id):
+    # select galaxy with galaxy_id
     table_galaxy_z0 = table_galaxy_z0_total[table_galaxy_z0_total["galaxy_id"] == galaxy_id]
+    # get group number of galaxy
     galaxy_group_number = table_galaxy_z0["group_number"].values[0]
 
-    # select only BHs of the galaxy
+    # select only BHs of the galaxy and their satellites (group number)
     table_bh_z0 = table_bh_z0_total[table_bh_z0_total["group_number"] == galaxy_group_number].reset_index(drop = True)
 
-    # remove BHs that are in satallitle galaxies not within 40 kpc and 300 kpc to match MW-like galaxies, check for stars and gas and get satellite id if applicable
-    table_bh_z0 = remove_distant_satellites(table_bh_z0, nsnap = 28, args = args)
-
-    # add galaxy id to table
+    # add galaxy id of the main galaxy to table
     table_bh_z0["main_galaxy_id"] = np.ones(len(table_bh_z0), dtype = "int") * int(galaxy_id)
 
-    coordinate_transformer = damcat.CoordinateTransformer(table_galaxy = table_galaxy_z0, table_bh = table_bh_z0, box_size = args.box_size)
+    # check if at least one BH is in the galaxy
+    if len(table_bh_z0) == 0:
+        print("WARNING: no BHs in galaxy", galaxy_id)
+        # Add an empty table to the total BH catalogue. Important to keep track of the galaxies with no (unmerged) BHs (if any).
+        table_bh_z0["host_galaxy_id"] = None
+        table_bh_z0["bh_id"] = None 
+        table_bh_z0["m"] = None 
+        table_bh_z0["z_f"] = None
+        table_bh_z0["z_c"] = None
+        table_bh_z0["nsnap_c"] = None 
+        table_bh_z0["d_GC"] = None
+        table_bh_z0["lat_GC"] = None 
+        table_bh_z0["long_GC"] = None  
+        table_bh_z0["d_Sun"] = None 
+        table_bh_z0["lat_Sun"] = None 
+        table_bh_z0["long_Sun"] = None
+        table_bh_z0["m_main_galaxy"] = None
+        table_bh_z0["m_host_galaxy"] = None
+        table_bh_z0["has_stars"] = None
+        table_bh_z0["has_gas"] = None
+        table_bh_z0["satellite"] = None
+        table_bh_z0["n_satellites"] = None
 
-    # get distance of BHs to galaxy center
-    r_gc, lat_gc, long_gc = coordinate_transformer.bh_spherical_coord_gc
+        # add table to list
+        lst.append(table_bh_z0)
 
-    # get BH coordinates in galactic frame
-    r_sun, lat_sun, long_sun = coordinate_transformer.bh_galactic_coord
+    else:
+        # remove BHs that are in satallitle galaxies not within 40 kpc and 300 kpc to match MW-like galaxies, check for stars and gas and get satellite id if applicable
+        table_bh_z0 = remove_distant_satellites(table_bh_z0, nsnap = 28, args = args)
 
-    # add id, radial distances, latitude and longitude, (sub)groupnumber 2^30, and satellite information to table
-    table_bh_z0["d_GC"] = r_gc
-    table_bh_z0["lat_GC"] = lat_gc
-    table_bh_z0["long_GC"] = long_gc
-    table_bh_z0["d_Sun"] = r_sun
-    table_bh_z0["lat_Sun"] = lat_sun
-    table_bh_z0["long_Sun"] = long_sun
-    table_bh_z0["m_main_galaxy"] = table_galaxy_z0["m"].values[0]
-    table_bh_z0["satellite"] = table_bh_z0["main_galaxy_id"] != table_bh_z0["host_galaxy_id"]
-    table_bh_z0["n_satellites"] = table_galaxy_z0["n_satellites"].values[0]
+        coordinate_transformer = damcat.CoordinateTransformer(table_galaxy = table_galaxy_z0, table_bh = table_bh_z0, box_size = args.box_size)
 
-    # keep only relevant columns
-    table_bh_z0 = table_bh_z0[[
-        "main_galaxy_id", 
-        "host_galaxy_id",
-        "bh_id", 
-        "m", 
-        "z_f",
-        "z_c",
-        "nsnap_c", 
-        "d_GC",
-        "lat_GC", 
-        "long_GC",  
-        "d_Sun", 
-        "lat_Sun", 
-        "long_Sun",
-        "m_main_galaxy",
-        "m_host_galaxy",
-        "has_stars",
-        "has_gas",
-        "satellite",
-        "n_satellites",
-        ]].reset_index(drop = True)
+        # get distance of BHs to galaxy center
+        r_gc, lat_gc, long_gc = coordinate_transformer.bh_spherical_coord_gc
 
-    # add table to list
-    lst.append(table_bh_z0)
+        # get BH coordinates in galactic frame
+        r_sun, lat_sun, long_sun = coordinate_transformer.bh_galactic_coord
 
-    if args.plot:
-        # plot 3D maps of each galaxy
-        path = f"plots/{args.sim_name}/galaxy_id_{galaxy_id}/black_holes/coordinates/"
-        os.makedirs(path, exist_ok = True)
-        coordinate_transformer.plot_3d_maps(sim_name = args.sim_name, path = path, save_animation = args.save_animation)
+        # add id, radial distances, latitude and longitude, (sub)groupnumber 2^30, and satellite information to table
+        table_bh_z0["d_GC"] = r_gc
+        table_bh_z0["lat_GC"] = lat_gc
+        table_bh_z0["long_GC"] = long_gc
+        table_bh_z0["d_Sun"] = r_sun
+        table_bh_z0["lat_Sun"] = lat_sun
+        table_bh_z0["long_Sun"] = long_sun
+        table_bh_z0["m_main_galaxy"] = table_galaxy_z0["m"].values[0]
+        table_bh_z0["satellite"] = table_bh_z0["main_galaxy_id"] != table_bh_z0["host_galaxy_id"]
+        table_bh_z0["n_satellites"] = table_galaxy_z0["n_satellites"].values[0]
 
-        # plot BH distributions for each galaxy, such as mass, formation redshift, distance to galaxy center, etc.
-        bh_plotter = damplot.BlackHolePlotter(sim_name = args.sim_name, table_bh = table_bh_z0)
+        # keep only relevant columns
+        table_bh_z0 = table_bh_z0[[
+            "main_galaxy_id", 
+            "host_galaxy_id",
+            "bh_id", 
+            "m", 
+            "z_f",
+            "z_c",
+            "nsnap_c", 
+            "d_GC",
+            "lat_GC", 
+            "long_GC",  
+            "d_Sun", 
+            "lat_Sun", 
+            "long_Sun",
+            "m_main_galaxy",
+            "m_host_galaxy",
+            "has_stars",
+            "has_gas",
+            "satellite",
+            "n_satellites",
+            ]].reset_index(drop = True)
 
-        path = f"plots/{args.sim_name}/galaxy_id_{galaxy_id}/black_holes/distributions/"
-        os.makedirs(path, exist_ok = True)
-        bh_plotter.plot_bh_dist_galaxy(path)
+        # add table to list
+        lst.append(table_bh_z0)
+
+        if args.plot:
+            # plot 3D maps of each galaxy
+            path = f"plots/{args.sim_name}/galaxy_id_{galaxy_id}/black_holes/coordinates/"
+            os.makedirs(path, exist_ok = True)
+            coordinate_transformer.plot_3d_maps(sim_name = args.sim_name, path = path, save_animation = args.save_animation)
+
+            # plot BH distributions for each galaxy, such as mass, formation redshift, distance to galaxy center, etc.
+            bh_plotter = damplot.BlackHolePlotter(sim_name = args.sim_name, table_bh = table_bh_z0)
+
+            path = f"plots/{args.sim_name}/galaxy_id_{galaxy_id}/black_holes/distributions/"
+            os.makedirs(path, exist_ok = True)
+            bh_plotter.plot_bh_dist_galaxy(path)
 
 
 # define function to process each row of the BH catalogue with multiprocessing
@@ -165,8 +194,10 @@ if __name__ == "__main__":
 
     # define directory for catalogue
     path_catalogue = f"catalogue/{args.sim_name}/imbh/"
+    path_catalogue_galaxy = f"catalogue/{args.sim_name}/galaxy/"
     path_catalogue_temp = f"catalogue/{args.sim_name}/imbh_temp/"
     os.makedirs(path_catalogue, exist_ok = True)
+    os.makedirs(path_catalogue_galaxy, exist_ok = True)
     os.makedirs(path_catalogue_temp, exist_ok = True)
 
     # load temporary catalogue if requested
@@ -177,7 +208,24 @@ if __name__ == "__main__":
     else:
         # extract galaxy data at z = 0
         data_collector = damcat.DataCollector(sim_name = args.sim_name, number_files = args.number_files)
-        table_galaxy_z0_total = data_collector.galaxy_data(nsnap = 28)
+        table_galaxy_z0_total, table_satellite_z0_total = data_collector.galaxy_data(nsnap = 28)
+
+        # create merged galaxy catalogue
+        table_galaxy_and_satellite_z0_total = pd.concat([table_galaxy_z0_total, table_satellite_z0_total], ignore_index = True)
+
+        # save galaxy catalogue and only keep relevant columns
+        relevant_columns = [
+            "galaxy_id", 
+            "group_number", 
+            "subgroup_number",
+            "m",
+            "m200",
+            "m_star",
+            "m_gas",
+            "n_satellites",
+            ]
+        table_galaxy_and_satellite_z0_total = table_galaxy_and_satellite_z0_total[relevant_columns]
+        table_galaxy_and_satellite_z0_total.to_hdf(path_catalogue_galaxy + f"mw_galaxies_catalogue_{args.name}.h5", key = "table")
 
         # unique galaxy root ids
         galaxy_id_unique = np.unique(table_galaxy_z0_total["galaxy_id"])
