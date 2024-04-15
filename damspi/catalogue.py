@@ -226,6 +226,7 @@ class DataCollector:
                     SH.Mass as m, \
                     SH.MassType_Star as m_star, \
                     SH.MassType_Gas as m_gas, \
+                    SH.StarFormationRate as sfr, \
                     FOF.Group_M_Crit200 as m200, \
                     SH.CentreOfPotential_x as cop_x, \
                     SH.CentreOfPotential_y as cop_y, \
