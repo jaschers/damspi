@@ -25,6 +25,7 @@ from functools import partial
 def determine_coordinates(table_galaxy_z0_total, table_bh_z0_total, args, lst, galaxy_id):
     # select galaxy with galaxy_id
     table_galaxy_z0 = table_galaxy_z0_total[table_galaxy_z0_total["galaxy_id"] == galaxy_id]
+
     # get group number of galaxy
     galaxy_group_number = table_galaxy_z0["group_number"].values[0]
 
@@ -51,9 +52,11 @@ def determine_coordinates(table_galaxy_z0_total, table_bh_z0_total, args, lst, g
         table_bh_z0["lat_Sun"] = None 
         table_bh_z0["long_Sun"] = None
         table_bh_z0["m_main_galaxy"] = None
+        table_bh_z0["m200_main_galaxy"] = None
         table_bh_z0["m_host_galaxy"] = None
-        table_bh_z0["has_stars"] = None
-        table_bh_z0["has_gas"] = None
+        table_bh_z0["m_star_host_galaxy"] = None
+        table_bh_z0["m_gas_host_galaxy"] = None
+        table_bh_z0["sfr_host_galaxy"] = None
         table_bh_z0["satellite"] = None
         table_bh_z0["n_satellites"] = None
 
@@ -80,6 +83,7 @@ def determine_coordinates(table_galaxy_z0_total, table_bh_z0_total, args, lst, g
         table_bh_z0["lat_Sun"] = lat_sun
         table_bh_z0["long_Sun"] = long_sun
         table_bh_z0["m_main_galaxy"] = table_galaxy_z0["m"].values[0]
+        table_bh_z0["m200_main_galaxy"] = table_galaxy_z0["m200"].values[0]
         table_bh_z0["satellite"] = table_bh_z0["main_galaxy_id"] != table_bh_z0["host_galaxy_id"]
         table_bh_z0["n_satellites"] = table_galaxy_z0["n_satellites"].values[0]
 
@@ -99,9 +103,11 @@ def determine_coordinates(table_galaxy_z0_total, table_bh_z0_total, args, lst, g
             "lat_Sun", 
             "long_Sun",
             "m_main_galaxy",
+            "m200_main_galaxy",
             "m_host_galaxy",
-            "has_stars",
-            "has_gas",
+            "m_star_host_galaxy",
+            "m_gas_host_galaxy",
+            "sfr_host_galaxy",
             "satellite",
             "n_satellites",
             ]].reset_index(drop = True)
@@ -222,6 +228,7 @@ if __name__ == "__main__":
             "m200",
             "m_star",
             "m_gas",
+            "sfr",
             "n_satellites",
             ]
         table_galaxy_and_satellite_z0_total = table_galaxy_and_satellite_z0_total[relevant_columns]
