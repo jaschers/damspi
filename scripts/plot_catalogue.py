@@ -73,6 +73,9 @@ if __name__ == '__main__':
     print("Plotting BH number distributions...")
     bh_plotter.plot_number_dist(path_bh)
 
+    # TODO: check if there are any satellites that contain more than 1 black hole
+    bh_plotter.plot_number_dist_satellites(path_bh)
+
     # TODO: plot the BH number distribution for main galaxy only
 
     # plot two bar histogram of BHs in main galaxies and satellites
@@ -101,8 +104,6 @@ if __name__ == '__main__':
 
     # plot bar histogram of BHs for satellites types
     bh_plotter.plot_bh_in_satellite_types(path_bh)
-
-    # TODO: check if there are any satellites that contain more than 1 black hole
 
     # Plot a 2D gaussian pdf of the BH distribution
     # bh_plotter.plot_2d_map_gaussian(lat_sun_upsampled, long_sun_upsampled, args.upsampling_factor, path_bh + "2d_map_sun_gaussian.pdf")
