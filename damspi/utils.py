@@ -464,8 +464,9 @@ def remove_distant_satellites(table_bh, nsnap, args):
                 SH.CentreOfPotential_y as cop_y, \
                 SH.CentreOfPotential_z as cop_z, \
                 SH.Mass as m_host_galaxy, \
-                SH.MassType_Star as m_star, \
-                SH.MassType_Gas as m_gas, \
+                SH.MassType_Star as m_star_host_galaxy, \
+                SH.MassType_Gas as m_gas_host_galaxy, \
+                SH.StarFormationRate as sfr_host_galaxy, \
                 FOF.Group_M_Crit200 as m200 \
             FROM \
                 {args.sim_name}_SubHalo as SH, \
@@ -509,14 +510,15 @@ def remove_distant_satellites(table_bh, nsnap, args):
 
     # get the table_galaxy entries that are valid
     table_galaxy = table_galaxy[table_galaxy['subgroup_number'].isin(subgroup_numbers_valid)].reset_index(drop=True)
-    # add has_stars and has_gas columns
-    table_galaxy["has_stars"] = table_galaxy["m_star"] > 0
-    table_galaxy["has_gas"] = table_galaxy["m_gas"] > 0
+    # add m_star_host_galaxy and m_gas_host_galaxy columns
+    table_galaxy["m_star_host_galaxy"] = table_galaxy["m_star_host_galaxy"]
+    table_galaxy["m_gas_host_galaxy"] = table_galaxy["m_gas_host_galaxy"]
+    table_galaxy["sfr_host_galaxy"] = table_galaxy["sfr_host_galaxy"]
 
     table_bh = table_bh[table_bh['subgroup_number'].isin(subgroup_numbers_valid)].reset_index(drop=True)
 
-    # add galaxy_id, has_stars and has_gas columns to table_bh
-    table_bh = table_bh.merge(table_galaxy[['subgroup_number', 'galaxy_id', 'm_host_galaxy', 'has_stars', 'has_gas']], on='subgroup_number', how='left').reset_index(drop=True)
+    # add galaxy_id, m_star_host_galaxy and m_gas_host_galaxy columns to table_bh
+    table_bh = table_bh.merge(table_galaxy[['subgroup_number', 'galaxy_id', 'm_host_galaxy', 'm_star_host_galaxy', 'm_gas_host_galaxy', 'sfr_host_galaxy']], on='subgroup_number', how='left').reset_index(drop=True)
 
     # rename galaxy_id column to host_galaxy_id
     table_bh = table_bh.rename(columns={"galaxy_id": "host_galaxy_id"})
@@ -546,8 +548,8 @@ def parameter_distr_mean(table, parameter, bins):
 
     hist_list = []
     table_parameter = table[parameter]
-    for galaxy_id in np.unique(table["galaxy_id"].values):
-        data_galaxy_id = table_parameter[table["galaxy_id"].values == galaxy_id]
+    for galaxy_id in np.unique(table["main_galaxy_id"].values):
+        data_galaxy_id = table_parameter[table["main_galaxy_id"].values == galaxy_id]
         hist, _ = np.histogram(data_galaxy_id, bins = bins)
         hist_list.append(hist)
     
