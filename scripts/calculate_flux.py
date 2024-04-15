@@ -32,7 +32,7 @@ def extract_flux_catalogue(bh_catalogue, args, path, m_dm):
     flux_calculator = damflux.FluxCalculator(bh_catalogue = bh_catalogue)
     flux_catalogue = pd.DataFrame()
     for sigma_v in args.sigma_v:
-        table = bh_catalogue.copy()[["galaxy_id", "bh_id"]]
+        table = bh_catalogue.copy()[["main_galaxy_id", "bh_id"]]
 
         r_cut = flux_calculator.radius_cut(m_dm, sigma_v)
         flux = flux_calculator.gamma_flux(m_dm, args.channel, args.E_th, sigma_v)
