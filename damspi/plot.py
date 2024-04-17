@@ -227,28 +227,38 @@ class GalaxyPlotter:
         plt.tight_layout()
         plt.savefig(path + "halo_profile_fit.pdf", dpi = 300)
 
-    def plot_mass_dist(self, path):
+    def plot_galaxy_properties_dist(self, path):
         # get main galaxies and satellites
         table_galaxies = self.table_galaxy[self.table_galaxy["subgroup_number"] == 0]
         table_satellites = self.table_galaxy[self.table_galaxy["subgroup_number"] != 0]
         table_satellites_has_stars = table_satellites[table_satellites["m_star"] > 0]
 
-        parameters = ["m", "m200", "m_gas", "m_star"]
-        names = ["total_mass", "m200", "gas_mass", "star_mass"]
-        x_labels = [r"$m_\mathrm{tot}$ [$M_{\odot}$]", r"$m_{200}$ [$M_{\odot}$]", r"$m_{\mathrm{gas}}$ [$M_{\odot}$]", r"$m_{\star}$ [$M_{\odot}$]"]
+        parameters = ["m", "m200", "m_gas", "m_star", "sfr"]
+        names = ["total_mass", "m200", "gas_mass", "star_mass", "sfr"]
+        x_labels = [r"$m_\mathrm{tot}$ [$M_{\odot}$]", r"$m_{200}$ [$M_{\odot}$]", r"$m_{\mathrm{gas}}$ [$M_{\odot}$]", r"$m_\mathrm{star}$ [$M_{\odot}$]", "SFR [$M_{\odot}$ / yr]"]
 
         for parameter, name, x_label in zip(parameters, names, x_labels):
             # get masses for main galaxies
             mass_galaxies = table_galaxies[parameter].values
+            median_mass_galaxies = np.median(mass_galaxies)
             # create a histogram with logarithmic bins
-            bins_galaxies = np.logspace(np.log10(np.min(mass_galaxies)), np.log10(np.max(mass_galaxies)), config["Plots"]["number_bins"])
+            if parameter in ["sfr"]:
+                bins_galaxies = np.linspace(np.min(mass_galaxies), np.max(mass_galaxies), config["Plots"]["number_bins"])
+            else:
+                bins_galaxies = np.logspace(np.log10(np.min(mass_galaxies)), np.log10(np.max(mass_galaxies)), config["Plots"]["number_bins"])
 
             # plot galaxy mass distribution
             plt.figure(figsize = config["Figure_size"]["single_column"])
             plt.hist(mass_galaxies, bins = bins_galaxies, color = config["Colors"]["darkblue"])
             plt.xlabel(x_label)
             plt.ylabel("Number of main galaxies")
-            plt.xscale("log")
+            if parameter not in ["sfr"]:
+                plt.xscale("log")
+            plt.yscale("log")
+            ymin, ymax = plt.ylim()
+            plt.vlines(median_mass_galaxies, ymin = ymin, ymax = ymax, color = config["Colors"]["red"], linestyle = "solid", label = r"$\tilde{{\mu}}$ = " + f"{median_mass_galaxies:.2e}")
+            plt.ylim(ymin, ymax)
+            plt.legend()
             plt.tight_layout()
             plt.savefig(path + f"main_galaxy_{name}_dist.pdf", dpi = 300)
             plt.close()
@@ -257,15 +267,28 @@ class GalaxyPlotter:
                 # get masses for satellites
                 mass_satellites = table_satellites[parameter].values
                 mass_satellites_has_stars = table_satellites_has_stars[parameter].values
+                median_mass_satellites = np.median(mass_satellites)
+                median_mass_satellites_has_stars = np.median(mass_satellites_has_stars)
                 # create a histogram with logarithmic bins
-                bins_satellites = np.logspace(np.log10(np.min(mass_satellites)), np.log10(np.max(mass_satellites)), config["Plots"]["number_bins"])
-                bins_satellites_has_stars = np.logspace(np.log10(np.min(mass_satellites_has_stars)), np.log10(np.max(mass_satellites_has_stars)), config["Plots"]["number_bins"])
+                if parameter in ["m"]:
+                    bins_satellites = np.logspace(np.log10(np.min(mass_satellites)), np.log10(np.max(mass_satellites)), config["Plots"]["number_bins"])
+                    bins_satellites_has_stars = np.logspace(np.log10(np.min(mass_satellites_has_stars)), np.log10(np.max(mass_satellites_has_stars)), config["Plots"]["number_bins"])
+                else:
+                    # linear bins
+                    bins_satellites = np.linspace(np.min(mass_satellites), np.max(mass_satellites), config["Plots"]["number_bins"])
+                    bins_satellites_has_stars = np.linspace(np.min(mass_satellites_has_stars), np.max(mass_satellites_has_stars), config["Plots"]["number_bins"])
 
                 plt.figure(figsize = config["Figure_size"]["single_column"])
                 plt.hist(mass_satellites, bins = bins_satellites, color = config["Colors"]["darkblue"])
                 plt.xlabel(x_label)
                 plt.ylabel("Number of satellites")
-                plt.xscale("log")
+                if parameter in ["m"]:
+                    plt.xscale("log")
+                plt.yscale("log")
+                ymin, ymax = plt.ylim()
+                plt.vlines(median_mass_satellites, ymin = ymin, ymax = ymax, color = config["Colors"]["red"], linestyle = "solid", label = r"$\tilde{{\mu}}$ = " + f"{median_mass_satellites:.2e}")
+                plt.ylim(ymin, ymax)
+                plt.legend()
                 plt.tight_layout()
                 plt.savefig(path + f"satellites_{name}_dist.pdf", dpi = 300)
                 plt.close()
@@ -274,10 +297,17 @@ class GalaxyPlotter:
                 plt.hist(mass_satellites_has_stars, bins = bins_satellites_has_stars, color = config["Colors"]["darkblue"])
                 plt.xlabel(x_label)
                 plt.ylabel("Number of satellites with stars")
-                plt.xscale("log")
+                if parameter in ["m"]:
+                    plt.xscale("log")
+                plt.yscale("log")
+                ymin, ymax = plt.ylim()
+                plt.vlines(median_mass_satellites_has_stars, ymin = ymin, ymax = ymax, color = config["Colors"]["red"], linestyle = "solid", label = r"$\tilde{{\mu}}$ = " + f"{median_mass_satellites_has_stars:.2e}")
+                plt.ylim(ymin, ymax)
+                plt.legend()
                 plt.tight_layout()
                 plt.savefig(path + f"satellites_{name}_has_stars_dist.pdf", dpi = 300)
                 plt.close()
+                
 
     def plot_satellite_types(self, path):
         # get satellites
@@ -349,6 +379,7 @@ class GalaxyPlotter:
         
         # get number of satellites for each main galaxy
         n_satellites = table_galaxies["n_satellites"].values
+        n_satellites_median = np.median(n_satellites)
 
         # determine the number distribution of satellites with stars
         # determine how many satellite galaxies with stars each host galaxy has
@@ -362,10 +393,15 @@ class GalaxyPlotter:
 
         # get number of satellites with stars for each main galaxy
         n_satellites_has_stars = table_galaxies_satellites_has_stars["n_satellites_has_stars"].values
+        n_satellites_has_stars_median = np.median(n_satellites_has_stars)
 
         # plot satellite number distribution
         plt.figure(figsize = config["Figure_size"]["single_column"])
         plt.hist(n_satellites, bins = 10, color = config["Colors"]["darkblue"])
+        ymin, ymax = plt.ylim()
+        plt.vlines(n_satellites_median, ymin = ymin, ymax = ymax, color = config["Colors"]["red"], linestyle = "solid", label = r"$\tilde{{\mu}}$ = " + f"{n_satellites_median:.2f}")
+        plt.ylim(ymin, ymax)
+        plt.legend()
         plt.xlabel("Number of satellites")
         plt.ylabel("Number of main galaxies")
         plt.tight_layout()
@@ -375,6 +411,10 @@ class GalaxyPlotter:
         # plot satellite number distribution for satellites with stars
         plt.figure(figsize = config["Figure_size"]["single_column"])
         plt.hist(n_satellites_has_stars, bins = 10, color = config["Colors"]["darkblue"])
+        ymin, ymax = plt.ylim()
+        plt.vlines(n_satellites_has_stars_median, ymin = ymin, ymax = ymax, color = config["Colors"]["red"], linestyle = "solid", label = r"$\tilde{{\mu}}$ = " + f"{n_satellites_has_stars_median:.2f}")
+        plt.ylim(ymin, ymax)
+        plt.legend()
         plt.xlabel("Number of satellites with stars")
         plt.ylabel("Number of main galaxies")
         plt.tight_layout()
@@ -1154,7 +1194,7 @@ class BlackHolePlotter:
 
     def plot_number_dist_satellites(self, path):
         table_bh_satellites = self.table_bh[self.table_bh["satellite"] == True]
-        table_bh_satellites_has_stars = table_bh_satellites[table_bh_satellites["has_stars"] == True]
+        table_bh_satellites_has_stars = table_bh_satellites[table_bh_satellites["m_star_host_galaxy"] > 0]
 
         n_bh_satellites = np.unique(table_bh_satellites["host_galaxy_id"].values, return_counts = True)[1]
         n_bh_satellites_has_stars = np.unique(table_bh_satellites_has_stars["host_galaxy_id"].values, return_counts = True)[1]
@@ -1234,15 +1274,98 @@ class BlackHolePlotter:
         plt.savefig(path + "scatter_bh_n_satellites.pdf", dpi = 300)
         plt.close()
 
+    def plot_scatter_bh_galaxy_properties(self, path):
+        table_bh_main_galaxies = self.table_bh[self.table_bh["satellite"] == False]
+        main_galaxy_ids = np.unique(table_bh_main_galaxies["main_galaxy_id"].values)
+        galaxy_ids = np.unique(self.table_bh["main_galaxy_id"].values)
+
+        table_bh_satellites = self.table_bh[self.table_bh["satellite"] == True]
+        satellites_galaxy_ids = np.unique(table_bh_satellites["host_galaxy_id"].values)
+
+        parameters = ["m_host_galaxy", "m200_main_galaxy", "m_gas_host_galaxy", "m_star_host_galaxy", "sfr_host_galaxy"]
+        log_parameters = ["m_host_galaxy", "m200_main_galaxy", "m_gas_host_galaxy", "m_star_host_galaxy"] 
+        names = ["total_mass", "m200", "gas_mass", "star_mass", "sfr"]
+        x_labels = [r"$m_\mathrm{tot}$ [$M_{\odot}$]", r"$m_{200}$ [$M_{\odot}$]", r"$m_{\mathrm{gas}}$ [$M_{\odot}$]", r"$m_\mathrm{star}$ [$M_{\odot}$]", "SFR [$M_{\odot}$ / yr]"]
+
+        for parameter, name, x_label in zip(parameters, names, x_labels):
+            # extract the number of BHs and the parameter values for the main galaxies (considering BHs in the main galaxy and the satellites)
+            n_bh = []
+            parameter_values = []
+            for galaxy_id in galaxy_ids:
+                table_bh_galaxy = self.table_bh[self.table_bh["main_galaxy_id"] == galaxy_id]
+                n_bh_galaxy = len(table_bh_galaxy)
+                parameter_value_galaxy = np.unique(table_bh_galaxy[table_bh_galaxy["satellite"] == False][parameter].values) # remove the satellite entries here to get the property of the main galaxy
+                if len(parameter_value_galaxy) != 1:
+                    print(f"WARNING: More than one value for parameter {parameter} for galaxy {galaxy_id}! This should not be possible! Check catalogue!")
+                n_bh.append(n_bh_galaxy)
+                parameter_values.append(parameter_value_galaxy[0])
+
+            # extract the number of BHs and the parameter values for the main galaxies (excluding BHs in the satellites)
+            n_bh_main_galaxies = []
+            parameter_values_main_galaxies = []
+            for main_galaxy_id in main_galaxy_ids:
+                table_bh_main_galaxy = table_bh_main_galaxies[table_bh_main_galaxies["main_galaxy_id"] == main_galaxy_id]
+                n_bh_main_galaxy = len(table_bh_main_galaxy)
+                parameter_value_galaxy = np.unique(table_bh_main_galaxy[parameter].values)
+                if len(parameter_value_galaxy) != 1:
+                    print(f"WARNING: More than one value for parameter {parameter} for galaxy {main_galaxy_id}! This should not be possible! Check catalogue!")
+                n_bh_main_galaxies.append(n_bh_main_galaxy)
+                parameter_values_main_galaxies.append(parameter_value_galaxy[0])
+
+            plt.figure(figsize = config["Figure_size"]["single_column"])
+            plt.scatter(parameter_values, n_bh, color = config["Colors"]["darkblue"], marker = "o", s = config["Plots"]["markersize"])
+            plt.xlabel(x_label + " (of main galaxy)")
+            plt.ylabel("$N_\mathrm{BH}$ (in main galaxy + satellites)")
+            if parameter in log_parameters:
+                plt.xscale("log")
+            plt.tight_layout()
+            plt.savefig(path + f"scatter_bh_{name}.pdf", dpi = 300)
+            plt.close()
+
+            plt.figure(figsize = config["Figure_size"]["single_column"])
+            plt.scatter(parameter_values_main_galaxies, n_bh_main_galaxies, color = config["Colors"]["darkblue"], marker = "o", s = config["Plots"]["markersize"])
+            plt.xlabel(x_label + " (of main galaxy)")
+            plt.ylabel("$N_\mathrm{BH}$ (in main galaxy)")
+            if parameter in log_parameters:
+                plt.xscale("log")
+            plt.tight_layout()
+            plt.savefig(path + f"scatter_bh_{name}_main_galaxy.pdf", dpi = 300)
+            plt.close()
+
+            if parameter != "m200_main_galaxy":
+                # extract the number of BHs and the parameter values for the satellite galaxies
+                n_bh_satellites = []
+                parameter_values_satellites = []
+                for satellite_galaxy_id in satellites_galaxy_ids:
+                    table_bh_satellite_galaxy = table_bh_satellites[table_bh_satellites["host_galaxy_id"] == satellite_galaxy_id]
+                    n_bh_satellite_galaxy = len(table_bh_satellite_galaxy)
+                    parameter_value_galaxy = np.unique(table_bh_satellite_galaxy[parameter].values)
+                    if len(parameter_value_galaxy) != 1:
+                        print(f"WARNING: More than one value for parameter {parameter} for galaxy {satellite_galaxy_id}! This should not be possible! Check catalogue!")
+                    n_bh_satellites.append(n_bh_satellite_galaxy)
+                    parameter_values_satellites.append(parameter_value_galaxy[0])
+
+                plt.figure(figsize = config["Figure_size"]["single_column"])
+                plt.scatter(parameter_values_satellites, n_bh_satellites, color = config["Colors"]["darkblue"], marker = "o", s = config["Plots"]["markersize"])
+                plt.xlabel(x_label + " (of satellite galaxy)")
+                plt.ylabel("$N_\mathrm{BH}$ (in satellites)")
+                if parameter in log_parameters:
+                    plt.xscale("log")
+                plt.tight_layout()
+                plt.savefig(path + f"scatter_bh_{name}_satellites.pdf", dpi = 300)
+                plt.close()
+
+
+
     def plot_bh_in_satellite_types(self, path):
         # get satellites
         table_satellites = self.table_bh[self.table_bh["satellite"] == True]
 
         n_bh_in_satellites = len(table_satellites)
-        n_bh_in_satellites_no_gas_no_star = len(table_satellites[(table_satellites["has_gas"] == False) & (table_satellites["has_stars"] == False)])
-        n_bh_in_satellites_has_gas = len(table_satellites[table_satellites["has_gas"] == True])
-        n_bh_in_satellites_has_star = len(table_satellites[table_satellites["has_stars"] == True])
-        n_bh_in_satellites_has_gas_has_star = len(table_satellites[(table_satellites["has_gas"] == True) & (table_satellites["has_stars"] == True)])
+        n_bh_in_satellites_no_gas_no_star = len(table_satellites[(table_satellites["m_gas_host_galaxy"] == 0) & (table_satellites["m_star_host_galaxy"] == 0)])
+        n_bh_in_satellites_has_gas = len(table_satellites[table_satellites["m_gas_host_galaxy"] > 0])
+        n_bh_in_satellites_has_star = len(table_satellites[table_satellites["m_star_host_galaxy"] > 0])
+        n_bh_in_satellites_has_gas_has_star = len(table_satellites[(table_satellites["m_gas_host_galaxy"] > 0) & (table_satellites["m_star_host_galaxy"] > 0)])
 
         # plot bar plot
         plt.figure(figsize = config["Figure_size"]["single_column"])
@@ -1252,10 +1375,7 @@ class BlackHolePlotter:
         plt.xticks(rotation = 90)
         plt.tight_layout()
         plt.savefig(path + "satellite_types.pdf", dpi = 300)
-        plt.close()
-
-        exit()
-        
+        plt.close()        
 
 
 class FluxPlotter:

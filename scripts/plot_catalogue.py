@@ -59,7 +59,7 @@ if __name__ == '__main__':
     os.makedirs(path_galaxy, exist_ok = True)
 
     # plot the mass distribution of main galaxies and satellites
-    galaxy_plotter.plot_mass_dist(path_galaxy)
+    galaxy_plotter.plot_galaxy_properties_dist(path_galaxy)
 
     # plot number distribution of satellites in main galaxies
     galaxy_plotter.plot_satellite_number_dist(path_galaxy)
@@ -101,6 +101,8 @@ if __name__ == '__main__':
 
     # plot scatter plot between number of BHs vs number satellites in main galaxies
     bh_plotter.plot_scatter_bh_n_satellites(path_bh)
+
+    bh_plotter.plot_scatter_bh_galaxy_properties(path_bh)
 
     # plot bar histogram of BHs for satellites types
     bh_plotter.plot_bh_in_satellite_types(path_bh)
