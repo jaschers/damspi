@@ -711,7 +711,7 @@ class DataCollector:
         r_min, r_max = config["Milky_way"]["satellite_rescaled_distance_range"] # kpc
         satellite_galaxies = satellite_galaxies[(satellite_galaxies['r_rescaled'] > r_min) & (satellite_galaxies['r_rescaled'] < r_max)].reset_index(drop = True)
 
-        return(host_galaxies, satellite_galaxies)
+        return(main_galaxies, satellite_galaxies)
 
     def read_dataset(self, itype, att, nsnap):
         """
