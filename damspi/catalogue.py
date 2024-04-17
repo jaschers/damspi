@@ -193,6 +193,413 @@ class DataCollector:
             smallest_keys.append(smallest_key)
         return(smallest_keys, smallest_values)
 
+    # def galaxy_data(self, nsnap):
+    #     """
+    #     Get the galaxy data for snapshot nsnap from the EAGLE simulations.
+
+    #     Parameters
+    #     ----------
+    #     nsnap: int
+    #         The snapshot number.
+
+    #     Returns
+    #     -------
+    #     table_galaxy: pandas.DataFrame
+    #         The galaxy data.
+
+    #     Notes
+    #     -----
+    #     The galaxy data is requested from the EAGLE database using the SQL request. The data is stored in a pandas DataFrame.
+
+    #     Examples
+    #     --------
+    #     >>> galaxy_data(nsnap = 28)
+    #     """
+
+    #     query = f'SELECT \
+    #                 SH.GalaxyID as galaxy_id, \
+    #                 SH.GroupID as group_id, \
+    #                 SH.GroupNumber as group_number, \
+    #                 SH.SubGroupNumber as subgroup_number, \
+    #                 SH.Redshift as z, \
+    #                 SH.Snapnum as nsnap, \
+    #                 SH.Mass as m, \
+    #                 SH.MassType_Star as m_star, \
+    #                 SH.MassType_Gas as m_gas, \
+    #                 SH.StarFormationRate as sfr, \
+    #                 FOF.Group_M_Crit200 as m200, \
+    #                 SH.CentreOfPotential_x as cop_x, \
+    #                 SH.CentreOfPotential_y as cop_y, \
+    #                 SH.CentreOfPotential_z as cop_z, \
+    #                 SH.Stars_Spin_x as spin_x, \
+    #                 SH.Stars_Spin_y as spin_y, \
+    #                 SH.Stars_Spin_z as spin_z, \
+    #                 SH.Image_face as img_face, \
+    #                 SH.Image_edge as img_edge, \
+    #                 SH.Image_box as img_box \
+    #             FROM \
+    #                 {self.sim_name}_SubHalo as MH, \
+    #                 {self.sim_name}_SubHalo as SH, \
+    #                 {self.sim_name}_Aperture as AP, \
+    #                 {self.sim_name}_FOF as FOF \
+    #             WHERE \
+    #                 MH.Snapnum = {nsnap} \
+    #                 and MH.SubGroupNumber = 0 \
+    #                 and FOF.Group_M_Crit200 between {self.halo_mass_range[0].value} and {self.halo_mass_range[1].value} \
+    #                 and sqrt(square(MH.CentreOfMass_x - MH.CentreOfPotential_x) + square(MH.CentreOfMass_y - MH.CentreOfPotential_y) + square(MH.CentreOfMass_z - MH.CentreOfPotential_z)) <= 0.07*FOF.Group_R_Crit200 * 1e-3 \
+    #                 and AP.ApertureSize = 30 \
+    #                 and AP.Mass_Star between {self.stellar_mass_range[0].value} and {self.stellar_mass_range[1].value} \
+    #                 and FOF.GroupID = MH.GroupID \
+    #                 and MH.Snapnum = SH.Snapnum \
+    #                 and MH.GroupID = SH.GroupID \
+    #                 and AP.GalaxyID = MH.GalaxyID \
+    #                 and SH.Spurious = 0 \
+    #                 and MH.Spurious = 0'
+        
+    #     # query = f'SELECT \
+    #     #             SH.GalaxyID as galaxy_id, \
+    #     #             SH.GroupID as group_id, \
+    #     #             SH.GroupNumber as group_number, \
+    #     #             SH.SubGroupNumber as subgroup_number, \
+    #     #             SH.Redshift as z, \
+    #     #             SH.Snapnum as nsnap, \
+    #     #             SH.Mass as m, \
+    #     #             SH.MassType_Star as m_star, \
+    #     #             FOF.Group_M_Crit200 as m200, \
+    #     #             SH.CentreOfPotential_x as cop_x, \
+    #     #             SH.CentreOfPotential_y as cop_y, \
+    #     #             SH.CentreOfPotential_z as cop_z, \
+    #     #             SH.Stars_Spin_x as spin_x, \
+    #     #             SH.Stars_Spin_y as spin_y, \
+    #     #             SH.Stars_Spin_z as spin_z, \
+    #     #             SH.Image_face as img_face, \
+    #     #             SH.Image_edge as img_edge, \
+    #     #             SH.Image_box as img_box \
+    #     #         FROM \
+    #     #             {self.sim_name}_SubHalo as MH, \
+    #     #             {self.sim_name}_SubHalo as SH, \
+    #     #             {self.sim_name}_FOF as FOF \
+    #     #         WHERE \
+    #     #             MH.Snapnum = {nsnap} \
+    #     #             and MH.SubGroupNumber = 0 \
+    #     #             and FOF.Group_M_Crit200 between {self.halo_mass_range[0].value} and {self.halo_mass_range[1].value} \
+    #     #             and sqrt(square(MH.CentreOfMass_x - MH.CentreOfPotential_x) + square(MH.CentreOfMass_y - MH.CentreOfPotential_y) + square(MH.CentreOfMass_z - MH.CentreOfPotential_z)) <= 0.07*FOF.Group_R_Crit200 * 1e-3 \
+    #     #             and FOF.GroupID = MH.GroupID \
+    #     #             and MH.Snapnum = SH.Snapnum \
+    #     #             and MH.GroupID = SH.GroupID \
+    #     #             and SH.Spurious = 0 \
+    #     #             and MH.Spurious = 0'
+
+    #     # Execute query.
+    #     con = sql.connect(username, password=password) # username, password
+    #     # load galaxy data
+    #     data_galaxy = sql.execute_query(con, query)
+    #     # put data into pandas DataFrame
+    #     table_galaxy = pd.DataFrame(data_galaxy)
+        
+    #     # Create a mask for host galaxies (subgroup_number == 0)
+    #     host_galaxies = table_galaxy[table_galaxy['subgroup_number'] == 0]
+
+    #     # create a mask for satellite galaxies (subgroup_number != 0)
+    #     satellite_galaxies = table_galaxy[table_galaxy['subgroup_number'] != 0]
+
+    #     # for each satellite galaxy, find the host galaxy and calculate the distance to the host galaxy
+    #     for index, row in satellite_galaxies.iterrows():
+    #         # find the host galaxy
+    #         host_galaxy = host_galaxies[host_galaxies['group_number'] == row['group_number']]
+    #         # calculate the distance to the host galaxy
+    #         r = np.sqrt((host_galaxy['cop_x'].values[0] - row['cop_x'])**2 + (host_galaxy['cop_y'].values[0] - row['cop_y'])**2 + (host_galaxy['cop_z'].values[0] - row['cop_z'])**2) * u.Mpc
+    #         # rescale the distance to the host galaxy based on its mass
+    #         r_rescaled = rescaled_distance(r, host_galaxy['m200'].values[0] * u.Msun)
+    #         # add the distance to the satellite galaxy
+    #         satellite_galaxies.loc[index, 'r_rescaled'] = r_rescaled.value * 1e3 # in kpc
+
+    #     # select only satellite galaxies that are within the distance limit
+    #     r_min, r_max = config["Milky_way"]["satellite_rescaled_distance_range"] # kpc
+    #     satellite_galaxies = satellite_galaxies[(satellite_galaxies['r_rescaled'] > r_min) & (satellite_galaxies['r_rescaled'] < r_max)].reset_index(drop = True)
+
+    #     # for the 10% mass cut (later), keep only the satellite galaxies that have at least one star particle, i.e. m_star > 0
+    #     satellite_galaxies_with_stars = satellite_galaxies[satellite_galaxies["m_star"] > 0].reset_index(drop = True)
+
+    #     # merge satellite galaxies with host galaxies into table_galaxy
+    #     table_galaxy = pd.concat([host_galaxies, satellite_galaxies_with_stars]).reset_index(drop = True)
+
+    #     # Group by 'group_number' and calculate the total mass of host galaxies and their satellite galaxies
+    #     grouped = table_galaxy.groupby('group_number')['m'].sum().reset_index()
+
+    #     # Merge the host galaxies DataFrame with the grouped data
+    #     host_galaxies = host_galaxies.merge(grouped, on='group_number', suffixes=('', '_total'))
+
+    #     # Calculate the total mass of satellite galaxies for each host galaxy
+    #     host_galaxies['m_sat'] = host_galaxies['m_total'] - host_galaxies['m']
+
+    #     # Check if satellite mass is less than 10% of the total mass
+    #     host_galaxies['m_sat < 0.1 m_total'] = host_galaxies['m_sat'] < 0.1 * host_galaxies['m_total']
+
+    #     host_galaxies = host_galaxies[host_galaxies['m_sat < 0.1 m_total']]
+
+    #     columns_to_drop = ['m_total', 'm_sat', 'm_sat < 0.1 m_total']
+
+    #     host_galaxies = host_galaxies.drop(columns=columns_to_drop).reset_index(drop = True)
+
+    #     # get the satellite galaxies that are part of the host galaxies
+    #     satellite_galaxies = satellite_galaxies[satellite_galaxies['group_number'].isin(host_galaxies['group_number'])].reset_index(drop = True)
+
+    #     # determine how many satellite galaxies each host galaxy has
+    #     grouped_satellites = satellite_galaxies.groupby('group_number')['subgroup_number'].count().reset_index()
+        
+    #     # add the number of satellite galaxies to the host galaxies
+    #     host_galaxies = host_galaxies.merge(grouped_satellites, on='group_number', suffixes=('', '_count'))
+
+    #     # rename the column
+    #     host_galaxies = host_galaxies.rename(columns = {'subgroup_number_count': 'n_satellites'})
+
+    #     return(host_galaxies, satellite_galaxies)
+
+
+    # def galaxy_data(self, nsnap):
+    #     """
+    #     Get the galaxy data for snapshot nsnap from the EAGLE simulations.
+
+    #     Parameters
+    #     ----------
+    #     nsnap: int
+    #         The snapshot number.
+
+    #     Returns
+    #     -------
+    #     table_galaxy: pandas.DataFrame
+    #         The galaxy data.
+
+    #     Notes
+    #     -----
+    #     The galaxy data is requested from the EAGLE database using the SQL request. The data is stored in a pandas DataFrame.
+
+    #     Examples
+    #     --------
+    #     >>> galaxy_data(nsnap = 28)
+    #     """
+        
+    #     query = f'SELECT \
+    #                 SH.GalaxyID as galaxy_id, \
+    #                 SH.GroupID as group_id, \
+    #                 SH.GroupNumber as group_number, \
+    #                 SH.SubGroupNumber as subgroup_number, \
+    #                 SH.Redshift as z, \
+    #                 SH.Snapnum as nsnap, \
+    #                 SH.Mass as m, \
+    #                 SH.MassType_Star as m_star, \
+    #                 FOF.Group_M_Crit200 as m200, \
+    #                 SH.CentreOfPotential_x as cop_x, \
+    #                 SH.CentreOfPotential_y as cop_y, \
+    #                 SH.CentreOfPotential_z as cop_z, \
+    #                 SH.Stars_Spin_x as spin_x, \
+    #                 SH.Stars_Spin_y as spin_y, \
+    #                 SH.Stars_Spin_z as spin_z, \
+    #                 SH.Image_face as img_face, \
+    #                 SH.Image_edge as img_edge, \
+    #                 SH.Image_box as img_box \
+    #             FROM \
+    #                 {self.sim_name}_SubHalo as MH, \
+    #                 {self.sim_name}_SubHalo as SH, \
+    #                 {self.sim_name}_FOF as FOF \
+    #             WHERE \
+    #                 MH.Snapnum = {nsnap} \
+    #                 and MH.SubGroupNumber = 0 \
+    #                 and FOF.Group_M_Crit200 between {self.halo_mass_range[0].value} and {self.halo_mass_range[1].value} \
+    #                 and sqrt(square(MH.CentreOfMass_x - MH.CentreOfPotential_x) + square(MH.CentreOfMass_y - MH.CentreOfPotential_y) + square(MH.CentreOfMass_z - MH.CentreOfPotential_z)) <= 0.07*FOF.Group_R_Crit200 * 1e-3 \
+    #                 and FOF.GroupID = MH.GroupID \
+    #                 and MH.Snapnum = SH.Snapnum \
+    #                 and MH.GroupID = SH.GroupID \
+    #                 and SH.Spurious = 0 \
+    #                 and MH.Spurious = 0'
+
+    #     # Execute query.
+    #     con = sql.connect(username, password=password) # username, password
+    #     # load galaxy data
+    #     data_galaxy = sql.execute_query(con, query)
+    #     # put data into pandas DataFrame
+    #     table_galaxy = pd.DataFrame(data_galaxy)
+        
+    #     # Create a mask for host galaxies (subgroup_number == 0)
+    #     host_galaxies = table_galaxy[table_galaxy['subgroup_number'] == 0]
+
+    #     # create a mask for satellite galaxies (subgroup_number != 0)
+    #     satellite_galaxies = table_galaxy[table_galaxy['subgroup_number'] != 0]
+
+    #     # for each satellite galaxy, find the host galaxy and calculate the distance to the host galaxy
+    #     for index, row in satellite_galaxies.iterrows():
+    #         # find the host galaxy
+    #         host_galaxy = host_galaxies[host_galaxies['group_number'] == row['group_number']]
+    #         # calculate the distance to the host galaxy
+    #         r = np.sqrt((host_galaxy['cop_x'].values[0] - row['cop_x'])**2 + (host_galaxy['cop_y'].values[0] - row['cop_y'])**2 + (host_galaxy['cop_z'].values[0] - row['cop_z'])**2) * u.Mpc
+    #         # rescale the distance to the host galaxy based on its mass
+    #         r_rescaled = rescaled_distance(r, host_galaxy['m200'].values[0] * u.Msun)
+    #         # add the distance to the satellite galaxy
+    #         satellite_galaxies.loc[index, 'r_rescaled'] = r_rescaled.value * 1e3 # in kpc
+
+    #     # select only satellite galaxies that are within the distance limit
+    #     r_min, r_max = config["Milky_way"]["satellite_rescaled_distance_range"] # kpc
+    #     satellite_galaxies = satellite_galaxies[(satellite_galaxies['r_rescaled'] > r_min) & (satellite_galaxies['r_rescaled'] < r_max)].reset_index(drop = True)
+
+    #     # for the 10% mass cut (later), keep only the satellite galaxies that have at least one star particle, i.e. m_star > 0
+    #     satellite_galaxies_with_stars = satellite_galaxies[satellite_galaxies["m_star"] > 0].reset_index(drop = True)
+
+    #     # merge satellite galaxies with host galaxies into table_galaxy
+    #     table_galaxy = pd.concat([host_galaxies, satellite_galaxies_with_stars]).reset_index(drop = True)
+
+    #     # Group by 'group_number' and calculate the total mass of host galaxies and their satellite galaxies
+    #     grouped = table_galaxy.groupby('group_number')['m'].sum().reset_index()
+
+    #     # Merge the host galaxies DataFrame with the grouped data
+    #     host_galaxies = host_galaxies.merge(grouped, on='group_number', suffixes=('', '_total'))
+
+    #     # Calculate the total mass of satellite galaxies for each host galaxy
+    #     host_galaxies['m_sat'] = host_galaxies['m_total'] - host_galaxies['m']
+
+    #     # Check if satellite mass is less than 10% of the total mass
+    #     host_galaxies['m_sat < 0.1 m_total'] = host_galaxies['m_sat'] < 0.1 * host_galaxies['m_total']
+
+    #     host_galaxies = host_galaxies[host_galaxies['m_sat < 0.1 m_total']]
+
+    #     columns_to_drop = ['m_total', 'm_sat', 'm_sat < 0.1 m_total']
+
+    #     host_galaxies = host_galaxies.drop(columns=columns_to_drop).reset_index(drop = True)
+
+    #     # get the satellite galaxies that are part of the host galaxies
+    #     satellite_galaxies = satellite_galaxies[satellite_galaxies['group_number'].isin(host_galaxies['group_number'])].reset_index(drop = True)
+
+    #     # determine how many satellite galaxies each host galaxy has
+    #     grouped_satellites = satellite_galaxies.groupby('group_number')['subgroup_number'].count().reset_index()
+        
+    #     # add the number of satellite galaxies to the host galaxies
+    #     host_galaxies = host_galaxies.merge(grouped_satellites, on='group_number', suffixes=('', '_count'))
+
+    #     # rename the column
+    #     host_galaxies = host_galaxies.rename(columns = {'subgroup_number_count': 'n_satellites'})
+
+    #     print("Number of host galaxies: ", len(host_galaxies))
+    #     print("Number of satellite galaxies: ", len(satellite_galaxies[satellite_galaxies["m_star"] > 0]))
+    #     exit()
+
+    #     return(host_galaxies, satellite_galaxies)
+
+    # def galaxy_data(self, nsnap):
+    #     """
+    #     Get the galaxy data for snapshot nsnap from the EAGLE simulations.
+
+    #     Parameters
+    #     ----------
+    #     nsnap: int
+    #         The snapshot number.
+
+    #     Returns
+    #     -------
+    #     table_galaxy: pandas.DataFrame
+    #         The galaxy data.
+
+    #     Notes
+    #     -----
+    #     The galaxy data is requested from the EAGLE database using the SQL request. The data is stored in a pandas DataFrame.
+
+    #     Examples
+    #     --------
+    #     >>> galaxy_data(nsnap = 28)
+    #     """
+        
+    #     query = f'SELECT \
+    #                 SH.GalaxyID as galaxy_id, \
+    #                 SH.GroupID as group_id, \
+    #                 SH.GroupNumber as group_number, \
+    #                 SH.SubGroupNumber as subgroup_number, \
+    #                 SH.Redshift as z, \
+    #                 SH.Snapnum as nsnap, \
+    #                 SH.Mass as m, \
+    #                 SH.MassType_Star as m_star, \
+    #                 FOF.Group_M_Crit200 as m200, \
+    #                 FOF.Group_R_Crit200 as r200, \
+    #                 SH.CentreOfPotential_x as cop_x, \
+    #                 SH.CentreOfPotential_y as cop_y, \
+    #                 SH.CentreOfPotential_z as cop_z, \
+    #                 SH.Stars_Spin_x as spin_x, \
+    #                 SH.Stars_Spin_y as spin_y, \
+    #                 SH.Stars_Spin_z as spin_z, \
+    #                 SH.Image_face as img_face, \
+    #                 SH.Image_edge as img_edge, \
+    #                 SH.Image_box as img_box \
+    #             FROM \
+    #                 {self.sim_name}_SubHalo as MH, \
+    #                 {self.sim_name}_SubHalo as SH, \
+    #                 {self.sim_name}_FOF as FOF \
+    #             WHERE \
+    #                 MH.Snapnum = {nsnap} \
+    #                 and MH.SubGroupNumber = 0 \
+    #                 and FOF.Group_M_Crit200 between {self.halo_mass_range[0].value} and {self.halo_mass_range[1].value} \
+    #                 and sqrt(square(MH.CentreOfMass_x - MH.CentreOfPotential_x) + square(MH.CentreOfMass_y - MH.CentreOfPotential_y) + square(MH.CentreOfMass_z - MH.CentreOfPotential_z)) < 0.07*FOF.Group_R_Crit200 * 1e-3 \
+    #                 and FOF.GroupID = SH.GroupID \
+    #                 and MH.Snapnum = SH.Snapnum \
+    #                 and MH.GroupID = SH.GroupID \
+    #                 and SH.Spurious = 0 \
+    #                 and MH.Spurious = 0'
+
+    #     print("Halo m200 range:", self.halo_mass_range[0], self.halo_mass_range[1])
+
+    #     # Execute query.
+    #     con = sql.connect(username, password=password) # username, password
+    #     # load galaxy data
+    #     data_galaxy = sql.execute_query(con, query)
+    #     # put data into pandas DataFrame
+    #     table_galaxy = pd.DataFrame(data_galaxy)
+        
+    #     # Create a mask for host galaxies (subgroup_number == 0)
+    #     main_galaxies = table_galaxy[table_galaxy['subgroup_number'] == 0]
+
+    #     substructure = table_galaxy[table_galaxy['subgroup_number'] != 0]
+
+    #     # for each satellite galaxy, find the host galaxy and calculate the distance to the host galaxy
+    #     for index, row in substructure.iterrows():
+    #         # find the host galaxy
+    #         host_galaxy = main_galaxies[main_galaxies['group_number'] == row['group_number']]
+    #         # calculate the distance to the host galaxy
+    #         r = np.sqrt((host_galaxy['cop_x'].values[0] - row['cop_x'])**2 + (host_galaxy['cop_y'].values[0] - row['cop_y'])**2 + (host_galaxy['cop_z'].values[0] - row['cop_z'])**2) # in Mpc
+    #         # add the distance to the satellite galaxy
+    #         substructure.loc[index, 'r'] = r * 1e3 # in kpc
+
+    #     substructure = substructure[substructure['r'] < substructure['r200']].reset_index(drop = True)
+
+    #     grouped_substructure = substructure.groupby('group_number')['m'].sum().reset_index()
+
+    #     main_galaxies = main_galaxies.merge(grouped_substructure, on='group_number', suffixes=('', '_substructure'))
+
+    #     main_galaxies = main_galaxies[main_galaxies['m_substructure'] < 0.1 * main_galaxies['m200']].reset_index(drop = True)
+
+    #     group_number_main_galaxies = main_galaxies['group_number'].values
+
+    #     satellite_galaxies = table_galaxy[table_galaxy['group_number'].isin(group_number_main_galaxies)].reset_index(drop = True)
+    #     satellite_galaxies = satellite_galaxies[satellite_galaxies["subgroup_number"] != 0].reset_index(drop = True)
+
+    #     # for each satellite galaxy, find the host galaxy and calculate the distance to the host galaxy
+    #     for index, row in satellite_galaxies.iterrows():
+    #         # find the host galaxy
+    #         host_galaxy = main_galaxies[main_galaxies['group_number'] == row['group_number']]
+    #         # calculate the distance to the host galaxy
+    #         r = np.sqrt((host_galaxy['cop_x'].values[0] - row['cop_x'])**2 + (host_galaxy['cop_y'].values[0] - row['cop_y'])**2 + (host_galaxy['cop_z'].values[0] - row['cop_z'])**2) * u.Mpc
+    #         # rescale the distance to the host galaxy based on its mass
+    #         r_rescaled = rescaled_distance(r, host_galaxy['m200'].values[0] * u.Msun)
+    #         # add the distance to the satellite galaxy
+    #         satellite_galaxies.loc[index, 'r_rescaled'] = r_rescaled.value * 1e3 # in kpc
+
+    #     # select only satellite galaxies that are within the distance limit
+    #     r_min, r_max = config["Milky_way"]["satellite_rescaled_distance_range"] # kpc
+    #     satellite_galaxies = satellite_galaxies[(satellite_galaxies['r_rescaled'] > r_min) & (satellite_galaxies['r_rescaled'] < r_max)].reset_index(drop = True)
+
+    #     print("Number of host galaxies: ", len(main_galaxies))
+    #     print("Number of satellite galaxies: ", len(satellite_galaxies[satellite_galaxies["m_star"] > 0]))
+    #     exit()
+
+    #     return(host_galaxies, satellite_galaxies)
+    
+
     def galaxy_data(self, nsnap):
         """
         Get the galaxy data for snapshot nsnap from the EAGLE simulations.
@@ -215,7 +622,7 @@ class DataCollector:
         --------
         >>> galaxy_data(nsnap = 28)
         """
-
+        
         query = f'SELECT \
                     SH.GalaxyID as galaxy_id, \
                     SH.GroupID as group_id, \
@@ -225,9 +632,8 @@ class DataCollector:
                     SH.Snapnum as nsnap, \
                     SH.Mass as m, \
                     SH.MassType_Star as m_star, \
-                    SH.MassType_Gas as m_gas, \
-                    SH.StarFormationRate as sfr, \
                     FOF.Group_M_Crit200 as m200, \
+                    FOF.Group_R_Crit200 as r200, \
                     SH.CentreOfPotential_x as cop_x, \
                     SH.CentreOfPotential_y as cop_y, \
                     SH.CentreOfPotential_z as cop_z, \
@@ -246,49 +652,15 @@ class DataCollector:
                     MH.Snapnum = {nsnap} \
                     and MH.SubGroupNumber = 0 \
                     and FOF.Group_M_Crit200 between {self.halo_mass_range[0].value} and {self.halo_mass_range[1].value} \
-                    and sqrt(square(MH.CentreOfMass_x - MH.CentreOfPotential_x) + square(MH.CentreOfMass_y - MH.CentreOfPotential_y) + square(MH.CentreOfMass_z - MH.CentreOfPotential_z)) <= 0.07*FOF.Group_R_Crit200 * 1e-3 \
+                    and sqrt(square(MH.CentreOfMass_x - MH.CentreOfPotential_x) + square(MH.CentreOfMass_y - MH.CentreOfPotential_y) + square(MH.CentreOfMass_z - MH.CentreOfPotential_z)) < 0.07*FOF.Group_R_Crit200 * 1e-3 \
                     and AP.ApertureSize = 30 \
                     and AP.Mass_Star between {self.stellar_mass_range[0].value} and {self.stellar_mass_range[1].value} \
-                    and FOF.GroupID = MH.GroupID \
+                    and AP.GalaxyID = MH.GalaxyID \
+                    and FOF.GroupID = SH.GroupID \
                     and MH.Snapnum = SH.Snapnum \
                     and MH.GroupID = SH.GroupID \
-                    and AP.GalaxyID = MH.GalaxyID \
                     and SH.Spurious = 0 \
                     and MH.Spurious = 0'
-        
-        # query = f'SELECT \
-        #             SH.GalaxyID as galaxy_id, \
-        #             SH.GroupID as group_id, \
-        #             SH.GroupNumber as group_number, \
-        #             SH.SubGroupNumber as subgroup_number, \
-        #             SH.Redshift as z, \
-        #             SH.Snapnum as nsnap, \
-        #             SH.Mass as m, \
-        #             SH.MassType_Star as m_star, \
-        #             FOF.Group_M_Crit200 as m200, \
-        #             SH.CentreOfPotential_x as cop_x, \
-        #             SH.CentreOfPotential_y as cop_y, \
-        #             SH.CentreOfPotential_z as cop_z, \
-        #             SH.Stars_Spin_x as spin_x, \
-        #             SH.Stars_Spin_y as spin_y, \
-        #             SH.Stars_Spin_z as spin_z, \
-        #             SH.Image_face as img_face, \
-        #             SH.Image_edge as img_edge, \
-        #             SH.Image_box as img_box \
-        #         FROM \
-        #             {self.sim_name}_SubHalo as MH, \
-        #             {self.sim_name}_SubHalo as SH, \
-        #             {self.sim_name}_FOF as FOF \
-        #         WHERE \
-        #             MH.Snapnum = {nsnap} \
-        #             and MH.SubGroupNumber = 0 \
-        #             and FOF.Group_M_Crit200 between {self.halo_mass_range[0].value} and {self.halo_mass_range[1].value} \
-        #             and sqrt(square(MH.CentreOfMass_x - MH.CentreOfPotential_x) + square(MH.CentreOfMass_y - MH.CentreOfPotential_y) + square(MH.CentreOfMass_z - MH.CentreOfPotential_z)) <= 0.07*FOF.Group_R_Crit200 * 1e-3 \
-        #             and FOF.GroupID = MH.GroupID \
-        #             and MH.Snapnum = SH.Snapnum \
-        #             and MH.GroupID = SH.GroupID \
-        #             and SH.Spurious = 0 \
-        #             and MH.Spurious = 0'
 
         # Execute query.
         con = sql.connect(username, password=password) # username, password
@@ -298,15 +670,36 @@ class DataCollector:
         table_galaxy = pd.DataFrame(data_galaxy)
         
         # Create a mask for host galaxies (subgroup_number == 0)
-        host_galaxies = table_galaxy[table_galaxy['subgroup_number'] == 0]
+        main_galaxies = table_galaxy[table_galaxy['subgroup_number'] == 0]
 
-        # create a mask for satellite galaxies (subgroup_number != 0)
-        satellite_galaxies = table_galaxy[table_galaxy['subgroup_number'] != 0]
+        substructure = table_galaxy[table_galaxy['subgroup_number'] != 0]
+
+        # for each satellite galaxy, find the host galaxy and calculate the distance to the host galaxy
+        for index, row in substructure.iterrows():
+            # find the host galaxy
+            host_galaxy = main_galaxies[main_galaxies['group_number'] == row['group_number']]
+            # calculate the distance to the host galaxy
+            r = np.sqrt((host_galaxy['cop_x'].values[0] - row['cop_x'])**2 + (host_galaxy['cop_y'].values[0] - row['cop_y'])**2 + (host_galaxy['cop_z'].values[0] - row['cop_z'])**2) # in Mpc
+            # add the distance to the satellite galaxy
+            substructure.loc[index, 'r'] = r * 1e3 # in kpc
+
+        substructure = substructure[substructure['r'] < substructure['r200']].reset_index(drop = True)
+
+        grouped_substructure = substructure.groupby('group_number')['m'].sum().reset_index()
+
+        main_galaxies = main_galaxies.merge(grouped_substructure, on='group_number', suffixes=('', '_substructure'))
+
+        main_galaxies = main_galaxies[main_galaxies['m_substructure'] < 0.1 * main_galaxies['m200']].reset_index(drop = True)
+
+        group_number_main_galaxies = main_galaxies['group_number'].values
+
+        satellite_galaxies = table_galaxy[table_galaxy['group_number'].isin(group_number_main_galaxies)].reset_index(drop = True)
+        satellite_galaxies = satellite_galaxies[satellite_galaxies["subgroup_number"] != 0].reset_index(drop = True)
 
         # for each satellite galaxy, find the host galaxy and calculate the distance to the host galaxy
         for index, row in satellite_galaxies.iterrows():
             # find the host galaxy
-            host_galaxy = host_galaxies[host_galaxies['group_number'] == row['group_number']]
+            host_galaxy = main_galaxies[main_galaxies['group_number'] == row['group_number']]
             # calculate the distance to the host galaxy
             r = np.sqrt((host_galaxy['cop_x'].values[0] - row['cop_x'])**2 + (host_galaxy['cop_y'].values[0] - row['cop_y'])**2 + (host_galaxy['cop_z'].values[0] - row['cop_z'])**2) * u.Mpc
             # rescale the distance to the host galaxy based on its mass
@@ -317,42 +710,6 @@ class DataCollector:
         # select only satellite galaxies that are within the distance limit
         r_min, r_max = config["Milky_way"]["satellite_rescaled_distance_range"] # kpc
         satellite_galaxies = satellite_galaxies[(satellite_galaxies['r_rescaled'] > r_min) & (satellite_galaxies['r_rescaled'] < r_max)].reset_index(drop = True)
-
-        # for the 10% mass cut (later), keep only the satellite galaxies that have at least one star particle, i.e. m_star > 0
-        satellite_galaxies_with_stars = satellite_galaxies[satellite_galaxies["m_star"] > 0].reset_index(drop = True)
-
-        # merge satellite galaxies with host galaxies into table_galaxy
-        table_galaxy = pd.concat([host_galaxies, satellite_galaxies_with_stars]).reset_index(drop = True)
-
-        # Group by 'group_number' and calculate the total mass of host galaxies and their satellite galaxies
-        grouped = table_galaxy.groupby('group_number')['m'].sum().reset_index()
-
-        # Merge the host galaxies DataFrame with the grouped data
-        host_galaxies = host_galaxies.merge(grouped, on='group_number', suffixes=('', '_total'))
-
-        # Calculate the total mass of satellite galaxies for each host galaxy
-        host_galaxies['m_sat'] = host_galaxies['m_total'] - host_galaxies['m']
-
-        # Check if satellite mass is less than 10% of the total mass
-        host_galaxies['m_sat < 0.1 m_total'] = host_galaxies['m_sat'] < 0.1 * host_galaxies['m_total']
-
-        host_galaxies = host_galaxies[host_galaxies['m_sat < 0.1 m_total']]
-
-        columns_to_drop = ['m_total', 'm_sat', 'm_sat < 0.1 m_total']
-
-        host_galaxies = host_galaxies.drop(columns=columns_to_drop).reset_index(drop = True)
-
-        # get the satellite galaxies that are part of the host galaxies
-        satellite_galaxies = satellite_galaxies[satellite_galaxies['group_number'].isin(host_galaxies['group_number'])].reset_index(drop = True)
-
-        # determine how many satellite galaxies each host galaxy has
-        grouped_satellites = satellite_galaxies.groupby('group_number')['subgroup_number'].count().reset_index()
-        
-        # add the number of satellite galaxies to the host galaxies
-        host_galaxies = host_galaxies.merge(grouped_satellites, on='group_number', suffixes=('', '_count'))
-
-        # rename the column
-        host_galaxies = host_galaxies.rename(columns = {'subgroup_number_count': 'n_satellites'})
 
         return(host_galaxies, satellite_galaxies)
 
