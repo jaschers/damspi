@@ -525,7 +525,7 @@ def remove_distant_satellites(table_bh, nsnap, args):
 
     return(table_bh)
     
-def parameter_distr_mean(table, parameter, bins):
+def parameter_distr_mean(table, parameter, bins, group_identifier = "main_galaxy_id"):
     """
     Calculates the mean of the parameter distribution
 
@@ -548,8 +548,8 @@ def parameter_distr_mean(table, parameter, bins):
 
     hist_list = []
     table_parameter = table[parameter]
-    for galaxy_id in np.unique(table["main_galaxy_id"].values):
-        data_galaxy_id = table_parameter[table["main_galaxy_id"].values == galaxy_id]
+    for galaxy_id in np.unique(table[group_identifier].values):
+        data_galaxy_id = table_parameter[table[group_identifier].values == galaxy_id]
         hist, _ = np.histogram(data_galaxy_id, bins = bins)
         hist_list.append(hist)
     
@@ -643,3 +643,12 @@ def format_energy(energy):
     """
     energy_gev = energy.to(u.GeV).value
     return f"{energy_gev:.1f}GeV"
+
+def median_error(data):
+    data_median = np.median(data)
+    lower_percentile = np.percentile(data, 16)
+    upper_percentile = np.percentile(data, 84)
+    median_lower_error = data_median - lower_percentile
+    median_upper_error = upper_percentile - data_median
+
+    return data_median, median_lower_error, median_upper_error
