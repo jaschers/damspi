@@ -53,12 +53,16 @@ def determine_coordinates(table_galaxy_z0_total, table_bh_z0_total, args, lst, g
         table_bh_z0["long_Sun"] = None
         table_bh_z0["m_main_galaxy"] = None
         table_bh_z0["m200_main_galaxy"] = None
+        table_bh_z0["fdisk_main_galaxy"] = None
+        table_bh_z0["fbulge_main_galaxy"] = None
+        table_bh_z0["fihl_main_galaxy"] = None
         table_bh_z0["m_host_galaxy"] = None
         table_bh_z0["m_star_host_galaxy"] = None
         table_bh_z0["m_gas_host_galaxy"] = None
         table_bh_z0["sfr_host_galaxy"] = None
         table_bh_z0["satellite"] = None
         table_bh_z0["n_satellites"] = None
+        table_bh_z0["n_satellites_with_stars"] = None
 
         # add table to list
         lst.append(table_bh_z0)
@@ -84,8 +88,12 @@ def determine_coordinates(table_galaxy_z0_total, table_bh_z0_total, args, lst, g
         table_bh_z0["long_Sun"] = long_sun
         table_bh_z0["m_main_galaxy"] = table_galaxy_z0["m"].values[0]
         table_bh_z0["m200_main_galaxy"] = table_galaxy_z0["m200"].values[0]
+        table_bh_z0["fdisk_main_galaxy"] = table_galaxy_z0["fdisk"].values[0]
+        table_bh_z0["fbulge_main_galaxy"] = table_galaxy_z0["fbulge"].values[0]
+        table_bh_z0["fihl_main_galaxy"] = table_galaxy_z0["fihl"].values[0]
         table_bh_z0["satellite"] = table_bh_z0["main_galaxy_id"] != table_bh_z0["host_galaxy_id"]
         table_bh_z0["n_satellites"] = table_galaxy_z0["n_satellites"].values[0]
+        table_bh_z0["n_satellites_with_stars"] = table_galaxy_z0["n_satellites_with_stars"].values[0]
 
         # keep only relevant columns
         table_bh_z0 = table_bh_z0[[
@@ -104,12 +112,16 @@ def determine_coordinates(table_galaxy_z0_total, table_bh_z0_total, args, lst, g
             "long_Sun",
             "m_main_galaxy",
             "m200_main_galaxy",
+            "fdisk_main_galaxy",
+            "fbulge_main_galaxy",
+            "fihl_main_galaxy",
             "m_host_galaxy",
             "m_star_host_galaxy",
             "m_gas_host_galaxy",
             "sfr_host_galaxy",
             "satellite",
             "n_satellites",
+            "n_satellites_with_stars"
             ]].reset_index(drop = True)
 
         # add table to list
@@ -229,7 +241,11 @@ if __name__ == "__main__":
             "m_star",
             "m_gas",
             "sfr",
+            "fdisk", 
+            "fbulge", 
+            "fihl",
             "n_satellites",
+            "n_satellites_with_stars"
             ]
         table_galaxy_and_satellite_z0_total = table_galaxy_and_satellite_z0_total[relevant_columns]
         table_galaxy_and_satellite_z0_total.to_hdf(path_catalogue_galaxy + f"mw_galaxies_catalogue_{args.name}.h5", key = "table")

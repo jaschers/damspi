@@ -645,9 +645,9 @@ def format_energy(energy):
     return f"{energy_gev:.1f}GeV"
 
 def median_error(data):
-    data_median = np.median(data)
-    lower_percentile = np.percentile(data, 16)
-    upper_percentile = np.percentile(data, 84)
+    data_median = np.nanmedian(data)
+    lower_percentile = np.nanpercentile(data, 16)
+    upper_percentile = np.nanpercentile(data, 84)
     median_lower_error = data_median - lower_percentile
     median_upper_error = upper_percentile - data_median
 

@@ -355,6 +355,31 @@ class GalaxyPlotter:
                 plt.tight_layout()
                 plt.savefig(path + f"satellites_{name}_has_stars_dist.pdf", dpi = 300)
                 plt.close()
+
+    def plot_morphology_dist(self, path):
+        table_galaxies = self.table_galaxy[self.table_galaxy["subgroup_number"] == 0]
+        parameters = ["fdisk", "fbulge", "fihl"]
+        parameter_labels = ["$f_\mathrm{disk}$", "$f_\mathrm{bulge}$", "$f_\mathrm{IHL}$"]
+
+        for parameter, parameter_label in zip(parameters, parameter_labels):
+            # plot parameter distribution for main galaxies
+            parameter_galaxies = table_galaxies[parameter].values
+            median_parameter_galaxies, median_parameter_galaxies_lower_error, median_parameter_galaxies_upper_error = median_error(parameter_galaxies)
+            median_parameter_galaxies_lower_percentile = median_parameter_galaxies - median_parameter_galaxies_lower_error
+            median_parameter_galaxies_upper_percentile = median_parameter_galaxies + median_parameter_galaxies_upper_error
+
+            plt.figure(figsize = config["Figure_size"]["single_column"])
+            plt.hist(parameter_galaxies, bins = config["Plots"]["number_bins"], color = config["Colors"]["darkblue"])
+            plt.xlabel(parameter_label)
+            plt.ylabel("Number of main galaxies")
+            ymin, ymax = plt.ylim()
+            plt.vlines(median_parameter_galaxies, ymin = ymin, ymax = ymax, color = config["Colors"]["red"], linestyle = "solid", label = r"$\tilde{{\mu}}$ = " + f"${median_parameter_galaxies:.2f}^{{+{median_parameter_galaxies_upper_error:.2f}}}_{{-{median_parameter_galaxies_lower_error:.2f}}}$")
+            plt.axvspan(median_parameter_galaxies_lower_percentile, median_parameter_galaxies_upper_percentile, alpha = 0.25, facecolor = config["Colors"]["red"], edgecolor = "None")
+            plt.ylim(ymin, ymax)
+            plt.legend()
+            plt.tight_layout()
+            plt.savefig(path + f"main_galaxy_{parameter}_dist.pdf", dpi = 300)
+            plt.close()
  
     def plot_satellite_types(self, path):
         # get satellites
@@ -476,6 +501,36 @@ class GalaxyPlotter:
         plt.tight_layout()
         plt.savefig(path + "n_satellites_has_stars_dist.pdf", dpi = 300)
         plt.close()
+
+    def plot_scatter_bh_galaxy_morphology(self, path):
+        table_bh_main_galaxies = self.table_bh[self.table_bh["satellite"] == False]
+        table_main_galaxies = self.table_galaxy[self.table_galaxy["subgroup_number"] == 0]
+        main_galaxy_ids = np.unique(table_bh_main_galaxies["main_galaxy_id"].values)
+        galaxy_ids = np.unique(self.table_bh["main_galaxy_id"].values)
+
+        parameters = ["fdisk", "fbulge", "fihl"]
+        x_labels = ["$f_\mathrm{disk}$", "$f_\mathrm{bulge}$", "$f_\mathrm{ihl}$"]
+
+        for parameter, x_label in zip(parameters, x_labels):
+            # extract the number of BHs and the parameter values for the main galaxies (considering BHs in the main galaxy and the satellites)
+            n_bh = []
+            parameter_values = []
+            for galaxy_id in galaxy_ids:
+                table_bh_galaxy = table_bh_main_galaxies[table_bh_main_galaxies["main_galaxy_id"] == galaxy_id]
+                table_main_galaxy = table_main_galaxies[table_main_galaxies["galaxy_id"] == galaxy_id]
+                n_bh_galaxy = len(table_bh_galaxy)
+                parameter_value_galaxy = table_main_galaxy[parameter].values[0]
+                n_bh.append(n_bh_galaxy)
+                parameter_values.append(parameter_value_galaxy)
+
+            # plot scatter plot
+            plt.figure(figsize = config["Figure_size"]["single_column"])
+            plt.scatter(parameter_values, n_bh, color = config["Colors"]["darkblue"], marker = "o", s = config["Plots"]["markersize"])
+            plt.xlabel(x_label)
+            plt.ylabel("$N_\mathrm{BH}$ (in main galaxy)")
+            plt.tight_layout()
+            plt.savefig(path + f"scatter_bh_{parameter}_main_galaxy.pdf", dpi = 300)
+            plt.close()
 
 class BlackHolePlotter:
     def __init__(self, sim_name, table_bh):
@@ -670,7 +725,7 @@ class BlackHolePlotter:
         x += config["Milky_way"]["distance_sun"]
         return(x, y, z)
 
-    def plot_2d_map_contours(self, lat, long, upsampling_factor, path, wihtin_region = False):
+    def plot_2d_map_contours(self, lat, long, upsampling_factor, path, path_kde, wihtin_region = False):
         # Extract IMBH coordinates
         coords = SkyCoord(long, lat, frame='galactic', unit='rad')
         coord_stacked = np.vstack([lat, coords.l.wrap_at('180d').radian]).T
@@ -704,19 +759,19 @@ class BlackHolePlotter:
         kde.fit(coord_stacked)
 
         # save kde
-        dump(kde, path + "kde_model.joblib")
+        dump(kde, path_kde + "kde_model.joblib")
 
         # evaluate kde on grid coordinates
         pdf = np.exp(kde.score_samples(coord_grid))
         pdf = pdf.reshape(Lat_grid.shape)
 
-        # save the pdf and grid coordinates in a single csv file with pandas
-        columns = ["Lat", "Long", "pdf"]
-        df = pd.DataFrame(columns = columns)
-        df["Lat"] = Lat_grid.flatten()
-        df["Long"] = Long_grid.flatten()
-        df["pdf"] = pdf.flatten()
-        df.to_csv(path + "pdf.csv", index = False)
+        # # save the pdf and grid coordinates in a single csv file with pandas
+        # columns = ["Lat", "Long", "pdf"]
+        # df = pd.DataFrame(columns = columns)
+        # df["Lat"] = Lat_grid.flatten()
+        # df["Long"] = Long_grid.flatten()
+        # df["pdf"] = pdf.flatten()
+        # df.to_csv(path + "pdf.csv", index = False)
 
         # get HESS galactic plane survey values and convert them to radians
         num_grid_survey = 100
@@ -848,7 +903,7 @@ class BlackHolePlotter:
         ax.set_xlabel('Galactic Longitude')
         ax.set_ylabel('Galactic Latitude')
         plt.tight_layout()
-        plt.savefig(path + "2d_map_sun_contours.pdf", dpi = 500)
+        plt.savefig(path, dpi = 500)
 
     @staticmethod
     def expected_number_within_region(coord_stacked, lat_min, lat_max, long_min, long_max, kde, num_grid, name):
@@ -1245,7 +1300,7 @@ class BlackHolePlotter:
         plt.xlim(x_min, x_max)
         plt.legend(loc = "upper right")
         plt.tight_layout()
-        plt.savefig(path + "number_dist.pdf", dpi = 500)
+        plt.savefig(path, dpi = 500)
         plt.close()
 
     def plot_number_dist_satellites(self, path):
@@ -1410,8 +1465,6 @@ class BlackHolePlotter:
                 plt.tight_layout()
                 plt.savefig(path + f"scatter_bh_{name}_satellites.pdf", dpi = 300)
                 plt.close()
-
-
 
     def plot_bh_in_satellite_types(self, path):
         # get satellites
