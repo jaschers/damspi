@@ -22,7 +22,8 @@ from damspi.utils import (
     nfw_integral,
     cored_profile,
     cored_integral,
-    M_bh_2
+    M_bh_2,
+    rescaled_distance
     )
 from scipy.spatial.transform import Rotation as R
 from astropy.coordinates import cartesian_to_spherical
@@ -214,7 +215,7 @@ class DataCollector:
         --------
         >>> galaxy_data(nsnap = 28)
         """
-
+        
         query = f'SELECT \
                     SH.GalaxyID as galaxy_id, \
                     SH.GroupID as group_id, \
@@ -223,6 +224,11 @@ class DataCollector:
                     SH.Redshift as z, \
                     SH.Snapnum as nsnap, \
                     SH.Mass as m, \
+                    SH.MassType_Star as m_star, \
+                    SH.MassType_Gas as m_gas, \
+                    SH.StarFormationRate as sfr, \
+                    FOF.Group_M_Crit200 as m200, \
+                    FOF.Group_R_Crit200 as r200, \
                     SH.CentreOfPotential_x as cop_x, \
                     SH.CentreOfPotential_y as cop_y, \
                     SH.CentreOfPotential_z as cop_z, \
@@ -241,13 +247,13 @@ class DataCollector:
                     MH.Snapnum = {nsnap} \
                     and MH.SubGroupNumber = 0 \
                     and FOF.Group_M_Crit200 between {self.halo_mass_range[0].value} and {self.halo_mass_range[1].value} \
-                    and sqrt(square(MH.CentreOfMass_x - MH.CentreOfPotential_x) + square(MH.CentreOfMass_y - MH.CentreOfPotential_y) + square(MH.CentreOfMass_z - MH.CentreOfPotential_z)) <= 0.07*FOF.Group_R_Crit200 * 1e-3 \
+                    and sqrt(square(MH.CentreOfMass_x - MH.CentreOfPotential_x) + square(MH.CentreOfMass_y - MH.CentreOfPotential_y) + square(MH.CentreOfMass_z - MH.CentreOfPotential_z)) < 0.07*FOF.Group_R_Crit200 * 1e-3 \
                     and AP.ApertureSize = 30 \
                     and AP.Mass_Star between {self.stellar_mass_range[0].value} and {self.stellar_mass_range[1].value} \
-                    and FOF.GroupID = MH.GroupID \
+                    and AP.GalaxyID = MH.GalaxyID \
+                    and FOF.GroupID = SH.GroupID \
                     and MH.Snapnum = SH.Snapnum \
                     and MH.GroupID = SH.GroupID \
-                    and AP.GalaxyID = MH.GalaxyID \
                     and SH.Spurious = 0 \
                     and MH.Spurious = 0'
 
@@ -259,27 +265,71 @@ class DataCollector:
         table_galaxy = pd.DataFrame(data_galaxy)
         
         # Create a mask for host galaxies (subgroup_number == 0)
-        host_galaxies = table_galaxy[table_galaxy['subgroup_number'] == 0]
+        main_galaxies = table_galaxy[table_galaxy['subgroup_number'] == 0]
 
-        # Group by 'group_number' and calculate the total mass of host galaxies and their satellite galaxies
-        grouped = table_galaxy.groupby('group_number')['m'].sum().reset_index()
+        # select satellite galaxies
+        # NOTE: the following selection of satellite galaxies is used to calculate the total mass of satellite galaxies for each main galaxy
+        # and to apply a 10% mass cut later
+        satellite_galaxies_mass_cut = table_galaxy[table_galaxy['subgroup_number'] != 0]
 
-        # Merge the host galaxies DataFrame with the grouped data
-        host_galaxies = host_galaxies.merge(grouped, on='group_number', suffixes=('', '_total'))
+        # for each satellite galaxy, find the host galaxy and calculate the distance to the host galaxy
+        for index, row in satellite_galaxies_mass_cut.iterrows():
+            # find the host galaxy
+            main_galaxy = main_galaxies[main_galaxies['group_number'] == row['group_number']]
+            # calculate the distance to the host galaxy
+            r = np.sqrt((main_galaxy['cop_x'].values[0] - row['cop_x'])**2 + (main_galaxy['cop_y'].values[0] - row['cop_y'])**2 + (main_galaxy['cop_z'].values[0] - row['cop_z'])**2) # in Mpc
+            # add the distance to the satellite galaxy
+            satellite_galaxies_mass_cut.loc[index, 'r'] = r * 1e3 # in kpc
 
-        # Calculate the total mass of satellite galaxies for each host galaxy
-        host_galaxies['m_sat'] = host_galaxies['m_total'] - host_galaxies['m']
+        # require that the satellite galaxies are within the virial radius of the host galaxies
+        satellite_galaxies_mass_cut = satellite_galaxies_mass_cut[satellite_galaxies_mass_cut['r'] < satellite_galaxies_mass_cut['r200']].reset_index(drop = True)
 
-        # Check if satellite mass is less than 10% of the total mass
-        host_galaxies['m_sat < 0.1 m_total'] = host_galaxies['m_sat'] < 0.1 * host_galaxies['m_total']
+        # calculate the total mass of satellite galaxies for each host galaxy within r200
+        grouped_satellite_galaxies_mass_cut = satellite_galaxies_mass_cut.groupby('group_number')['m'].sum().reset_index()
+        main_galaxies = main_galaxies.merge(grouped_satellite_galaxies_mass_cut, on='group_number', suffixes=('', '_sat'))
 
-        table_galaxy = host_galaxies[host_galaxies['m_sat < 0.1 m_total']]
+        # remove main galaxies that have satellite galaxies with mass greater than 10% of the main galaxy m200
+        main_galaxies = main_galaxies[main_galaxies['m_sat'] < 0.1 * main_galaxies['m200']].reset_index(drop = True)
 
-        columns_to_drop = ['m_total', 'm_sat', 'm_sat < 0.1 m_total']
+        # get the group numbers of the main galaxies
+        group_number_main_galaxies = main_galaxies['group_number'].values
 
-        table_galaxy = table_galaxy.drop(columns=columns_to_drop).reset_index(drop = True)
+        # get the satellite galaxies that are part of the host galaxies
+        satellite_galaxies = table_galaxy[table_galaxy['group_number'].isin(group_number_main_galaxies)].reset_index(drop = True)
+        satellite_galaxies = satellite_galaxies[satellite_galaxies["subgroup_number"] != 0].reset_index(drop = True)
 
-        return(table_galaxy)
+        # for each satellite galaxy, find the host galaxy and calculate the distance to the host galaxy
+        for index, row in satellite_galaxies.iterrows():
+            # find the host galaxy
+            main_galaxy = main_galaxies[main_galaxies['group_number'] == row['group_number']]
+            # calculate the distance to the host galaxy
+            r = np.sqrt((main_galaxy['cop_x'].values[0] - row['cop_x'])**2 + (main_galaxy['cop_y'].values[0] - row['cop_y'])**2 + (main_galaxy['cop_z'].values[0] - row['cop_z'])**2) * u.Mpc
+            # rescale the distance to the host galaxy based on its mass
+            r_rescaled = rescaled_distance(r, main_galaxy['m200'].values[0] * u.Msun)
+            # add the distance to the satellite galaxy
+            satellite_galaxies.loc[index, 'r_rescaled'] = r_rescaled.value * 1e3 # in kpc
+
+        # select only satellite galaxies that are within the distance limit
+        r_min, r_max = config["Milky_way"]["satellite_rescaled_distance_range"] # kpc
+        satellite_galaxies = satellite_galaxies[(satellite_galaxies['r_rescaled'] > r_min) & (satellite_galaxies['r_rescaled'] < r_max)].reset_index(drop = True)
+        satellite_galaxues_with_stars = satellite_galaxies[satellite_galaxies["m_star"] > 0].reset_index(drop = True)
+
+        # determine how many satellite galaxies each host galaxy has
+        grouped_satellites = satellite_galaxies.groupby('group_number')['subgroup_number'].count().reset_index()
+        grouped_satellites_with_stars = satellite_galaxues_with_stars.groupby('group_number')['subgroup_number'].count().reset_index()
+
+        # add the number of satellite galaxies to the host galaxies
+        main_galaxies = main_galaxies.merge(grouped_satellites, on='group_number', suffixes=('', '_count'))
+        main_galaxies = main_galaxies.merge(grouped_satellites_with_stars, on='group_number', suffixes=('', '_count_stars'))
+
+        # rename the column
+        main_galaxies = main_galaxies.rename(columns = {'subgroup_number_count': 'n_satellites'})
+        main_galaxies = main_galaxies.rename(columns = {'subgroup_number_count_stars': 'n_satellites_with_stars'})
+
+        # combine with Proctor data to get morphology data, i.e. disk fraction, bulge fraction and IHL fraction
+        main_galaxies = self.combine_with_proctor_data(main_galaxies)
+
+        return(main_galaxies, satellite_galaxies)
 
     def read_dataset(self, itype, att, nsnap):
         """
