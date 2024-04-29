@@ -37,6 +37,8 @@ if __name__ == '__main__':
     print(galaxy_catalogue)
     print(galaxy_catalogue.columns)
 
+    print("Number of main galaxies:", len(np.unique(galaxy_catalogue[galaxy_catalogue["subgroup_number"] == 0]['galaxy_id'])))
+
     # get the latitude and longitude of the black holes
     d_gc = bh_catalogue['d_GC']
     lat_gc = bh_catalogue['lat_GC']
@@ -93,6 +95,8 @@ if __name__ == '__main__':
     galaxy_plotter.plot_satellite_types(path_galaxy)
 
     galaxy_plotter.plot_n_bh_satellite_types(path_bh)
+
+    galaxy_plotter.plot_scatter_n_satellites_m200(path_galaxy)
     
     # # Plotting BH number distributions
     print("Plotting BH number distributions...")
@@ -118,22 +122,22 @@ if __name__ == '__main__':
     # bh_plotter.plot_2d_map(lat_gc, long_gc, path_bh + "2d_map_gc.pdf")
     bh_plotter.plot_2d_map(lat_sun, long_sun, path_bh + "2d_map_sun.pdf")
 
-    # bh_plotter.plot_2d_map_contours(lat_gc, long_gc, args.upsampling_factor, path_bh + "2d_map_gc_contours.pdf")
-    bh_plotter.plot_2d_map_contours(
-        lat = lat_sun_upsampled, 
-        long = long_sun_upsampled, 
-        upsampling_factor = args.upsampling_factor, 
-        path = path_bh + "2d_map_sun_contours.pdf", 
-        path_kde = path_kde
-        )
+    # # bh_plotter.plot_2d_map_contours(lat_gc, long_gc, args.upsampling_factor, path_bh + "2d_map_gc_contours.pdf")
+    # bh_plotter.plot_2d_map_contours(
+    #     lat = lat_sun_upsampled, 
+    #     long = long_sun_upsampled, 
+    #     upsampling_factor = args.upsampling_factor, 
+    #     path = path_bh + "2d_map_sun_contours.pdf", 
+    #     path_kde = path_kde
+    #     )
     
-    bh_plotter.plot_2d_map_contours(
-        lat = lat_sun_main_galaxy_upsampled, 
-        long = long_sun_main_galaxy_upsampled, 
-        upsampling_factor = args.upsampling_factor, 
-        path = path_bh + "2d_map_sun_main_galaxy_contours.pdf", 
-        path_kde = path_kde
-        )
+    # bh_plotter.plot_2d_map_contours(
+    #     lat = lat_sun_main_galaxy_upsampled, 
+    #     long = long_sun_main_galaxy_upsampled, 
+    #     upsampling_factor = args.upsampling_factor, 
+    #     path = path_bh + "2d_map_sun_main_galaxy_contours.pdf", 
+    #     path_kde = path_kde
+    #     )
 
     # plot scatter plot between number of BHs vs number satellites in main galaxies
     bh_plotter.plot_scatter_bh_n_satellites(path_bh)
