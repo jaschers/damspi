@@ -20,7 +20,7 @@ import matplotlib.ticker
 import matplotlib.gridspec as gridspec
 import numpy as np
 import requests
-from damspi.utils import nfw_profile, nfw_integral, cored_profile, cored_integral, M_bh_2, parameter_distr_mean, median_error
+from damspi.utils import nfw_profile, nfw_integral, cored_profile, cored_integral, M_bh_2, parameter_distr_mean, median_error, rescaled_distance_inverse
 from astropy import units as u
 from astropy.coordinates import SkyCoord, cartesian_to_spherical, spherical_to_cartesian
 from scipy.stats import gaussian_kde, multivariate_normal
@@ -46,7 +46,12 @@ class GalaxyPlotter:
         self.table_galaxy = table_galaxy
         self.table_bh = table_bh
         # shift coorindates system to position of the sun (8.33 kpc), https://iopscience.iop.org/article/10.1088/1475-7516/2011/03/051/pdf
-        self.distance_sun = config["Milky_way"]["distance_sun"] # kpc
+        self.distance_sun_mw = config["Milky_way"]["distance_sun"] # kpc
+
+        # rescale the distance of the Sun to the GC based on the mass of the galaxy. The larger the mass, the larger is the distance of the Sun to the GC.
+        self.galaxy_m200 = self.table_galaxy["m200"].values[0] * u.Msun
+        self.distance_sun = rescaled_distance_inverse(self.distance_sun_mw, self.galaxy_m200).value # kpc
+
 
     @staticmethod
     def download_image(url, save_path):
@@ -747,10 +752,14 @@ class BlackHolePlotter:
 
         return(d_sun_upsampled.value, lat_sun_upsampled.value, long_sun_upsampled.value)
     
-    @staticmethod
-    def shift_to_sun(x, y, z):
+    def shift_to_sun(self, x, y, z):
+        self.distance_sun_mw = config["Milky_way"]["distance_sun"] # kpc
+
+        # rescale the distance of the Sun to the GC based on the mass of the galaxy. The larger the mass, the larger is the distance of the Sun to the GC.
+        self.galaxy_m200 = self.table_bh["m200_main_galaxy"].values[0] * u.Msun
+        self.distance_sun = rescaled_distance_inverse(self.distance_sun_mw, self.galaxy_m200).value # kpc
         # shift the coordinates to the sun
-        x += config["Milky_way"]["distance_sun"]
+        x += self.distance_sun
         return(x, y, z)
 
     def plot_2d_map_contours(self, lat, long, upsampling_factor, path, path_kde, wihtin_region = False):
