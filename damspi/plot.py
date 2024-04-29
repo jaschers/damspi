@@ -1208,9 +1208,9 @@ class BlackHolePlotter:
             normalized_lower_error = median_lower_error / 10**exponent
 
             # Format the values for display
-            formatted_median = "{:.2f}".format(normalized_median)
-            formatted_upper_error = "{:.2f}".format(normalized_upper_error)
-            formatted_lower_error = "{:.2f}".format(normalized_lower_error)
+            formatted_median = "{:.4f}".format(normalized_median)
+            formatted_upper_error = "{:.4f}".format(normalized_upper_error)
+            formatted_lower_error = "{:.4f}".format(normalized_lower_error)
 
             # Create the label
             if exponent != 0:
@@ -1472,10 +1472,13 @@ class BlackHolePlotter:
                 table_bh_galaxy = self.table_bh[self.table_bh["main_galaxy_id"] == galaxy_id]
                 n_bh_galaxy = len(table_bh_galaxy)
                 parameter_value_galaxy = np.unique(table_bh_galaxy[table_bh_galaxy["satellite"] == False][parameter].values) # remove the satellite entries here to get the property of the main galaxy
-                if len(parameter_value_galaxy) != 1:
+                if len(parameter_value_galaxy) > 1:
                     print(f"WARNING: More than one value for parameter {parameter} for galaxy {galaxy_id}! This should not be possible! Check catalogue!")
-                n_bh.append(n_bh_galaxy)
-                parameter_values.append(parameter_value_galaxy[0])
+                if len(parameter_value_galaxy) == 0: #TODO
+                    pass
+                else:
+                    n_bh.append(n_bh_galaxy)
+                    parameter_values.append(parameter_value_galaxy[0])
 
             # extract the number of BHs and the parameter values for the main galaxies (excluding BHs in the satellites)
             n_bh_main_galaxies = []
