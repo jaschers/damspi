@@ -39,30 +39,30 @@ def determine_coordinates(table_galaxy_z0_total, table_bh_z0_total, args, lst, g
     if len(table_bh_z0) == 0:
         print("WARNING: no BHs in galaxy", galaxy_id)
         # Add an empty table to the total BH catalogue. Important to keep track of the galaxies with no (unmerged) BHs (if any).
-        table_bh_z0["host_galaxy_id"] = None
-        table_bh_z0["bh_id"] = None 
-        table_bh_z0["m"] = None 
-        table_bh_z0["z_f"] = None
-        table_bh_z0["z_c"] = None
-        table_bh_z0["nsnap_c"] = None 
-        table_bh_z0["d_GC"] = None
-        table_bh_z0["lat_GC"] = None 
-        table_bh_z0["long_GC"] = None  
-        table_bh_z0["d_Sun"] = None 
-        table_bh_z0["lat_Sun"] = None 
-        table_bh_z0["long_Sun"] = None
-        table_bh_z0["m_main_galaxy"] = None
-        table_bh_z0["m200_main_galaxy"] = None
-        table_bh_z0["fdisk_main_galaxy"] = None
-        table_bh_z0["fbulge_main_galaxy"] = None
-        table_bh_z0["fihl_main_galaxy"] = None
-        table_bh_z0["m_host_galaxy"] = None
-        table_bh_z0["m_star_host_galaxy"] = None
-        table_bh_z0["m_gas_host_galaxy"] = None
-        table_bh_z0["sfr_host_galaxy"] = None
-        table_bh_z0["satellite"] = None
-        table_bh_z0["n_satellites"] = None
-        table_bh_z0["n_satellites_with_stars"] = None
+        table_bh_z0["host_galaxy_id"] = "no BHs"
+        table_bh_z0["bh_id"] = "no BHs" 
+        table_bh_z0["m"] = "no BHs" 
+        table_bh_z0["z_f"] = "no BHs"
+        table_bh_z0["z_c"] = "no BHs"
+        table_bh_z0["nsnap_c"] = "no BHs" 
+        table_bh_z0["d_GC"] = "no BHs"
+        table_bh_z0["lat_GC"] = "no BHs" 
+        table_bh_z0["long_GC"] = "no BHs"  
+        table_bh_z0["d_Sun"] = "no BHs" 
+        table_bh_z0["lat_Sun"] = "no BHs" 
+        table_bh_z0["long_Sun"] = "no BHs"
+        table_bh_z0["m_main_galaxy"] = "no BHs"
+        table_bh_z0["m200_main_galaxy"] = "no BHs"
+        table_bh_z0["fdisk_main_galaxy"] = "no BHs"
+        table_bh_z0["fbulge_main_galaxy"] = "no BHs"
+        table_bh_z0["fihl_main_galaxy"] = "no BHs"
+        table_bh_z0["m_host_galaxy"] = "no BHs"
+        table_bh_z0["m_star_host_galaxy"] = "no BHs"
+        table_bh_z0["m_gas_host_galaxy"] = "no BHs"
+        table_bh_z0["sfr_host_galaxy"] = "no BHs"
+        table_bh_z0["satellite"] = "no BHs"
+        table_bh_z0["n_satellites"] = "no BHs"
+        table_bh_z0["n_satellites_with_stars"] = "no BHs"
 
         # add table to list
         lst.append(table_bh_z0)
@@ -313,7 +313,8 @@ if __name__ == "__main__":
     bh_catalogue = bh_catalogue.merge(spikes_table, on = "bh_id", how = "left")
 
     # drop the rows for which no mini spike parameters could be calculated due to spurious BH host halos
-    bh_catalogue = bh_catalogue.dropna()
+    # i.e. drop rows with NaN values in the mini spike columns r_sp, rho(r_sp) and gamma_sp
+    bh_catalogue = bh_catalogue.dropna(subset = ["r_sp", "rho(r_sp)", "gamma_sp"]).reset_index(drop = True)
 
     # save BH catalogue
     bh_catalogue.to_hdf(path_catalogue + f"catalogue_{args.name}.h5", key = "table")
