@@ -20,7 +20,7 @@ import matplotlib.ticker
 import matplotlib.gridspec as gridspec
 import numpy as np
 import requests
-from damspi.utils import nfw_profile, nfw_integral, cored_profile, cored_integral, M_bh_2, parameter_distr_mean, median_error
+from damspi.utils import nfw_profile, nfw_integral, cored_profile, cored_integral, M_bh_2, parameter_distr_mean, median_error, rescaled_distance_inverse
 from astropy import units as u
 from astropy.coordinates import SkyCoord, cartesian_to_spherical, spherical_to_cartesian
 from scipy.stats import gaussian_kde, multivariate_normal
@@ -46,7 +46,12 @@ class GalaxyPlotter:
         self.table_galaxy = table_galaxy
         self.table_bh = table_bh
         # shift coorindates system to position of the sun (8.33 kpc), https://iopscience.iop.org/article/10.1088/1475-7516/2011/03/051/pdf
-        self.distance_sun = config["Milky_way"]["distance_sun"] # kpc
+        self.distance_sun_mw = config["Milky_way"]["distance_sun"] # kpc
+
+        # rescale the distance of the Sun to the GC based on the mass of the galaxy. The larger the mass, the larger is the distance of the Sun to the GC.
+        self.galaxy_m200 = self.table_galaxy["m200"].values[0] * u.Msun
+        self.distance_sun = rescaled_distance_inverse(self.distance_sun_mw, self.galaxy_m200).value # kpc
+
 
     @staticmethod
     def download_image(url, save_path):
@@ -835,10 +840,14 @@ class BlackHolePlotter:
 
         return(d_sun_upsampled.value, lat_sun_upsampled.value, long_sun_upsampled.value)
     
-    @staticmethod
-    def shift_to_sun(x, y, z):
+    def shift_to_sun(self, x, y, z):
+        self.distance_sun_mw = config["Milky_way"]["distance_sun"] # kpc
+
+        # rescale the distance of the Sun to the GC based on the mass of the galaxy. The larger the mass, the larger is the distance of the Sun to the GC.
+        self.galaxy_m200 = self.table_bh["m200_main_galaxy"].values[0] * u.Msun
+        self.distance_sun = rescaled_distance_inverse(self.distance_sun_mw, self.galaxy_m200).value # kpc
         # shift the coordinates to the sun
-        x += config["Milky_way"]["distance_sun"]
+        x += self.distance_sun
         return(x, y, z)
 
     def plot_2d_map_contours(self, lat, long, upsampling_factor, path, path_kde, wihtin_region = False):
@@ -1308,9 +1317,9 @@ class BlackHolePlotter:
             normalized_lower_error = median_lower_error / 10**exponent
 
             # Format the values for display
-            formatted_median = "{:.2f}".format(normalized_median)
-            formatted_upper_error = "{:.2f}".format(normalized_upper_error)
-            formatted_lower_error = "{:.2f}".format(normalized_lower_error)
+            formatted_median = "{:.4f}".format(normalized_median)
+            formatted_upper_error = "{:.4f}".format(normalized_upper_error)
+            formatted_lower_error = "{:.4f}".format(normalized_lower_error)
 
             # Create the label
             if exponent != 0:
@@ -1663,18 +1672,28 @@ class BlackHolePlotter:
         plt.close()
 
     def plot_scatter_bh_galaxy_properties(self, path):
+        # get the BH that are in the main galaxies
         table_bh_main_galaxies = self.table_bh[self.table_bh["satellite"] == False].reset_index(drop = True)
+        # get the main galaxy IDs of the BHs in the main galaxies
         main_galaxy_ids = np.unique(table_bh_main_galaxies["main_galaxy_id"].values)
+        # get the main galaxy IDs of the BHs in all galaxies (including satellites)
         galaxy_ids = np.unique(self.table_bh["main_galaxy_id"].values)
 
+        # get the BHs that are in the satellites
         table_bh_satellites = self.table_bh[self.table_bh["satellite"] == True]
+        # get the host galaxy IDs of the BHs in the satellites
         satellites_galaxy_ids = np.unique(table_bh_satellites["host_galaxy_id"].values)
 
+        # define the parameters to be plotted
         parameters = ["m_host_galaxy", "m200_main_galaxy", "m_gas_host_galaxy", "m_star_host_galaxy", "sfr_host_galaxy"]
+        # define the log parameters
         log_parameters = ["m_host_galaxy", "m200_main_galaxy", "m_gas_host_galaxy", "m_star_host_galaxy"] 
+        # define the names of the parameters
         names = ["total_mass", "m200", "gas_mass", "star_mass", "sfr"]
+        # define the x labels
         x_labels = [r"$m_\mathrm{tot}$ [$M_{\odot}$]", r"$m_{200}$ [$M_{\odot}$]", r"$m_{\mathrm{gas}}$ [$M_{\odot}$]", r"$m_\mathrm{star}$ [$M_{\odot}$]", "SFR [$M_{\odot}$ / yr]"]
 
+        # start the loop over the parameters
         for parameter, name, x_label in zip(parameters, names, x_labels):
             # extract the number of BHs and the parameter values for the main galaxies (considering BHs in the main galaxy and the satellites)
             n_bh = []
@@ -1683,10 +1702,14 @@ class BlackHolePlotter:
                 table_bh_galaxy = self.table_bh[self.table_bh["main_galaxy_id"] == galaxy_id]
                 n_bh_galaxy = len(table_bh_galaxy)
                 parameter_value_galaxy = np.unique(table_bh_galaxy[table_bh_galaxy["satellite"] == False][parameter].values) # remove the satellite entries here to get the property of the main galaxy
-                if len(parameter_value_galaxy) != 1:
+                if len(parameter_value_galaxy) > 1:
                     print(f"WARNING: More than one value for parameter {parameter} for galaxy {galaxy_id}! This should not be possible! Check catalogue!")
-                n_bh.append(n_bh_galaxy)
-                parameter_values.append(parameter_value_galaxy[0])
+                if len(parameter_value_galaxy) == 0: #TODO update code so it can handle this case
+                    print(f"ERROR: No value for parameter {parameter} for galaxy {galaxy_id}! This means that there are no BHs in the main galaxy but some BHs in the satellites! Code needs to be updated to handle this case!")
+                    exit()
+                else:
+                    n_bh.append(n_bh_galaxy)
+                    parameter_values.append(parameter_value_galaxy[0])
 
             # extract the number of BHs and the parameter values for the main galaxies (excluding BHs in the satellites)
             n_bh_main_galaxies = []

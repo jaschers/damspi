@@ -426,6 +426,10 @@ def rescaled_distance(r, m200):
     r = r * (1e12 * u.Msun / m200)**(1/3)
     return(r)
 
+def rescaled_distance_inverse(r, m200):
+    r = r * (m200 / 1e12 * u.Msun)**(1/3)
+    return(r)
+
 def remove_distant_satellites(table_bh, nsnap, args):
     """
     Removes satellites that are too far away from the host galaxy
