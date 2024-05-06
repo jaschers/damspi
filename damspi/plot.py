@@ -1484,10 +1484,9 @@ class BlackHolePlotter:
                 parameter_value_galaxy = np.unique(table_bh_galaxy[table_bh_galaxy["satellite"] == False][parameter].values) # remove the satellite entries here to get the property of the main galaxy
                 if len(parameter_value_galaxy) > 1:
                     print(f"WARNING: More than one value for parameter {parameter} for galaxy {galaxy_id}! This should not be possible! Check catalogue!")
-                if len(parameter_value_galaxy) == 0: #TODO
-                    print("#######################################")
-                    print(f"WARNING: No value for parameter {parameter} for galaxy {galaxy_id}! This should not be possible! Check catalogue!")
-                    print(table_bh_galaxy)
+                if len(parameter_value_galaxy) == 0: #TODO update code so it can handle this case
+                    print(f"ERROR: No value for parameter {parameter} for galaxy {galaxy_id}! This means that there are no BHs in the main galaxy but some BHs in the satellites! Code needs to be updated to handle this case!")
+                    exit()
                 else:
                     n_bh.append(n_bh_galaxy)
                     parameter_values.append(parameter_value_galaxy[0])
