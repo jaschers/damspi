@@ -446,6 +446,94 @@ class GalaxyPlotter:
         plt.savefig(path + "n_bh_satellite_types.pdf", dpi = 300)
         plt.close()
 
+    def plot_likelihood_bh_satellite_star_mass(self, path):
+        # get satellites
+        table_satellites = self.table_galaxy[self.table_galaxy["subgroup_number"] != 0]
+        table_satellites_with_stars = table_satellites[table_satellites["m_star"] > 0]
+        bh_table_satellites = self.table_bh[self.table_bh["satellite"] == True]
+
+        # get masses of satellites
+        m_star_satellites = table_satellites_with_stars["m_star"].values
+
+        # create logarithmic bins in mass
+        bins = np.logspace(np.log10(np.min(m_star_satellites)), np.log10(np.max(m_star_satellites)), config["Plots"]["number_bins"])
+        bins_centre = (bins[1:] + bins[:-1]) / 2
+
+        percentage_bh = []
+        n_satellites_with_stars = []
+        n_satellites_with_stars_with_bh = []
+        # for each mass bin, calculate the percantage of satellites that have at least one BH
+        for i in range(len(bins) - 1):
+            lower_bound = bins[i]
+            upper_bound = bins[i + 1]
+            table_satellites_in_bin = table_satellites_with_stars[(table_satellites_with_stars["m_star"] >= lower_bound) & (table_satellites_with_stars["m_star"] < upper_bound)]
+            galaxy_ids_in_bin = np.unique(table_satellites_in_bin["galaxy_id"])
+            galaxy_ids_with_bh_in_bin = np.intersect1d(galaxy_ids_in_bin, np.unique(bh_table_satellites["host_galaxy_id"]))
+            percentage_bh_in_bin = len(galaxy_ids_with_bh_in_bin) / len(galaxy_ids_in_bin) * 100
+            percentage_bh.append(percentage_bh_in_bin)
+            n_satellites_with_stars.append(len(galaxy_ids_in_bin))
+            n_satellites_with_stars_with_bh.append(len(galaxy_ids_with_bh_in_bin))
+
+        # plot likelihood of having a BH as a function of satellite mass as a bar plot
+        plt.figure(figsize = config["Figure_size"]["single_column"])
+        plt.bar(bins_centre, percentage_bh, width = bins[1:] - bins[:-1], color = config["Colors"]["darkblue"])
+        # above each bar add the number of satellites in the mass bin and the number of satellites with BHs
+        for i in range(len(bins_centre)):
+            if percentage_bh[i] < 40:
+                plt.text(bins_centre[i], percentage_bh[i] + 2, f"{n_satellites_with_stars[i]}", ha = "center", va = "bottom", rotation = 90, fontsize = 6)
+            else: # put the text inside the bar
+                plt.text(bins_centre[i], percentage_bh[i] - 2, f"{n_satellites_with_stars[i]}", ha = "center", va = "top", rotation = 90, fontsize = 6, color = "white")
+        plt.xlabel(r"$m_\mathrm{star}$ [$M_{\odot}$]")
+        plt.ylabel("BH likelihood $[\%]$")
+        plt.xscale("log")
+        plt.tight_layout()
+        plt.savefig(path + "likelihood_bh_satellite_with_stars_star_mass.pdf", dpi = 300)
+        plt.close()
+
+    def plot_likelihood_bh_satellite_total_mass(self, path):
+        # get satellites
+        table_satellites = self.table_galaxy[self.table_galaxy["subgroup_number"] != 0]
+        table_satellites_with_stars = table_satellites[table_satellites["m_star"] > 0]
+        bh_table_satellites = self.table_bh[self.table_bh["satellite"] == True]
+
+        # get masses of satellites
+        m_total_satellites = table_satellites_with_stars["m"].values
+
+        # create logarithmic bins in mass
+        bins = np.logspace(np.log10(np.min(m_total_satellites)), np.log10(np.max(m_total_satellites)), config["Plots"]["number_bins"])
+        bins_centre = (bins[1:] + bins[:-1]) / 2
+
+        percentage_bh = []
+        n_satellites_with_stars = []
+        n_satellites_with_stars_with_bh = []
+        # for each mass bin, calculate the percantage of satellites that have at least one BH
+        for i in range(len(bins) - 1):
+            lower_bound = bins[i]
+            upper_bound = bins[i + 1]
+            table_satellites_in_bin = table_satellites_with_stars[(table_satellites_with_stars["m"] >= lower_bound) & (table_satellites_with_stars["m"] < upper_bound)]
+            galaxy_ids_in_bin = np.unique(table_satellites_in_bin["galaxy_id"])
+            galaxy_ids_with_bh_in_bin = np.intersect1d(galaxy_ids_in_bin, np.unique(bh_table_satellites["host_galaxy_id"]))
+            percentage_bh_in_bin = len(galaxy_ids_with_bh_in_bin) / len(galaxy_ids_in_bin) * 100
+            percentage_bh.append(percentage_bh_in_bin)
+            n_satellites_with_stars.append(len(galaxy_ids_in_bin))
+            n_satellites_with_stars_with_bh.append(len(galaxy_ids_with_bh_in_bin))
+
+        # plot likelihood of having a BH as a function of satellite mass as a bar plot
+        plt.figure(figsize = config["Figure_size"]["single_column"])
+        plt.bar(bins_centre, percentage_bh, width = bins[1:] - bins[:-1], color = config["Colors"]["darkblue"])
+        # above each bar add the number of satellites in the mass bin and the number of satellites with BHs
+        for i in range(len(bins_centre)):
+            if percentage_bh[i] < 40:
+                plt.text(bins_centre[i], percentage_bh[i] + 2, f"{n_satellites_with_stars[i]}", ha = "center", va = "bottom", rotation = 90, fontsize = 6)
+            else: # put the text inside the bar
+                plt.text(bins_centre[i], percentage_bh[i] - 2, f"{n_satellites_with_stars[i]}", ha = "center", va = "top", rotation = 90, fontsize = 6, color = "white")
+        plt.xlabel(r"$m_\mathrm{tot}$ [$M_{\odot}$]")
+        plt.ylabel("BH likelihood $[\%]$")
+        plt.xscale("log")
+        plt.tight_layout()
+        plt.savefig(path + "likelihood_bh_satellite_with_stars_total_mass.pdf", dpi = 300)
+        plt.close()
+
     def plot_satellite_number_dist(self, path):
         # get main galaxies and their corresponding number of satellites
         table_galaxies = self.table_galaxy[self.table_galaxy["subgroup_number"] == 0]
