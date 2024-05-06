@@ -253,6 +253,7 @@ if __name__ == "__main__":
         # unique galaxy root ids
         galaxy_id_unique = np.unique(table_galaxy_z0_total["galaxy_id"])
         # galaxy_id_unique = galaxy_id_unique[:1]
+        # galaxy_id_unique = [9119231]
 
         # extract bh data at z = 0
         table_bh_z0_total = data_collector.black_hole_data(nsnap = 28)
