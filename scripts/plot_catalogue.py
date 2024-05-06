@@ -96,6 +96,10 @@ if __name__ == '__main__':
 
     galaxy_plotter.plot_n_bh_satellite_types(path_bh)
 
+    galaxy_plotter.plot_likelihood_bh_satellite_star_mass(path_bh)
+
+    galaxy_plotter.plot_likelihood_bh_satellite_total_mass(path_bh)
+
     galaxy_plotter.plot_scatter_n_satellites_m200(path_galaxy)
     
     # # Plotting BH number distributions
