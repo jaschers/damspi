@@ -599,8 +599,8 @@ class GalaxyPlotter:
         plt.close()
 
     def plot_scatter_bh_galaxy_morphology(self, path):
-        table_bh_main_galaxies = self.table_bh[self.table_bh["satellite"] == False]
-        table_main_galaxies = self.table_galaxy[self.table_galaxy["subgroup_number"] == 0]
+        table_bh_main_galaxies = self.table_bh[self.table_bh["satellite"] == False].reset_index(drop = True)
+        table_main_galaxies = self.table_galaxy[self.table_galaxy["subgroup_number"] == 0].reset_index(drop = True)
         main_galaxy_ids = np.unique(table_bh_main_galaxies["main_galaxy_id"].values)
         galaxy_ids = np.unique(self.table_bh["main_galaxy_id"].values)
 
@@ -1211,28 +1211,49 @@ class BlackHolePlotter:
         return cumulative_hist
 
     def plot_cumulative_radial_distribution_mean(self, path):
-        distance = self.table_bh["d_GC"].values
-        galaxy_ids = np.unique(self.table_bh["main_galaxy_id"].values)
-        d_min, d_max = np.min(distance), np.max(distance)
+        # get all BHs
+        table_bh_total = self.table_bh
+        # get BHs in main galaxies
+        table_bh_main_galaxies = table_bh_total[table_bh_total["satellite"] == False].reset_index(drop = True)
+
+        distance_total = table_bh_total["d_GC"].values
+        galaxy_ids_total = np.unique(table_bh_total["main_galaxy_id"].values)
+        d_min, d_max = np.min(distance_total), np.max(distance_total)
         # bins = np.logspace(np.log10(d_min), np.log10(d_max), config["Plots"]["number_bins"])
         bins = np.linspace(d_min, d_max, config["Plots"]["number_bins"])
         bins_width = bins[1:] - bins[:-1]
         bins_centre = (bins[1:] + bins[:-1]) / 2
 
-        cumulative_hist_list = []
-        for galaxy_id in galaxy_ids:
-            distance_galaxy_id = distance[self.table_bh["main_galaxy_id"].values == galaxy_id]
-            cumulative_hist = self.cumulative_radial_distribution(distance_galaxy_id, bins)
-            cumulative_hist_list.append(cumulative_hist)
+        distance_main_galaxies = table_bh_main_galaxies["d_GC"].values
+        galaxy_ids_main_galaxies = np.unique(table_bh_main_galaxies["main_galaxy_id"].values)
+
+        cumulative_hist_total_list = []
+        for galaxy_id_total in galaxy_ids_total:
+            distance_total_galaxy_id = distance_total[table_bh_total["main_galaxy_id"].values == galaxy_id_total]
+            cumulative_hist_total = self.cumulative_radial_distribution(distance_total_galaxy_id, bins)
+            cumulative_hist_total_list.append(cumulative_hist_total)
+
+        cumulative_hist_main_galaxies_list = []
+        for galaxy_id_main_galaxies in galaxy_ids_main_galaxies:
+            distance_main_galaxies_galaxy_id = distance_main_galaxies[table_bh_main_galaxies["main_galaxy_id"].values == galaxy_id_main_galaxies]
+            cumulative_hist_main_galaxies = self.cumulative_radial_distribution(distance_main_galaxies_galaxy_id, bins)
+            cumulative_hist_main_galaxies_list.append(cumulative_hist_main_galaxies)
         
-        cumulative_hist_mean = np.mean(cumulative_hist_list, axis = 0)
-        cumulative_hist_std = np.std(cumulative_hist_list, ddof = 1, axis = 0)
-        cumulative_hist_mean_error = cumulative_hist_std / np.sqrt(len(galaxy_ids))
+        cumulative_hist_total_mean = np.mean(cumulative_hist_total_list, axis = 0)
+        cumulative_hist_total_std = np.std(cumulative_hist_total_list, ddof = 1, axis = 0)
+        cumulative_hist_total_mean_error = cumulative_hist_total_std / np.sqrt(len(galaxy_ids_total))
+
+        cumulative_hist_main_galaxies_mean = np.mean(cumulative_hist_main_galaxies_list, axis = 0)
+        cumulative_hist_main_galaxies_std = np.std(cumulative_hist_main_galaxies_list, ddof = 1, axis = 0)
+        cumulative_hist_main_galaxies_mean_error = cumulative_hist_main_galaxies_std / np.sqrt(len(galaxy_ids_main_galaxies))
 
         plt.figure(figsize = config["Figure_size"]["single_column"])
-        plt.bar(bins_centre, cumulative_hist_mean, yerr = cumulative_hist_mean_error, width = bins_width, color = config["Colors"]["darkblue"], edgecolor = config["Plots"]["bar_edge_color"], linewidth = config["Plots"]["bar_edge_width"], ecolor = config["Colors"]["lightblue"])
+        plt.bar(bins_centre, cumulative_hist_total_mean, yerr = cumulative_hist_total_mean_error, width = bins_width, color = config["Colors"]["darkblue"], edgecolor = config["Plots"]["bar_edge_color"], linewidth = config["Plots"]["bar_edge_width"], ecolor = config["Colors"]["lightblue"], label = "M+S")
+        plt.bar(bins_centre, cumulative_hist_main_galaxies_mean, width = bins_width, color = config["Colors"]["darkblue_2"], edgecolor = config["Plots"]["bar_edge_color"], linewidth = config["Plots"]["bar_edge_width"], ecolor = config["Colors"]["lightblue_2"], label = "M", alpha = 0.5)
+        plt.errorbar(bins_centre, cumulative_hist_main_galaxies_mean, yerr = cumulative_hist_main_galaxies_mean_error, fmt = "none", linestyle = "", ecolor = config["Colors"]["lightblue_2"])
         plt.xlabel(r"$d_\mathrm{GC}$ [kpc]")
-        plt.ylabel(r"$N(<d_\mathrm{GC}) / N_\mathrm{tot}$")
+        plt.ylabel(r"$N_\mathrm{BH}(<d_\mathrm{GC}) / N_\mathrm{BH, tot}$")
+        plt.legend(loc = "lower right")
         plt.tight_layout()
         plt.savefig(path, dpi = 500)
         plt.close()
@@ -1357,20 +1378,22 @@ class BlackHolePlotter:
     @staticmethod
     def chi_squared(observed, expected, errors):
         return np.sum(((observed - expected) ** 2) / errors ** 2)
+    
+    def get_number_dist(self, table_bh, table_galaxy, bins):
+        # check if there is any galaxy in the table without any BH by comparing the galaxy IDs
+        table_galaxy_galaxy_ids = table_galaxy[table_galaxy["subgroup_number"] == 0]["galaxy_id"].values
+        table_bh_galaxy_ids = table_bh["main_galaxy_id"].values
+        missing_galaxy_ids = np.setdiff1d(table_galaxy_galaxy_ids, table_bh_galaxy_ids)
+        n_galaxies_no_bh = len(missing_galaxy_ids)
 
-    def plot_number_dist(self, path):
-        galaxy_ids, n_bh = np.unique(self.table_bh["main_galaxy_id"].values, return_counts = True)
-        n_bh_median = np.median(n_bh)
-        n_bh_sorted = np.sort(n_bh)
-        lower_percentile = np.percentile(n_bh_sorted, 16)
-        upper_percentile = np.percentile(n_bh_sorted, 84)
-        n_bh_median_lower_error = n_bh_median - lower_percentile
-        n_bh_median_upper_error = upper_percentile - n_bh_median
-        hist, bins = np.histogram(n_bh, bins = config["Plots"]["number_bins"])
-        bins_width = bins[1:] - bins[:-1]
-        bins_centre = (bins[1:] + bins[:-1]) / 2
+        galaxy_ids, n_bh = np.unique(table_bh["main_galaxy_id"].values, return_counts = True)
+        # add the galaxies without any BH to the list
+        n_bh = np.append(n_bh, np.zeros(n_galaxies_no_bh))
+        hist, bins = np.histogram(n_bh, bins = bins)
         hist_err = np.sqrt(hist)
-
+        return n_bh, hist, hist_err
+    
+    def fit_lognorm(self, input_data, bins_centre, hist, hist_err):
         # fit lognormal pdf to the distribution
         # Create a Model
         lognorm_model = Model(self.lognorm)
@@ -1379,40 +1402,83 @@ class BlackHolePlotter:
         data = RealData(bins_centre, hist, sy=hist_err)
 
         # Set up ODR with the model and data
-        odr_lognorm = ODR(data, lognorm_model, beta0=[2000, np.mean(n_bh), np.std(bins_centre)]) # 2000
+        odr_lognorm = ODR(data, lognorm_model, beta0=[2000, np.mean(input_data), np.std(bins_centre)]) # 2000
 
         # Run the regression
         out_lognorm = odr_lognorm.run()
 
-        print("out_lognorm.stopreason:", out_lognorm.stopreason)
         if "convergence" in out_lognorm.stopreason[0]:
-            print("Best fit values for lognorm number distribution fit:")
-            print("Norm = {0:.2f} +- {1:.2f}".format(out_lognorm.beta[0], out_lognorm.sd_beta[0]))
-            print("Mu = {0:.2f} +- {1:.2f}".format(out_lognorm.beta[1], out_lognorm.sd_beta[1]))
-            print("Sigma = {0:.2f} +- {1:.2f}".format(out_lognorm.beta[2], out_lognorm.sd_beta[2]))
+            # print("Best fit values for lognorm number distribution fit:")
+            # print("Norm = {0:.2f} +- {1:.2f}".format(out_lognorm.beta[0], out_lognorm.sd_beta[0]))
+            # print("Mu = {0:.2f} +- {1:.2f}".format(out_lognorm.beta[1], out_lognorm.sd_beta[1]))
+            # print("Sigma = {0:.2f} +- {1:.2f}".format(out_lognorm.beta[2], out_lognorm.sd_beta[2]))
 
             # Use the fitted parameters to plot the fitted curve
             x_fit = np.linspace(0.1, max(bins_centre) + 20, 1000)
             y_fit_lognorm = self.lognorm(out_lognorm.beta, x_fit)
 
+            return out_lognorm, x_fit, y_fit_lognorm
+        else:
+            out_lognorm, x_fit, y_fit_lognorm = None, None, None
+            return out_lognorm, x_fit, y_fit_lognorm
+
+    def plot_number_dist(self, path, table_galaxy):
+        # get the table with all BHs
+        table_bh_total = self.table_bh
+        # get the table with BHs part of the main galaxy only
+        table_bh_main_galaxy = self.table_bh[self.table_bh["satellite"] == False].reset_index(drop = True)
+
+        # create bins for the number distribution base on table_bh
+        bins = np.linspace(0, np.max(table_bh_total["main_galaxy_id"].value_counts()), config["Plots"]["number_bins"])
+        bins_width = bins[1:] - bins[:-1]
+        bins_centre = (bins[1:] + bins[:-1]) / 2
+
+        # get the number distribution for all BHs
+        n_bh_total, hist_total, hist_err_total = self.get_number_dist(table_bh_total, table_galaxy, bins = bins)
+        # get the number distribution for BHs part of the main galaxy only
+        n_bh_main_galaxy, hist_main_galaxy, hist_err_main_galaxy = self.get_number_dist(table_bh_main_galaxy, table_galaxy, bins = bins)
+
+        # get the median number of BHs per galaxy
+        n_bh_total_median, n_bh_total_median_lower_error, n_bh_total_median_upper_error = median_error(n_bh_total)
+        n_bh_total_lower_percentile = n_bh_total_median - n_bh_total_median_lower_error
+        n_bh_total_upper_percentile = n_bh_total_median + n_bh_total_median_upper_error
+
+        print("Median number of BHs per galaxy (all): {0:.0f} + {1:.0f} - {2:.0f}".format(n_bh_total_median, n_bh_total_median_upper_error, n_bh_total_median_lower_error))
+
+        n_bh_main_galaxy_median, n_bh_main_galaxy_median_lower_error, n_bh_main_galaxy_median_upper_error = median_error(n_bh_main_galaxy)
+        n_bh_main_galaxy_lower_percentile = n_bh_main_galaxy_median - n_bh_main_galaxy_median_lower_error
+        n_bh_main_galaxy_upper_percentile = n_bh_main_galaxy_median + n_bh_main_galaxy_median_upper_error
+
+        print("Median number of BHs per galaxy (main galaxy only): {0:.0f} + {1:.0f} - {2:.0f}".format(n_bh_main_galaxy_median, n_bh_main_galaxy_median_upper_error, n_bh_main_galaxy_median_lower_error))
+
+        # fit lognormal pdf to the distribution
+        out_lognorm_total, x_fit_total, y_fit_lognorm_total = self.fit_lognorm(n_bh_total, bins_centre, hist_total, hist_err_total)
+        # out_lognorm_main_galaxy, x_fit_main_galaxy, y_fit_lognorm_main_galaxy = self.fit_lognorm(n_bh_main_galaxy, bins_centre, hist_main_galaxy, hist_err_main_galaxy)
+
         # Format the values for display
-        formatted_median = "{:.0f}".format(n_bh_median)
-        formatted_upper_error = "{:.0f}".format(n_bh_median_upper_error)
-        formatted_lower_error = "{:.0f}".format(n_bh_median_lower_error)
+        formatted_median_total = "{:.0f}".format(n_bh_total_median)
+        formatted_upper_error_total = "{:.0f}".format(n_bh_total_median_upper_error)
+        formatted_lower_error_total = "{:.0f}".format(n_bh_total_median_lower_error)
+
+        # formatted_median_main_galaxy = "{:.0f}".format(n_bh_main_galaxy_median)
+        # formatted_upper_error_main_galaxy = "{:.0f}".format(n_bh_main_galaxy_median_upper_error)
+        # formatted_lower_error_main_galaxy = "{:.0f}".format(n_bh_main_galaxy_median_lower_error)
         
-        label_median = r"$\tilde{{\mu}} = {0}^{{+{1}}}_{{-{2}}}$".format(formatted_median, formatted_upper_error, formatted_lower_error)
-        # label_fit = f"Fit\n$\\mu$ = {np.round(out_lognorm.beta[1], 1)}\n$\\sigma$ = {np.round(out_lognorm.beta[2], 1)}"
-        # label_fit = r"$f_\mathrm{ln}(N_\mathrm{BH}| \alpha, \mu, \sigma)$"
+        label_median_total = r"$\tilde{{\mu}} = {0}^{{+{1}}}_{{-{2}}}$".format(formatted_median_total, formatted_upper_error_total, formatted_lower_error_total)
+        # label_median_main_galaxy = r"$\tilde{{\mu}} = {0}^{{+{1}}}_{{-{2}}}$".format(formatted_median_main_galaxy, formatted_upper_error_main_galaxy, formatted_lower_error_main_galaxy)
         label_fit = r"$f^0_\mathrm{ln}(N_\mathrm{BH})$"
 
         plt.figure(figsize = config["Figure_size"]["single_column"])
-        plt.bar(bins_centre, hist, width = bins_width, color = config["Colors"]["darkblue"], yerr = hist_err, ecolor = config["Colors"]["lightblue"], edgecolor = config["Plots"]["bar_edge_color"], linewidth = config["Plots"]["bar_edge_width"])
+        plt.bar(bins_centre, hist_total, width = bins_width, color = config["Colors"]["darkblue"], yerr = hist_err_total, ecolor = config["Colors"]["lightblue"], edgecolor = config["Plots"]["bar_edge_color"], linewidth = config["Plots"]["bar_edge_width"], alpha = 1, label = "M+S")
+        # plt.bar(bins_centre, hist_main_galaxy, width = bins_width, color = config["Colors"]["darkblue_2"], yerr = hist_err_main_galaxy, ecolor = config["Colors"]["lightblue_2"], edgecolor = config["Plots"]["bar_edge_color"], linewidth = config["Plots"]["bar_edge_width"], alpha = 1)
+        plt.bar(bins_centre, hist_main_galaxy, width = bins_width, color = config["Colors"]["darkblue_2"], ecolor = config["Colors"]["lightblue_2"], edgecolor = config["Plots"]["bar_edge_color"], linewidth = config["Plots"]["bar_edge_width"], alpha = 0.5, label = "M")
+        plt.errorbar(bins_centre, hist_main_galaxy, yerr=hist_err_main_galaxy, ecolor=config["Colors"]["lightblue_2"], alpha=0.5, capsize=0, fmt='none', linestyle = "")
         x_min, x_max = plt.xlim()
-        if "convergence" in out_lognorm.stopreason[0]:
-            plt.plot(x_fit, y_fit_lognorm, color = config["Colors"]["black"], linestyle = "solid", label = label_fit)
+        if "convergence" in out_lognorm_total.stopreason[0]:
+            plt.plot(x_fit_total, y_fit_lognorm_total, color = config["Colors"]["black"], linestyle = "solid", label = label_fit)
         ymin, ymax = plt.ylim()
-        plt.vlines(n_bh_median, ymin = ymin, ymax = ymax, color = config["Colors"]["red"], linestyle = "solid", label = label_median)
-        plt.axvspan(lower_percentile, upper_percentile, alpha = 0.25, facecolor = config["Colors"]["red"], edgecolor = "None")
+        plt.vlines(n_bh_total_median, ymin = ymin, ymax = ymax, color = config["Colors"]["red"], linestyle = "solid", label = label_median_total)
+        plt.axvspan(n_bh_total_lower_percentile, n_bh_total_upper_percentile, alpha = 0.25, facecolor = config["Colors"]["red"], edgecolor = "None")
         plt.xlabel(r"$N_\mathrm{BH}$")
         plt.ylabel(r"$N_\mathrm{g}$")
         plt.ylim(ymin, ymax)
@@ -1421,6 +1487,72 @@ class BlackHolePlotter:
         plt.tight_layout()
         plt.savefig(path, dpi = 500)
         plt.close()
+
+    # def plot_number_dist(self, path):
+    #     galaxy_ids, n_bh = np.unique(self.table_bh["main_galaxy_id"].values, return_counts = True)
+    #     n_bh_median = np.median(n_bh)
+    #     n_bh_sorted = np.sort(n_bh)
+    #     lower_percentile = np.percentile(n_bh_sorted, 16)
+    #     upper_percentile = np.percentile(n_bh_sorted, 84)
+    #     n_bh_median_lower_error = n_bh_median - lower_percentile
+    #     n_bh_median_upper_error = upper_percentile - n_bh_median
+    #     hist, bins = np.histogram(n_bh, bins = config["Plots"]["number_bins"])
+    #     bins_width = bins[1:] - bins[:-1]
+    #     bins_centre = (bins[1:] + bins[:-1]) / 2
+    #     hist_err = np.sqrt(hist)
+
+    #     # fit lognormal pdf to the distribution
+    #     # Create a Model
+    #     lognorm_model = Model(self.lognorm)
+
+    #     # Create a RealData object
+    #     data = RealData(bins_centre, hist, sy=hist_err)
+
+    #     # Set up ODR with the model and data
+    #     odr_lognorm = ODR(data, lognorm_model, beta0=[2000, np.mean(n_bh), np.std(bins_centre)]) # 2000
+
+    #     # Run the regression
+    #     out_lognorm = odr_lognorm.run()
+
+    #     print("out_lognorm.stopreason:", out_lognorm.stopreason)
+    #     if "convergence" in out_lognorm.stopreason[0]:
+    #         print("Best fit values for lognorm number distribution fit:")
+    #         print("Norm = {0:.2f} +- {1:.2f}".format(out_lognorm.beta[0], out_lognorm.sd_beta[0]))
+    #         print("Mu = {0:.2f} +- {1:.2f}".format(out_lognorm.beta[1], out_lognorm.sd_beta[1]))
+    #         print("Sigma = {0:.2f} +- {1:.2f}".format(out_lognorm.beta[2], out_lognorm.sd_beta[2]))
+
+    #         # Use the fitted parameters to plot the fitted curve
+    #         x_fit = np.linspace(0.1, max(bins_centre) + 20, 1000)
+    #         y_fit_lognorm = self.lognorm(out_lognorm.beta, x_fit)
+
+    #     # Format the values for display
+    #     formatted_median = "{:.0f}".format(n_bh_median)
+    #     formatted_upper_error = "{:.0f}".format(n_bh_median_upper_error)
+    #     formatted_lower_error = "{:.0f}".format(n_bh_median_lower_error)
+        
+    #     label_median = r"$\tilde{{\mu}} = {0}^{{+{1}}}_{{-{2}}}$".format(formatted_median, formatted_upper_error, formatted_lower_error)
+    #     # label_fit = f"Fit\n$\\mu$ = {np.round(out_lognorm.beta[1], 1)}\n$\\sigma$ = {np.round(out_lognorm.beta[2], 1)}"
+    #     # label_fit = r"$f_\mathrm{ln}(N_\mathrm{BH}| \alpha, \mu, \sigma)$"
+    #     label_fit = r"$f^0_\mathrm{ln}(N_\mathrm{BH})$"
+
+    #     plt.figure(figsize = config["Figure_size"]["single_column"])
+    #     plt.bar(bins_centre, hist, width = bins_width, color = config["Colors"]["darkblue"], yerr = hist_err, ecolor = config["Colors"]["lightblue"], edgecolor = config["Plots"]["bar_edge_color"], linewidth = config["Plots"]["bar_edge_width"])
+    #     x_min, x_max = plt.xlim()
+    #     if "convergence" in out_lognorm.stopreason[0]:
+    #         plt.plot(x_fit, y_fit_lognorm, color = config["Colors"]["black"], linestyle = "solid", label = label_fit)
+    #     ymin, ymax = plt.ylim()
+    #     plt.vlines(n_bh_median, ymin = ymin, ymax = ymax, color = config["Colors"]["red"], linestyle = "solid", label = label_median)
+    #     plt.axvspan(lower_percentile, upper_percentile, alpha = 0.25, facecolor = config["Colors"]["red"], edgecolor = "None")
+    #     plt.xlabel(r"$N_\mathrm{BH}$")
+    #     plt.ylabel(r"$N_\mathrm{g}$")
+    #     plt.ylim(ymin, ymax)
+    #     plt.xlim(x_min, x_max)
+    #     plt.legend(loc = "upper right")
+    #     plt.tight_layout()
+    #     plt.savefig(path, dpi = 500)
+    #     plt.close()
+
+    #     exit()
 
     def plot_number_dist_satellites(self, path):
         table_bh_satellites = self.table_bh[self.table_bh["satellite"] == True]
@@ -1469,8 +1601,8 @@ class BlackHolePlotter:
         plt.savefig(path + "spike_profile.pdf", dpi = 300)
 
     def plot_n_bh_in_satellites(self, path):
-        n_bh_in_galaxies = len(self.table_bh[self.table_bh["satellite"] == False])
-        n_bh_in_satellites = len(self.table_bh[self.table_bh["satellite"] == True])
+        n_bh_in_galaxies = len(self.table_bh[self.table_bh["satellite"] == False].reset_index(drop = True))
+        n_bh_in_satellites = len(self.table_bh[self.table_bh["satellite"] == True].reset_index(drop = True))
 
         # create a bar plot with these two numbers
         plt.figure(figsize = config["Figure_size"]["single_column"])
@@ -1531,7 +1663,7 @@ class BlackHolePlotter:
         plt.close()
 
     def plot_scatter_bh_galaxy_properties(self, path):
-        table_bh_main_galaxies = self.table_bh[self.table_bh["satellite"] == False]
+        table_bh_main_galaxies = self.table_bh[self.table_bh["satellite"] == False].reset_index(drop = True)
         main_galaxy_ids = np.unique(table_bh_main_galaxies["main_galaxy_id"].values)
         galaxy_ids = np.unique(self.table_bh["main_galaxy_id"].values)
 

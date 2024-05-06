@@ -104,8 +104,8 @@ if __name__ == '__main__':
     
     # # Plotting BH number distributions
     print("Plotting BH number distributions...")
-    bh_plotter.plot_number_dist(path_bh + "number_dist.pdf")
-    bh_plotter_main_galaxy.plot_number_dist(path_bh + "number_dist_main_galaxy.pdf")
+    bh_plotter.plot_number_dist(path_bh + "number_dist.pdf", table_galaxy = galaxy_catalogue)
+    # bh_plotter_main_galaxy.plot_number_dist(path_bh + "number_dist_main_galaxy.pdf")
 
     bh_plotter.plot_number_dist_satellites(path_bh)
 
@@ -119,7 +119,7 @@ if __name__ == '__main__':
 
     # bh_plotter.plot_cumulative_radial_distribution(d_gc, path_bh + "cumulative_radial_distribution.pdf")
     bh_plotter.plot_cumulative_radial_distribution_mean(path_bh + "cumulative_radial_distribution_mean.pdf")
-    bh_plotter_main_galaxy.plot_cumulative_radial_distribution_mean(path_bh + "cumulative_radial_distribution_mean_main_galaxy.pdf")
+    # bh_plotter_main_galaxy.plot_cumulative_radial_distribution_mean(path_bh + "cumulative_radial_distribution_mean_main_galaxy.pdf")
 
     # Plotting BH 2D maps
     print("Plotting BH 2D maps...")
