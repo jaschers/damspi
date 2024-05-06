@@ -1452,18 +1452,28 @@ class BlackHolePlotter:
         plt.close()
 
     def plot_scatter_bh_galaxy_properties(self, path):
+        # get the BH that are in the main galaxies
         table_bh_main_galaxies = self.table_bh[self.table_bh["satellite"] == False]
+        # get the main galaxy IDs of the BHs in the main galaxies
         main_galaxy_ids = np.unique(table_bh_main_galaxies["main_galaxy_id"].values)
+        # get the main galaxy IDs of the BHs in all galaxies (including satellites)
         galaxy_ids = np.unique(self.table_bh["main_galaxy_id"].values)
 
+        # get the BHs that are in the satellites
         table_bh_satellites = self.table_bh[self.table_bh["satellite"] == True]
+        # get the host galaxy IDs of the BHs in the satellites
         satellites_galaxy_ids = np.unique(table_bh_satellites["host_galaxy_id"].values)
 
+        # define the parameters to be plotted
         parameters = ["m_host_galaxy", "m200_main_galaxy", "m_gas_host_galaxy", "m_star_host_galaxy", "sfr_host_galaxy"]
+        # define the log parameters
         log_parameters = ["m_host_galaxy", "m200_main_galaxy", "m_gas_host_galaxy", "m_star_host_galaxy"] 
+        # define the names of the parameters
         names = ["total_mass", "m200", "gas_mass", "star_mass", "sfr"]
+        # define the x labels
         x_labels = [r"$m_\mathrm{tot}$ [$M_{\odot}$]", r"$m_{200}$ [$M_{\odot}$]", r"$m_{\mathrm{gas}}$ [$M_{\odot}$]", r"$m_\mathrm{star}$ [$M_{\odot}$]", "SFR [$M_{\odot}$ / yr]"]
 
+        # start the loop over the parameters
         for parameter, name, x_label in zip(parameters, names, x_labels):
             # extract the number of BHs and the parameter values for the main galaxies (considering BHs in the main galaxy and the satellites)
             n_bh = []
@@ -1475,7 +1485,9 @@ class BlackHolePlotter:
                 if len(parameter_value_galaxy) > 1:
                     print(f"WARNING: More than one value for parameter {parameter} for galaxy {galaxy_id}! This should not be possible! Check catalogue!")
                 if len(parameter_value_galaxy) == 0: #TODO
-                    pass
+                    print("#######################################")
+                    print(f"WARNING: No value for parameter {parameter} for galaxy {galaxy_id}! This should not be possible! Check catalogue!")
+                    print(table_bh_galaxy)
                 else:
                     n_bh.append(n_bh_galaxy)
                     parameter_values.append(parameter_value_galaxy[0])
