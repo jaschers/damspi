@@ -135,7 +135,7 @@ if __name__ == "__main__":
             elif args.instrument_comparison == "fermi":
                 plt.xlabel(f"$\Phi (E > {int(np.rint(args.E_th.to(u.MeV).value))}$ MeV) [cm$^{{-2}}$ s$^{{-1}}$]")
             plt.ylabel(r"$N_{{\mathrm{BH}}}(>\Phi)$")
-            ymin, ymax = 1, 30 #TODO: set automatically
+            ymin, ymax = 1, 21 #TODO: set automatically #30
             if args.instrument_comparison == "hess":
                 plt.vlines(hess_flux_sensitivity.value, ymin, ymax, color = "grey", linestyle = "dashed")
             elif args.instrument_comparison == "fermi":
@@ -146,10 +146,10 @@ if __name__ == "__main__":
             plt.ylim(ymin = ymin, ymax = ymax)
             xmin, xmax = plt.xlim()
             # plt.hlines(2.3, xmin, xmax, color = "grey", linestyle = "dashed")
-            # TODO: set xlims automatically
             if args.instrument_comparison == "hess":
                 if args.channel == "b":
                     plt.xlim(xmin = xmin, xmax = 1e-6)
+                    # plt.xlim(xmin = 1e-16, xmax = 1e-9)
                     # plt.xlim(xmin = xmin, xmax = 1e-7)
                 elif args.channel == "tau":
                     plt.xlim(xmin = xmin, xmax = 1e-6)
@@ -163,7 +163,7 @@ if __name__ == "__main__":
                     plt.xlim(xmin = fermi_flux_sensitivity_l120_b45.value * 0.5, xmax = 1e-1)
             plt.legend(loc = "upper right", frameon = False, fontsize = 7)
             plt.tight_layout()
-            plt.savefig(path_plots + "integrated_luminosity.pdf", dpi = 300)
+            plt.savefig(path_plots + f"integrated_luminosity_{args.channel}_channel_sv_{args.sigma_v[0].value}.pdf", dpi = 300)
             # plt.show()
             plt.close()
 
