@@ -19,6 +19,9 @@ Figure_size:
   single_column: 
     - 2.75591  
     - 2.06693 
+  single_column_third: 
+    - 1.837  
+    - 2.06693  
   single_column_legend:
     - 2.75591
     - 2.41142
@@ -48,6 +51,7 @@ Plots:
 
 Colors:
   black: "#171b1d"
+  grey: "#2e3133"
   red: "#e83151"
   red_presentation: "#F44D4D"
   darkblue: "#003049"
@@ -74,7 +78,7 @@ Spike_profile_example:
   r_cut: 0.002278e-3 # u.pc
 
 Milky_way:
-  halo_mass_range: [10**(11.7), 10**(12.5)] # u.Msun
+  halo_mass_range: [0.5e12, 2e12] # u.Msun
   stellar_mass_range: [10**(10.4), 10**(11.2)] # u.Msun
   distance_sun: 8.33 # kpc
   satellite_rescaled_distance_range: [40, 300] # kpc
