@@ -248,12 +248,36 @@ class GalaxyPlotter:
         parameter = ["m", "m200", "m_gas", "m_star", "sfr"]
         log_parameter = ["m", "m_star", "m_gas"]
         names = ["total_mass", "m200", "gas_mass", "star_mass", "sfr"]
-        x_labels = [r"$m_\mathrm{tot}$ [$M_{\odot}$]", r"$m_{200}$ [$M_{\odot}$]", r"$m_{\mathrm{gas}}$ [$M_{\odot}$]", r"$m_\mathrm{star}$ [$M_{\odot}$]", "SFR [$M_{\odot}$ / yr]"]
+        x_labels = [r"$m_\mathrm{tot}$ [$M_{\odot}$]", r"$M_{200}$ [$M_{\odot}$]", r"$m_{\mathrm{gas}}$ [$M_{\odot}$]", r"$m_\mathrm{star}$ [$M_{\odot}$]", "SFR [$M_{\odot}$ / yr]"]
+        units = ["$M_{\odot}$", "$M_{\odot}$", "$M_{\odot}$", "$M_{\odot}$", "$M_{\odot}$ / yr"]
+        # parameter_labels = [r"$m_\mathrm{tot}$", r"$M_{200}$", r"$m_{\mathrm{gas}}$", r"$m_\mathrm{star}$", "SFR"]
+        parameter_labels = [r"$\tilde{{M}}_\mathrm{tot}$", r"$\tilde{{M}}_{200}$", r"$\tilde{{M}}_\mathrm{gas}$", r"$\tilde{{M}}_\mathrm{star}$", r"$\tilde{{\mathrm{SFR}}}$"]
 
-        for parameter, name, x_label in zip(parameter, names, x_labels):
+        for parameter, name, x_label, unit, parameter_label in zip(parameter, names, x_labels, units, parameter_labels):
             # get masses for main galaxies
             parameter_galaxies = table_galaxies[parameter].values
             median_parameter_galaxies, median_parameter_galaxies_lower_error, median_parameter_galaxies_upper_error = median_error(parameter_galaxies)
+
+            if median_parameter_galaxies == 0:
+                exponent = 0  # Handle zero separately
+            else:
+                exponent = int(math.floor(math.log10(abs(median_parameter_galaxies))))
+
+            # Normalize the values
+            normalized_median = median_parameter_galaxies / 10**exponent
+            normalized_upper_error = median_parameter_galaxies_upper_error / 10**exponent
+            normalized_lower_error = median_parameter_galaxies_lower_error / 10**exponent
+
+            # Format the values for display
+            formatted_median = "{:.2f}".format(normalized_median)
+            formatted_upper_error = "{:.2f}".format(normalized_upper_error)
+            formatted_lower_error = "{:.2f}".format(normalized_lower_error)
+
+            # Create the label
+            if exponent != 0:
+                label = r"$\tilde{{\mu}} = ({0}^{{+{1}}}_{{-{2}}}) \cdot 10^{{ {3} }}$ {4}".format(formatted_median, formatted_upper_error, formatted_lower_error, exponent if exponent < 0 else " "+str(exponent), unit)
+            else:
+                label = r"$\tilde{{\mu}} = {0}^{{+{1}}}_{{-{2}}}$ {3}".format(formatted_median, formatted_upper_error, formatted_lower_error, unit)
 
             # create a histogram with logarithmic bins
             if parameter in ["sfr"]:
@@ -262,18 +286,26 @@ class GalaxyPlotter:
                 bins_galaxies = np.logspace(np.log10(np.min(parameter_galaxies)), np.log10(np.max(parameter_galaxies)), config["Plots"]["number_bins"])
 
             # plot galaxy mass distribution
-            plt.figure(figsize = config["Figure_size"]["single_column"])
+            plt.figure(figsize = config["Figure_size"]["single_column_third"])
             plt.hist(parameter_galaxies, bins = bins_galaxies, color = config["Colors"]["darkblue"])
             plt.xlabel(x_label)
-            plt.ylabel("Number of main galaxies")
+            plt.ylabel("$N_g$")
             if parameter not in ["sfr"]:
                 plt.xscale("log")
-            plt.yscale("log")
+            # plt.yscale("log")
             ymin, ymax = plt.ylim()
-            plt.vlines(median_parameter_galaxies, ymin = ymin, ymax = ymax, color = config["Colors"]["red"], linestyle = "solid", label = r"$\tilde{{\mu}}$ = " + f"{median_parameter_galaxies:.2e}")
+            # plt.vlines(median_parameter_galaxies, ymin = ymin, ymax = ymax, color = config["Colors"]["red"], linestyle = "solid", label = r"$\tilde{{\mu}}$ = " + f"{median_parameter_galaxies:.2e}")
+            plt.vlines(median_parameter_galaxies, ymin = ymin, ymax = ymax, color = config["Colors"]["red"], linestyle = "solid", label = parameter_label)
             plt.axvspan(median_parameter_galaxies - median_parameter_galaxies_lower_error, median_parameter_galaxies + median_parameter_galaxies_upper_error, alpha = 0.25, facecolor = config["Colors"]["red"], edgecolor = "None")
             plt.ylim(ymin, ymax)
-            plt.legend()
+            # plt.legend()
+            # plt.legend(bbox_to_anchor = (0, 1.02, 1, 0.2), loc = "center", mode = "expand", borderaxespad = 0, ncol = 1, alignment = "center")
+            if parameter == "m200":
+                plt.legend(handlelength=0.7, loc = "upper left")
+            elif parameter == "sfr":
+                plt.legend(handlelength=0.7, loc = "upper right")
+            else:
+                plt.legend(handlelength=0.7)
             plt.tight_layout()
             plt.savefig(path + f"main_galaxy_{name}_dist.pdf", dpi = 300)
             plt.close()
@@ -321,7 +353,7 @@ class GalaxyPlotter:
                     plt.xscale("log")
                 plt.yscale("log")
                 ymin, ymax = plt.ylim()
-                plt.vlines(median_parameter_satellites, ymin = ymin, ymax = ymax, color = config["Colors"]["red"], linestyle = "solid", label = r"$\tilde{{\mu}}$ = " + f"{median_parameter_satellites:.2e}")
+                plt.vlines(median_parameter_satellites, ymin = ymin, ymax = ymax, color = config["Colors"]["red"], linestyle = "solid", label = parameter_label)#"{0} = ".format(parameter_label) + f"{median_parameter_satellites:.2e}")
                 plt.ylim(ymin, ymax)
                 plt.legend()
                 plt.tight_layout()
@@ -354,12 +386,13 @@ class GalaxyPlotter:
                     plt.xscale("log")
                 plt.yscale("log")
                 ymin, ymax = plt.ylim()
-                plt.vlines(median_parameter_satellites_has_stars, ymin = ymin, ymax = ymax, color = config["Colors"]["red"], linestyle = "solid", label = r"$\tilde{{\mu}}_\mathrm{EAGLE}$ = " + f"{median_parameter_satellites_has_stars:.2e} $M_\odot$")
+                plt.vlines(median_parameter_satellites_has_stars, ymin = ymin, ymax = ymax, color = config["Colors"]["red"], linestyle = "solid", label = parameter_label) #r"$\tilde{{\mu}}_\mathrm{EAGLE}$ = " + f"{median_parameter_satellites_has_stars:.2e} $M_\odot$")
                 if parameter == "m_star":
                     plt.vlines(median_parameter_satellites_mw, ymin = ymin, ymax = ymax, color = config["Colors"]["yellow"], linestyle = "dashed", label = r"$\tilde{{\mu}}_\mathrm{MW}$ = " + f"{median_parameter_satellites_mw:.2e} $M_\odot$")
                     plt.vlines(median_parameter_satellites_mw_mass_cut, ymin = ymin, ymax = ymax, color = config["Colors"]["yellow"], linestyle = "solid", label = r"$\tilde{{\mu}}_\mathrm{MW}, >$ = " + f"{median_parameter_satellites_mw_mass_cut:.2e} $M_\odot$")
                 plt.ylim(ymin, ymax)
-                plt.legend(bbox_to_anchor = (0, 1.1, 1, 0.2), loc = "center", mode = "expand", borderaxespad = 0, ncol = 1, alignment = "center", fontsize = 6)
+                # plt.legend(bbox_to_anchor = (0, 1.1, 1, 0.2), loc = "center", mode = "expand", borderaxespad = 0, ncol = 1, alignment = "center", fontsize = 6)
+                plt.legend()
                 plt.tight_layout()
                 plt.savefig(path + f"satellites_{name}_has_stars_dist.pdf", dpi = 300)
                 plt.close()
@@ -367,27 +400,39 @@ class GalaxyPlotter:
     def plot_morphology_dist(self, path):
         table_galaxies = self.table_galaxy[self.table_galaxy["subgroup_number"] == 0]
         parameters = ["fdisk", "fbulge", "fihl"]
-        parameter_labels = ["$f_\mathrm{disk}$", "$f_\mathrm{bulge}$", "$f_\mathrm{IHL}$"]
+        # parameter_labels = [r"$\tilde{{f}}_\mathrm{disk}$", r"$\tilde{{f}}_\mathrm{bulge}$", r"$\tilde{{f}}_\mathrm{IHL}$"]
+        parameter_labels = ["disc", "bulge", "IHL"]
+        colors = config["Colors"]["cmap"][:3]
+        alphas = np.linspace(0.2, 0.8, 3) 
 
-        for parameter, parameter_label in zip(parameters, parameter_labels):
+        subtable = table_galaxies[parameters]
+        fmin, fmax = np.nanmin(subtable.values), np.nanmax(subtable.values)
+        bins = np.linspace(fmin, fmax, config["Plots"]["number_bins"] + 1)
+
+        plt.figure(figsize = config["Figure_size"]["single_column_third"])
+        median_values = []
+        for parameter, parameter_label, color, alpha in zip(parameters, parameter_labels, colors, alphas):
             # plot parameter distribution for main galaxies
             parameter_galaxies = table_galaxies[parameter].values
             median_parameter_galaxies, median_parameter_galaxies_lower_error, median_parameter_galaxies_upper_error = median_error(parameter_galaxies)
             median_parameter_galaxies_lower_percentile = median_parameter_galaxies - median_parameter_galaxies_lower_error
             median_parameter_galaxies_upper_percentile = median_parameter_galaxies + median_parameter_galaxies_upper_error
+            median_values.append([median_parameter_galaxies, median_parameter_galaxies_lower_error, median_parameter_galaxies_upper_error])
 
-            plt.figure(figsize = config["Figure_size"]["single_column"])
-            plt.hist(parameter_galaxies, bins = config["Plots"]["number_bins"], color = config["Colors"]["darkblue"])
-            plt.xlabel(parameter_label)
-            plt.ylabel("Number of main galaxies")
-            ymin, ymax = plt.ylim()
-            plt.vlines(median_parameter_galaxies, ymin = ymin, ymax = ymax, color = config["Colors"]["red"], linestyle = "solid", label = r"$\tilde{{\mu}}$ = " + f"${median_parameter_galaxies:.2f}^{{+{median_parameter_galaxies_upper_error:.2f}}}_{{-{median_parameter_galaxies_lower_error:.2f}}}$")
-            plt.axvspan(median_parameter_galaxies_lower_percentile, median_parameter_galaxies_upper_percentile, alpha = 0.25, facecolor = config["Colors"]["red"], edgecolor = "None")
-            plt.ylim(ymin, ymax)
-            plt.legend()
-            plt.tight_layout()
-            plt.savefig(path + f"main_galaxy_{parameter}_dist.pdf", dpi = 300)
-            plt.close()
+            plt.hist(parameter_galaxies, bins = bins, color = config["Colors"]["darkblue"], alpha = alpha, label = parameter_label)
+
+        plt.xlabel("$f$")
+        plt.ylabel("$N_g$")
+        # ymin, ymax = plt.ylim()
+        # for median_value, parameter_label, alpha in zip(median_values, parameter_labels, alphas):
+        #     median_parameter_galaxies, median_parameter_galaxies_lower_error, median_parameter_galaxies_upper_error = median_value
+        #     plt.vlines(median_parameter_galaxies, ymin = ymin, ymax = ymax, color = config["Colors"]["darkblue"], linestyle = "dashed", label = "{0} = ".format(parameter_label) + f"${median_parameter_galaxies:.2f}^{{+{median_parameter_galaxies_upper_error:.2f}}}_{{-{median_parameter_galaxies_lower_error:.2f}}}$", alpha = alpha)
+        #     # plt.axvspan(median_parameter_galaxies_lower_percentile, median_parameter_galaxies_upper_percentile, alpha = alpha, facecolor = color, edgecolor = "None")
+        # plt.ylim(ymin, ymax)
+        plt.legend(handlelength = 1)
+        plt.tight_layout()
+        plt.savefig(path + f"main_galaxy_morphology_dist.pdf", dpi = 300)
+        plt.close()
  
     def plot_satellite_types(self, path):
         # get satellites
@@ -604,10 +649,9 @@ class GalaxyPlotter:
         plt.close()
 
     def plot_scatter_bh_galaxy_morphology(self, path):
-        table_bh_main_galaxies = self.table_bh[self.table_bh["satellite"] == False].reset_index(drop = True)
+        table_bh_total = self.table_bh
         table_main_galaxies = self.table_galaxy[self.table_galaxy["subgroup_number"] == 0].reset_index(drop = True)
-        main_galaxy_ids = np.unique(table_bh_main_galaxies["main_galaxy_id"].values)
-        galaxy_ids = np.unique(self.table_bh["main_galaxy_id"].values)
+        galaxy_ids = np.unique(table_bh_total["main_galaxy_id"].values)
 
         parameters = ["fdisk", "fbulge", "fihl"]
         x_labels = ["$f_\mathrm{disk}$", "$f_\mathrm{bulge}$", "$f_\mathrm{ihl}$"]
@@ -617,7 +661,7 @@ class GalaxyPlotter:
             n_bh = []
             parameter_values = []
             for galaxy_id in galaxy_ids:
-                table_bh_galaxy = table_bh_main_galaxies[table_bh_main_galaxies["main_galaxy_id"] == galaxy_id]
+                table_bh_galaxy = table_bh_total[table_bh_total["main_galaxy_id"] == galaxy_id]
                 table_main_galaxy = table_main_galaxies[table_main_galaxies["galaxy_id"] == galaxy_id]
                 n_bh_galaxy = len(table_bh_galaxy)
                 parameter_value_galaxy = table_main_galaxy[parameter].values[0]
@@ -627,13 +671,13 @@ class GalaxyPlotter:
             correlation = np.corrcoef(parameter_values, n_bh)[0, 1]
 
             # plot scatter plot
-            plt.figure(figsize = config["Figure_size"]["single_column"])
+            plt.figure(figsize = config["Figure_size"]["single_column_third"])
             plt.scatter(parameter_values, n_bh, color = config["Colors"]["darkblue"], marker = "o", s = config["Plots"]["markersize"], label = "$c_\mathrm{corr}$ = " + f"{correlation:.2f}")
             plt.xlabel(x_label)
-            plt.ylabel("$N_\mathrm{BH}$ (in main galaxy)")
-            plt.legend()
+            plt.ylabel("$N_\mathrm{BH}$")
+            plt.legend(bbox_to_anchor = (0, 1.02, 1, 0.2), loc = "lower left", mode = "expand", borderaxespad = 0, ncol = 3, alignment = "center")
             plt.tight_layout()
-            plt.savefig(path + f"scatter_bh_{parameter}_main_galaxy.pdf", dpi = 300)
+            plt.savefig(path + f"scatter_bh_{parameter}.pdf", dpi = 300)
             plt.close()
 
     def plot_scatter_n_satellites_m200(self, path):
@@ -645,7 +689,7 @@ class GalaxyPlotter:
 
         plt.figure(figsize = config["Figure_size"]["single_column"])
         plt.scatter(m200, n_satellites_with_stars, color = config["Colors"]["darkblue"], marker = "o", s = config["Plots"]["markersize"], label = "$c_\mathrm{corr}$ = " + f"{correlation:.2f}")
-        plt.xlabel("$m_{200}$ [$M_{\odot}$] (of main galaxy)")
+        plt.xlabel("$M_{200}$ [$M_{\odot}$] (of main galaxy)")
         plt.ylabel("$N_\mathrm{satellites}$ (with stars)")
         plt.xscale("log")
         plt.legend()
@@ -1257,12 +1301,13 @@ class BlackHolePlotter:
         cumulative_hist_main_galaxies_mean_error = cumulative_hist_main_galaxies_std / np.sqrt(len(galaxy_ids_main_galaxies))
 
         plt.figure(figsize = config["Figure_size"]["single_column"])
-        plt.bar(bins_centre, cumulative_hist_total_mean, yerr = cumulative_hist_total_mean_error, width = bins_width, color = config["Colors"]["darkblue"], edgecolor = config["Plots"]["bar_edge_color"], linewidth = config["Plots"]["bar_edge_width"], ecolor = config["Colors"]["lightblue"], label = "M+S")
-        plt.bar(bins_centre, cumulative_hist_main_galaxies_mean, width = bins_width, color = config["Colors"]["darkblue_2"], edgecolor = config["Plots"]["bar_edge_color"], linewidth = config["Plots"]["bar_edge_width"], ecolor = config["Colors"]["lightblue_2"], label = "M", alpha = 0.5)
-        plt.errorbar(bins_centre, cumulative_hist_main_galaxies_mean, yerr = cumulative_hist_main_galaxies_mean_error, fmt = "none", linestyle = "", ecolor = config["Colors"]["lightblue_2"])
+        plt.bar(bins_centre, cumulative_hist_total_mean, width = bins_width, color = config["Colors"]["darkblue"], edgecolor = config["Plots"]["bar_edge_color"], linewidth = config["Plots"]["bar_edge_width"], ecolor = config["Colors"]["lightblue"], label = "M+S", alpha = 0.8)
+        plt.errorbar(bins_centre, cumulative_hist_total_mean, yerr = cumulative_hist_total_mean_error, fmt = "none", linestyle = "", ecolor = config["Colors"]["lightblue"], alpha = 0.8)
+        plt.bar(bins_centre, cumulative_hist_main_galaxies_mean, width = bins_width, color = config["Colors"]["darkblue"], edgecolor = config["Plots"]["bar_edge_color"], linewidth = config["Plots"]["bar_edge_width"], ecolor = config["Colors"]["lightblue"], label = "M", alpha = 0.3)
+        plt.errorbar(bins_centre, cumulative_hist_main_galaxies_mean, yerr = cumulative_hist_main_galaxies_mean_error, fmt = "none", linestyle = "", ecolor = config["Colors"]["lightblue"], alpha = 0.3)
         plt.xlabel(r"$d_\mathrm{GC}$ [kpc]")
         plt.ylabel(r"$N_\mathrm{BH}(<d_\mathrm{GC}) / N_\mathrm{BH, tot}$")
-        plt.legend(loc = "lower right")
+        plt.legend(handlelength = 1, loc = "lower right")
         plt.tight_layout()
         plt.savefig(path, dpi = 500)
         plt.close()
@@ -1289,8 +1334,9 @@ class BlackHolePlotter:
         # log_parameters = ["m"]
         x_labels = [r"$m_\mathrm{BH}$ [$M_{\odot}$]", r"$z_f$", r"$d_\mathrm{GC}$ [kpc]", r"$b_\mathrm{GC}$ [rad]", r"$l_\mathrm{GC}$ [rad]", r"$d_\mathrm{Sun}$ [kpc]", r"$b_\mathrm{Sun}$ [rad]", r"$l_\mathrm{Sun}$ [rad]", "$r_\mathrm{sp}$ [pc]", r"$\rho(r_\mathrm{sp})$ [GeV/cm$^3$]", "$\gamma_\mathrm{sp}$", "$\gamma_\mathrm{c}$"]
         filenames = ["mass_mean", "redshift_mean", "distance_gc_mean", "latitude_GC_mean", "longitude_GC_mean", "distance_sun_mean", "latitude_Sun_mean", "longitude_Sun_mean", "r_sp_mean", "rho_sp_mean", "gamma_sp_mean", "gamma_c_mean"]
+        parameter_labels = [r"$\tilde{{m}}_\mathrm{{BH}}$", r"$\tilde{{z}}_f$", r"$\tilde{{d}}_\mathrm{{GC}}$", r"$\tilde{{b}}_\mathrm{{GC}}$", r"$\tilde{{l}}_\mathrm{{GC}}$", r"$\tilde{{d}}_\mathrm{{Sun}}$", r"$\tilde{{b}}_\mathrm{{Sun}}$", r"$\tilde{{l}}_\mathrm{{Sun}}$", r"$\tilde{{r}}_\mathrm{{sp}}$", r"$\tilde{{\rho}}$ ", r"$\tilde{{\gamma}}_\mathrm{{sp}}$", r"$\tilde{{\gamma}}_\mathrm{{c}}$"]
         
-        for parameter, unit, x_label, filename in zip(parameters, units, x_labels, filenames):
+        for parameter, unit, x_label, parameter_label, filename in zip(parameters, units, x_labels, parameter_labels, filenames):
             data = self.table_bh[parameter].values
             data_sorted = np.sort(data)
             data_mean = np.mean(data)
@@ -1317,15 +1363,17 @@ class BlackHolePlotter:
             normalized_lower_error = median_lower_error / 10**exponent
 
             # Format the values for display
-            formatted_median = "{:.4f}".format(normalized_median)
-            formatted_upper_error = "{:.4f}".format(normalized_upper_error)
-            formatted_lower_error = "{:.4f}".format(normalized_lower_error)
+            formatted_median = "{:.2f}".format(normalized_median)
+            formatted_upper_error = "{:.2f}".format(normalized_upper_error)
+            formatted_lower_error = "{:.2f}".format(normalized_lower_error)
 
             # Create the label
             if exponent != 0:
-                label = r"$\tilde{{\mu}} = ({0}^{{+{1}}}_{{-{2}}}) \cdot 10^{{ {3} }}$ {4}".format(formatted_median, formatted_upper_error, formatted_lower_error, exponent if exponent < 0 else " "+str(exponent), unit)
+                # label = r"$\tilde{{\mu}} = ({0}^{{+{1}}}_{{-{2}}}) \cdot 10^{{ {3} }}$ {4}".format(formatted_median, formatted_upper_error, formatted_lower_error, exponent if exponent < 0 else " "+str(exponent), unit)
+                label = parameter_label + r"$ = ({0}^{{+{1}}}_{{-{2}}}) \cdot 10^{{ {3} }}$ {4}".format(formatted_median, formatted_upper_error, formatted_lower_error, exponent if exponent < 0 else " "+str(exponent), unit)
             else:
-                label = r"$\tilde{{\mu}} = {0}^{{+{1}}}_{{-{2}}}$ {3}".format(formatted_median, formatted_upper_error, formatted_lower_error, unit)
+                # label = r"$\tilde{{\mu}} = {0}^{{+{1}}}_{{-{2}}}$ {3}".format(formatted_median, formatted_upper_error, formatted_lower_error, unit)
+                label = parameter_label + r"$ = {0}^{{+{1}}}_{{-{2}}}$ {3}".format(formatted_median, formatted_upper_error, formatted_lower_error, unit)
 
             
             fig, ax = plt.subplots(figsize = config["Figure_size"]["single_column"])
@@ -1360,9 +1408,9 @@ class BlackHolePlotter:
             ax.set_xlabel(x_label)
             ax.set_ylabel("$N_\mathrm{BH}$")
             if parameter in ["r_sp", "rho(r_sp)"]:
-                legend = plt.legend(bbox_to_anchor = (0, 1.02, 1, 0.2), loc = "center", mode = "expand", borderaxespad = 0, ncol = 1, alignment = "center")
+                legend = plt.legend(handlelength = 1, bbox_to_anchor = (0, 1.02, 1, 0.2), loc = "center", mode = "expand", borderaxespad = 0, ncol = 1, alignment = "center")
             else:
-                legend = plt.legend(loc = "upper right")
+                legend = plt.legend(handlelength = 1, loc = "upper right")
             plt.tight_layout()
             if parameter == "m":
                 plt.xticks([2e5, 3e5, 4e5, 6e5], [r'$2 \times 10^5$', "", "", r'$6 \times 10^5$']) # TODO: find a better way to do this, plt.xticks() does not work
@@ -1438,7 +1486,7 @@ class BlackHolePlotter:
         table_bh_main_galaxy = self.table_bh[self.table_bh["satellite"] == False].reset_index(drop = True)
 
         # create bins for the number distribution base on table_bh
-        bins = np.linspace(0, np.max(table_bh_total["main_galaxy_id"].value_counts()), config["Plots"]["number_bins"])
+        bins = np.linspace(0, np.max(table_bh_total["main_galaxy_id"].value_counts()), config["Plots"]["number_bins"] + 1)
         bins_width = bins[1:] - bins[:-1]
         bins_centre = (bins[1:] + bins[:-1]) / 2
 
@@ -1472,19 +1520,21 @@ class BlackHolePlotter:
         # formatted_median_main_galaxy = "{:.0f}".format(n_bh_main_galaxy_median)
         # formatted_upper_error_main_galaxy = "{:.0f}".format(n_bh_main_galaxy_median_upper_error)
         # formatted_lower_error_main_galaxy = "{:.0f}".format(n_bh_main_galaxy_median_lower_error)
-        
-        label_median_total = r"$\tilde{{\mu}} = {0}^{{+{1}}}_{{-{2}}}$".format(formatted_median_total, formatted_upper_error_total, formatted_lower_error_total)
+
+        label_median_total = r"$\tilde{{N}}_\mathrm{{BH}} = {0}^{{+{1}}}_{{-{2}}}$".format(formatted_median_total, formatted_upper_error_total, formatted_lower_error_total)
         # label_median_main_galaxy = r"$\tilde{{\mu}} = {0}^{{+{1}}}_{{-{2}}}$".format(formatted_median_main_galaxy, formatted_upper_error_main_galaxy, formatted_lower_error_main_galaxy)
         label_fit = r"$f^0_\mathrm{ln}(N_\mathrm{BH})$"
 
         plt.figure(figsize = config["Figure_size"]["single_column"])
-        plt.bar(bins_centre, hist_total, width = bins_width, color = config["Colors"]["darkblue"], yerr = hist_err_total, ecolor = config["Colors"]["lightblue"], edgecolor = config["Plots"]["bar_edge_color"], linewidth = config["Plots"]["bar_edge_width"], alpha = 1, label = "M+S")
+        plt.bar(bins_centre, hist_total, width = bins_width, color = config["Colors"]["darkblue"], ecolor = config["Colors"]["lightblue"], edgecolor = config["Plots"]["bar_edge_color"], linewidth = config["Plots"]["bar_edge_width"], alpha = 0.8, label = "M+S")
+        plt.errorbar(bins_centre, hist_total, yerr=hist_err_total, ecolor=config["Colors"]["lightblue"], alpha=0.9, fmt='none', linestyle = "")
         # plt.bar(bins_centre, hist_main_galaxy, width = bins_width, color = config["Colors"]["darkblue_2"], yerr = hist_err_main_galaxy, ecolor = config["Colors"]["lightblue_2"], edgecolor = config["Plots"]["bar_edge_color"], linewidth = config["Plots"]["bar_edge_width"], alpha = 1)
-        plt.bar(bins_centre, hist_main_galaxy, width = bins_width, color = config["Colors"]["darkblue_2"], ecolor = config["Colors"]["lightblue_2"], edgecolor = config["Plots"]["bar_edge_color"], linewidth = config["Plots"]["bar_edge_width"], alpha = 0.5, label = "M")
-        plt.errorbar(bins_centre, hist_main_galaxy, yerr=hist_err_main_galaxy, ecolor=config["Colors"]["lightblue_2"], alpha=0.5, capsize=0, fmt='none', linestyle = "")
+        plt.bar(bins_centre, hist_main_galaxy, width = bins_width, color = config["Colors"]["darkblue"], ecolor = config["Colors"]["lightblue"], edgecolor = config["Plots"]["bar_edge_color"], linewidth = config["Plots"]["bar_edge_width"], alpha = 0.3, label = "M")
+        plt.errorbar(bins_centre, hist_main_galaxy, yerr=hist_err_main_galaxy, ecolor=config["Colors"]["lightblue"], alpha=0.5, fmt='none', linestyle = "")
         x_min, x_max = plt.xlim()
-        if "convergence" in out_lognorm_total.stopreason[0]:
-            plt.plot(x_fit_total, y_fit_lognorm_total, color = config["Colors"]["black"], linestyle = "solid", label = label_fit)
+        if out_lognorm_total is not None:
+            if "convergence" in out_lognorm_total.stopreason[0]:
+                plt.plot(x_fit_total, y_fit_lognorm_total, color = config["Colors"]["black"], linestyle = "solid", label = label_fit)
         ymin, ymax = plt.ylim()
         plt.vlines(n_bh_total_median, ymin = ymin, ymax = ymax, color = config["Colors"]["red"], linestyle = "solid", label = label_median_total)
         plt.axvspan(n_bh_total_lower_percentile, n_bh_total_upper_percentile, alpha = 0.25, facecolor = config["Colors"]["red"], edgecolor = "None")
@@ -1492,7 +1542,7 @@ class BlackHolePlotter:
         plt.ylabel(r"$N_\mathrm{g}$")
         plt.ylim(ymin, ymax)
         plt.xlim(x_min, x_max)
-        plt.legend(loc = "upper right")
+        plt.legend(handlelength = 1, loc = "upper right")
         plt.tight_layout()
         plt.savefig(path, dpi = 500)
         plt.close()
@@ -1621,7 +1671,7 @@ class BlackHolePlotter:
         plt.savefig(path + "n_bh_in_satellites.pdf", dpi = 300)
         plt.close()
 
-    def plot_scatter_bh_n_satellites(self, path):
+    def plot_scatter_bh_n_satellites(self, path, table_galaxy):
         # two things: number satellites vs. number of IMBHs.
         galalaxy_ids = np.unique(self.table_bh["main_galaxy_id"].values)
         # for each galaxy, determine the number of satellites and the number of IMBHs
@@ -1671,7 +1721,7 @@ class BlackHolePlotter:
         plt.savefig(path + "scatter_bh_n_satellites_with_stars.pdf", dpi = 300)
         plt.close()
 
-    def plot_scatter_bh_galaxy_properties(self, path):
+    def plot_scatter_bh_galaxy_properties(self, path, table_galaxy):
         # get the BH that are in the main galaxies
         table_bh_main_galaxies = self.table_bh[self.table_bh["satellite"] == False].reset_index(drop = True)
         # get the main galaxy IDs of the BHs in the main galaxies
@@ -1691,7 +1741,7 @@ class BlackHolePlotter:
         # define the names of the parameters
         names = ["total_mass", "m200", "gas_mass", "star_mass", "sfr"]
         # define the x labels
-        x_labels = [r"$m_\mathrm{tot}$ [$M_{\odot}$]", r"$m_{200}$ [$M_{\odot}$]", r"$m_{\mathrm{gas}}$ [$M_{\odot}$]", r"$m_\mathrm{star}$ [$M_{\odot}$]", "SFR [$M_{\odot}$ / yr]"]
+        x_labels = [r"$m_\mathrm{tot}$ [$M_{\odot}$]", r"$M_{200}$ [$M_{\odot}$]", r"$m_{\mathrm{gas}}$ [$M_{\odot}$]", r"$m_\mathrm{star}$ [$M_{\odot}$]", "SFR [$M_{\odot}$ / yr]"]
 
         # start the loop over the parameters
         for parameter, name, x_label in zip(parameters, names, x_labels):
@@ -1726,24 +1776,24 @@ class BlackHolePlotter:
             correlation = np.corrcoef(parameter_values, n_bh)[0, 1]
             correlation_main_galaxies = np.corrcoef(parameter_values_main_galaxies, n_bh_main_galaxies)[0, 1]
 
-            plt.figure(figsize = config["Figure_size"]["single_column"])
+            plt.figure(figsize = config["Figure_size"]["single_column_third"])
             plt.scatter(parameter_values, n_bh, color = config["Colors"]["darkblue"], marker = "o", s = config["Plots"]["markersize"], label = "$c_\mathrm{{corr}} = {0:.2f}$".format(correlation))
-            plt.xlabel(x_label + " (of main galaxy)")
-            plt.ylabel("$N_\mathrm{BH}$ (in main galaxy + satellites)")
+            plt.xlabel(x_label)
+            plt.ylabel("$N_\mathrm{BH}$")
             if parameter in log_parameters:
                 plt.xscale("log")
-            plt.legend()
+            plt.legend(bbox_to_anchor = (0, 1.02, 1, 0.2), loc = "lower left", mode = "expand", borderaxespad = 0, ncol = 3, alignment = "center")
             plt.tight_layout()
             plt.savefig(path + f"scatter_bh_{name}.pdf", dpi = 300)
             plt.close()
 
-            plt.figure(figsize = config["Figure_size"]["single_column"])
+            plt.figure(figsize = config["Figure_size"]["single_column_third"])
             plt.scatter(parameter_values_main_galaxies, n_bh_main_galaxies, color = config["Colors"]["darkblue"], marker = "o", s = config["Plots"]["markersize"], label = "$c_\mathrm{{corr}} = {0:.2f}$".format(correlation_main_galaxies))
-            plt.xlabel(x_label + " (of main galaxy)")
-            plt.ylabel("$N_\mathrm{BH}$ (in main galaxy)")
+            plt.xlabel(x_label)
+            plt.ylabel("$N_\mathrm{BH}$")
             if parameter in log_parameters:
                 plt.xscale("log")
-            plt.legend()
+            plt.legend(bbox_to_anchor = (0, 1.02, 1, 0.2), loc = "lower left", mode = "expand", borderaxespad = 0, ncol = 3, alignment = "center")
             plt.tight_layout()
             plt.savefig(path + f"scatter_bh_{name}_main_galaxy.pdf", dpi = 300)
             plt.close()
@@ -1765,8 +1815,8 @@ class BlackHolePlotter:
 
                 plt.figure(figsize = config["Figure_size"]["single_column"])
                 plt.scatter(parameter_values_satellites, n_bh_satellites, color = config["Colors"]["darkblue"], marker = "o", s = config["Plots"]["markersize"], label = "$c_\mathrm{{corr}} = {0:.2f}$".format(correlation_satellites))
-                plt.xlabel(x_label + " (of satellite galaxy)")
-                plt.ylabel("$N_\mathrm{BH}$ (in satellites)")
+                plt.xlabel(x_label)
+                plt.ylabel("$N_\mathrm{BH}$")
                 if parameter in log_parameters:
                     plt.xscale("log")
                 plt.legend()
@@ -1864,7 +1914,7 @@ class FluxPlotter:
         formatted_lower_error = "{:.2f}".format(normalized_lower_error)
 
         # Create the label
-        label = r"$\tilde{{\mu}} = ({0}^{{+{1}}}_{{-{2}}}) \cdot 10^{{{3}}}$ {4}".format(formatted_median, formatted_upper_error, formatted_lower_error, exponent, "pc")
+        label = r"$\tilde{{r}}_\mathrm{{cut}} = ({0}^{{+{1}}}_{{-{2}}}) \cdot 10^{{{3}}}$ {4}".format(formatted_median, formatted_upper_error, formatted_lower_error, exponent, "pc")
 
         bins = np.logspace(np.log10(np.min(r_cut)), np.log10(np.max(r_cut)), config["Plots"]["number_bins"])
         bins_centre = (bins[1:] + bins[:-1]) / 2
@@ -1885,7 +1935,7 @@ class FluxPlotter:
         plt.ylabel("$N_\mathrm{BH}$")
         plt.xscale("log")
         plt.yscale("log")
-        plt.legend(bbox_to_anchor = (0, 1.02, 1, 0.2), loc = "lower left", mode = "expand", borderaxespad = 0, ncol = 1)
+        plt.legend(handlelength = 1, bbox_to_anchor = (0, 1.02, 1, 0.2), loc = "lower left", mode = "expand", borderaxespad = 0, ncol = 1)
         plt.tight_layout()
         plt.savefig(path, dpi = 500)
         plt.close()
