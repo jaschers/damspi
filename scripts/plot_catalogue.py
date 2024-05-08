@@ -126,12 +126,12 @@ if __name__ == '__main__':
     # bh_plotter.plot_2d_map(lat_gc, long_gc, path_bh + "2d_map_gc.pdf")
     bh_plotter.plot_2d_map(lat_sun, long_sun, path_bh + "2d_map_sun.pdf")
 
-    # # bh_plotter.plot_2d_map_contours(lat_gc, long_gc, args.upsampling_factor, path_bh + "2d_map_gc_contours.pdf")
+    # bh_plotter.plot_2d_map_contours(lat_gc, long_gc, args.upsampling_factor, path_bh + "2d_map_gc_contours.pdf")
     # bh_plotter.plot_2d_map_contours(
     #     lat = lat_sun_upsampled, 
     #     long = long_sun_upsampled, 
     #     upsampling_factor = args.upsampling_factor, 
-    #     path = path_bh + "2d_map_sun_contours.pdf", 
+    #     path = path_bh + f"2d_map_sun_contours_uf{args.upsampling_factor}.pdf", 
     #     path_kde = path_kde
     #     )
     
@@ -144,9 +144,9 @@ if __name__ == '__main__':
     #     )
 
     # plot scatter plot between number of BHs vs number satellites in main galaxies
-    bh_plotter.plot_scatter_bh_n_satellites(path_bh)
+    bh_plotter.plot_scatter_bh_n_satellites(path_bh , table_galaxy = galaxy_catalogue)
 
-    bh_plotter.plot_scatter_bh_galaxy_properties(path_bh)
+    bh_plotter.plot_scatter_bh_galaxy_properties(path_bh , table_galaxy = galaxy_catalogue)
 
     # plot bar histogram of BHs for satellites types
     bh_plotter.plot_bh_in_satellite_types(path_bh)
