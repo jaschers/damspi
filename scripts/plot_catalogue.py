@@ -25,6 +25,7 @@ if __name__ == '__main__':
     bh_catalogue_main_galaxy = bh_catalogue[bh_catalogue['satellite'] == False].reset_index(drop = True)
     galaxy_catalogue = pd.read_hdf(filename_galaxy, key = "table")
 
+    
     print("bh_catalogue:")
     print(bh_catalogue)
     print(bh_catalogue.columns)
@@ -37,7 +38,12 @@ if __name__ == '__main__':
     print(galaxy_catalogue)
     print(galaxy_catalogue.columns)
 
+    print("Total number of BHs:", len(bh_catalogue))
+    print("Number of BHs within the main galaxy:", len(bh_catalogue_main_galaxy))
+    print("Number of BHs in satellites:", len(bh_catalogue) - len(bh_catalogue_main_galaxy))
+
     print("Number of main galaxies:", len(np.unique(galaxy_catalogue[galaxy_catalogue["subgroup_number"] == 0]['galaxy_id'])))
+    print("Number of satellite galaxies:", len(np.unique(galaxy_catalogue[galaxy_catalogue["subgroup_number"] != 0]['galaxy_id'])))
 
     # get the latitude and longitude of the black holes
     d_gc = bh_catalogue['d_GC']
@@ -126,14 +132,15 @@ if __name__ == '__main__':
     # bh_plotter.plot_2d_map(lat_gc, long_gc, path_bh + "2d_map_gc.pdf")
     bh_plotter.plot_2d_map(lat_sun, long_sun, path_bh + "2d_map_sun.pdf")
 
-    # bh_plotter.plot_2d_map_contours(lat_gc, long_gc, args.upsampling_factor, path_bh + "2d_map_gc_contours.pdf")
-    # bh_plotter.plot_2d_map_contours(
-    #     lat = lat_sun_upsampled, 
-    #     long = long_sun_upsampled, 
-    #     upsampling_factor = args.upsampling_factor, 
-    #     path = path_bh + f"2d_map_sun_contours_uf{args.upsampling_factor}.pdf", 
-    #     path_kde = path_kde
-    #     )
+    # bh_plotter.plot_2d_map_contours(lat_gc, long_gc, args.upsampling_factor, path_bh + "2d_map_gc_contours.pdf", path_kde)
+    bh_plotter.plot_2d_map_contours(
+        lat = lat_sun_upsampled, 
+        long = long_sun_upsampled, 
+        upsampling_factor = args.upsampling_factor, 
+        path = path_bh + f"2d_map_sun_contours_uf{args.upsampling_factor}.pdf", 
+        path_kde = path_kde,
+        wihtin_region = True
+        )
     
     # bh_plotter.plot_2d_map_contours(
     #     lat = lat_sun_main_galaxy_upsampled, 
