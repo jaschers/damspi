@@ -273,6 +273,8 @@ class GalaxyPlotter:
             formatted_upper_error = "{:.2f}".format(normalized_upper_error)
             formatted_lower_error = "{:.2f}".format(normalized_lower_error)
 
+            print("Median {0}: {1} + {2} - {3} 10^{4} {5}".format(parameter, formatted_median, formatted_upper_error, formatted_lower_error, exponent, unit))
+
             # Create the label
             if exponent != 0:
                 label = r"$\tilde{{\mu}} = ({0}^{{+{1}}}_{{-{2}}}) \cdot 10^{{ {3} }}$ {4}".format(formatted_median, formatted_upper_error, formatted_lower_error, exponent if exponent < 0 else " "+str(exponent), unit)
@@ -420,6 +422,9 @@ class GalaxyPlotter:
             median_values.append([median_parameter_galaxies, median_parameter_galaxies_lower_error, median_parameter_galaxies_upper_error])
 
             plt.hist(parameter_galaxies, bins = bins, color = config["Colors"]["darkblue"], alpha = alpha, label = parameter_label)
+
+            # print the parameter, median and error
+            print("Median {0}: {1:.2f} + {2:.2f} - {3:.2f}".format(parameter, median_parameter_galaxies, median_parameter_galaxies_upper_error, median_parameter_galaxies_lower_error))
 
         plt.xlabel("$f$")
         plt.ylabel("$N_g$")
@@ -1280,6 +1285,24 @@ class BlackHolePlotter:
         distance_main_galaxies = table_bh_main_galaxies["d_GC"].values
         galaxy_ids_main_galaxies = np.unique(table_bh_main_galaxies["main_galaxy_id"].values)
 
+        # calculate the median distance and error for distance_total and distance_main_galaxies
+        distance_total_median, distance_total_median_lower_err, distance_total_median_upper_err = median_error(distance_total)
+        distance_main_galaxies_median, distance_main_galaxies_median_lower_err, distance_main_galaxies_median_upper_err = median_error(distance_main_galaxies)
+
+        # calculate percentage of IMBHs within 200 kpc for all IMBHs and IMBHs in main galaxies
+        distance_total_200 = distance_total[distance_total < 200]
+        distance_main_galaxies_200 = distance_main_galaxies[distance_main_galaxies < 200]
+        percentage_total_200 = len(distance_total_200) / len(distance_total) * 100
+        percentage_main_galaxies_200 = len(distance_main_galaxies_200) / len(distance_main_galaxies) * 100
+
+        # print the median distance and error for distance_total and distance_main_galaxies
+        print("Median distance of all IMBHs [kpc]: {0:.0f} + {1:.0f} - {2:.0f}".format(distance_total_median, distance_total_median_upper_err, distance_total_median_lower_err))
+        print("Median distance of IMBHs in main galaxies [kpc]: {0:.0f} + {1:.0f} - {2:.0f}".format(distance_main_galaxies_median, distance_main_galaxies_median_upper_err, distance_main_galaxies_median_lower_err))
+
+        # print the percentage of IMBHs within 200 kpc for all IMBHs and IMBHs in main galaxies
+        print("Percentage of IMBHs within 200 kpc for all IMBHs [%]: {0:.0f}".format(percentage_total_200))
+        print("Percentage of IMBHs within 200 kpc for IMBHs in main galaxies [%]: {0:.0f}".format(percentage_main_galaxies_200))
+
         cumulative_hist_total_list = []
         for galaxy_id_total in galaxy_ids_total:
             distance_total_galaxy_id = distance_total[table_bh_total["main_galaxy_id"].values == galaxy_id_total]
@@ -1785,6 +1808,7 @@ class BlackHolePlotter:
             plt.legend(bbox_to_anchor = (0, 1.02, 1, 0.2), loc = "lower left", mode = "expand", borderaxespad = 0, ncol = 3, alignment = "center")
             plt.tight_layout()
             plt.savefig(path + f"scatter_bh_{name}.pdf", dpi = 300)
+            # plt.show()
             plt.close()
 
             plt.figure(figsize = config["Figure_size"]["single_column_third"])
@@ -1888,7 +1912,7 @@ class FluxPlotter:
 
     def plot_integrated_luminosity_comparison(self, flux_th, label, color,  marker, marker_size):
         int_lum_mean, int_lum_error = self.integrated_luminosity_mean(flux_th)
-        plt.errorbar(flux_th, int_lum_mean, yerr = int_lum_error, label = label, linestyle = "", marker = marker, capsize = 3, color = color, markersize = marker_size)
+        plt.errorbar(flux_th, int_lum_mean, yerr = int_lum_error, label = label, linestyle = "-", marker = marker, capsize = 3, color = color, markersize = marker_size)
 
     def plot_cuttoff_radius_dist(self, path):
         r_cut = self.flux_catalogue["r_cut"].values
