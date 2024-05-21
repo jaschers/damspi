@@ -52,7 +52,9 @@ Plots:
 Colors:
   black: "#171b1d"
   grey: "#2e3133"
+  grey_2: "#5C5F60"
   red: "#e83151"
+  darkred: " #8B1D30"
   red_presentation: "#F44D4D"
   darkblue: "#003049"
   lightblue: "#6c8ead"
@@ -61,6 +63,7 @@ Colors:
   darkyellow: "#be7702"
   yellow: "#fca311"
   lightyellow: "#fdc05d "
+  brown: "#490030"
   cmap: ["#FFF275", "#E83151", "#003049", "#171B1D"]
   cmap_r: ["#171B1D", "#003049", "#E83151", "#FFF275"]
   cmap_2d_map: ["#003049", "#E83151", "#FFF275"]
@@ -78,7 +81,7 @@ Spike_profile_example:
   r_cut: 0.002278e-3 # u.pc
 
 Milky_way:
-  halo_mass_range: [0.5e12, 2e12] # u.Msun
+  halo_mass_range: [0.5e12, 2e12] # u.Msun 
   stellar_mass_range: [10**(10.4), 10**(11.2)] # u.Msun
   distance_sun: 8.33 # kpc
   satellite_rescaled_distance_range: [40, 300] # kpc
