@@ -125,6 +125,7 @@ if __name__ == '__main__':
 
     # bh_plotter.plot_cumulative_radial_distribution(d_gc, path_bh + "cumulative_radial_distribution.pdf")
     bh_plotter.plot_cumulative_radial_distribution_mean(path_bh + "cumulative_radial_distribution_mean.pdf")
+
     # bh_plotter_main_galaxy.plot_cumulative_radial_distribution_mean(path_bh + "cumulative_radial_distribution_mean_main_galaxy.pdf")
 
     # Plotting BH 2D maps
