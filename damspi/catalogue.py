@@ -340,8 +340,8 @@ class DataCollector:
     #     main_galaxies = main_galaxies.merge(grouped_satellites_with_stars, on='group_number', suffixes=('', '_count_stars'))
 
     #     # rename the column
-    #     main_galaxies = main_galaxies.rename(columns = {'subgroup_number_count': 'n_satellites'})
-    #     main_galaxies = main_galaxies.rename(columns = {'subgroup_number_count_stars': 'n_satellites_with_stars'})
+    #     main_galaxies = main_galaxies.rename(columns = {'subgroup_number_count': 'n_sat'})
+    #     main_galaxies = main_galaxies.rename(columns = {'subgroup_number_count_stars': 'n_sat_stars'})
 
     #     # combine with Proctor data to get morphology data, i.e. disk fraction, bulge fraction and IHL fraction
     #     main_galaxies = self.combine_with_proctor_data(main_galaxies)
@@ -487,11 +487,11 @@ class DataCollector:
         main_galaxies = main_galaxies.merge(grouped_satellites_with_stars, on='group_number', suffixes=('', '_count_stars'))
 
         # rename the column
-        main_galaxies = main_galaxies.rename(columns = {'subgroup_number_count': 'n_satellites'})
-        main_galaxies = main_galaxies.rename(columns = {'subgroup_number_count_stars': 'n_satellites_with_stars'})
+        main_galaxies = main_galaxies.rename(columns = {'subgroup_number_count': 'n_sat'})
+        main_galaxies = main_galaxies.rename(columns = {'subgroup_number_count_stars': 'n_sat_stars'})
 
         # # select only main galaxies that have between 0 and 14 satellite galaxies with stars
-        # main_galaxies = main_galaxies[(main_galaxies['n_satellites_with_stars'] >= 0) & (main_galaxies['n_satellites_with_stars'] <= 14)].reset_index(drop = True)
+        # main_galaxies = main_galaxies[(main_galaxies['n_sat_stars'] >= 0) & (main_galaxies['n_sat_stars'] <= 14)].reset_index(drop = True)
 
         print("Total number of Milky Way-like galaxies: ", len(main_galaxies))
         print("Total number of satellite galaxies within Milky Way-like galaxies: ", len(satellite_galaxies))
@@ -1759,9 +1759,12 @@ class DMMiniSpikesCalculator:
         """
         if self.dm_profile == "nfw":
             gamma = 1
-        elif self.dm_profile == "cored":
+            gamma_sp = (9 - 2 * gamma) / (4 - gamma)
+        elif self.dm_profile == "cored" and self.gamma_c != 0:
             gamma = self.gamma_c
-        gamma_sp = (9 - 2 * gamma) / (4 - gamma)
+            gamma_sp = (9 - 2 * gamma) / (4 - gamma)
+        elif self.dm_profile == "cored" and self.gamma_c == 0:
+            gamma_sp = 1.5
         return(gamma_sp)
 
     def plot_nfw(self, path):
