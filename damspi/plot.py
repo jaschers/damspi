@@ -596,7 +596,7 @@ class GalaxyPlotter:
         table_satellites_has_stars = table_satellites[table_satellites["m_star"] > 0]
         
         # get number of satellites for each main galaxy
-        n_satellites = table_galaxies["n_satellites"].values
+        n_satellites = table_galaxies["n_sat"].values
         n_satellites_median, n_satellites_median_lower_err, n_satellites_median_upper_err = median_error(n_satellites)
         n_satellites_median_lower_percentile = n_satellites_median - n_satellites_median_lower_err
         n_satellites_median_upper_percentile = n_satellites_median + n_satellites_median_upper_err
@@ -687,7 +687,7 @@ class GalaxyPlotter:
 
     def plot_scatter_n_satellites_m200(self, path):
         table_main_galaxies = self.table_galaxy[self.table_galaxy["subgroup_number"] == 0]
-        n_satellites_with_stars = table_main_galaxies["n_satellites_with_stars"].values
+        n_satellites_with_stars = table_main_galaxies["n_sat_stars"].values
         m200 = table_main_galaxies["m200"].values
 
         correlation = np.corrcoef(m200, n_satellites_with_stars)[0, 1]
@@ -1324,13 +1324,15 @@ class BlackHolePlotter:
         cumulative_hist_main_galaxies_mean_error = cumulative_hist_main_galaxies_std / np.sqrt(len(galaxy_ids_main_galaxies))
 
         plt.figure(figsize = config["Figure_size"]["single_column"])
-        plt.bar(bins_centre, cumulative_hist_total_mean, width = bins_width, color = config["Colors"]["darkblue"], edgecolor = config["Plots"]["bar_edge_color"], linewidth = config["Plots"]["bar_edge_width"], ecolor = config["Colors"]["lightblue"], label = "M+S", alpha = 0.8)
-        plt.errorbar(bins_centre, cumulative_hist_total_mean, yerr = cumulative_hist_total_mean_error, fmt = "none", linestyle = "", ecolor = config["Colors"]["lightblue"], alpha = 0.8)
-        plt.bar(bins_centre, cumulative_hist_main_galaxies_mean, width = bins_width, color = config["Colors"]["darkblue"], edgecolor = config["Plots"]["bar_edge_color"], linewidth = config["Plots"]["bar_edge_width"], ecolor = config["Colors"]["lightblue"], label = "M", alpha = 0.3)
-        plt.errorbar(bins_centre, cumulative_hist_main_galaxies_mean, yerr = cumulative_hist_main_galaxies_mean_error, fmt = "none", linestyle = "", ecolor = config["Colors"]["lightblue"], alpha = 0.3)
+        plt.bar(bins_centre, cumulative_hist_main_galaxies_mean, width = bins_width, color = config["Colors"]["black"], edgecolor = config["Plots"]["bar_edge_color"], linewidth = config["Plots"]["bar_edge_width"], ecolor = config["Colors"]["grey_2"], label = "M", alpha = 1)
+        plt.errorbar(bins_centre, cumulative_hist_main_galaxies_mean, yerr = cumulative_hist_main_galaxies_mean_error, fmt = "none", linestyle = "", ecolor = config["Colors"]["grey_2"], alpha = 0.9)
+        plt.bar(bins_centre, cumulative_hist_total_mean, width = bins_width, color = config["Colors"]["darkblue"], edgecolor = config["Plots"]["bar_edge_color"], linewidth = config["Plots"]["bar_edge_width"], ecolor = config["Colors"]["lightblue"], label = "M+S", alpha = 1)
+        plt.errorbar(bins_centre, cumulative_hist_total_mean, yerr = cumulative_hist_total_mean_error, fmt = "none", linestyle = "", ecolor = config["Colors"]["lightblue"], alpha = 1)
         plt.xlabel(r"$d_\mathrm{GC}$ [kpc]")
         plt.ylabel(r"$N_\mathrm{BH}(<d_\mathrm{GC}) / N_\mathrm{BH, tot}$")
-        plt.legend(handlelength = 1, loc = "lower right")
+        label_order = [1, 0]
+        handles, labels = plt.gca().get_legend_handles_labels()
+        plt.legend([handles[idx] for idx in label_order], [labels[idx] for idx in label_order], handlelength = 1, loc = "lower right")
         plt.tight_layout()
         plt.savefig(path, dpi = 500)
         plt.close()
@@ -1549,15 +1551,18 @@ class BlackHolePlotter:
         label_fit = r"$f^0_\mathrm{ln}(N_\mathrm{BH})$"
 
         plt.figure(figsize = config["Figure_size"]["single_column"])
-        plt.bar(bins_centre, hist_total, width = bins_width, color = config["Colors"]["darkblue"], ecolor = config["Colors"]["lightblue"], edgecolor = config["Plots"]["bar_edge_color"], linewidth = config["Plots"]["bar_edge_width"], alpha = 0.8, label = "M+S")
-        plt.errorbar(bins_centre, hist_total, yerr=hist_err_total, ecolor=config["Colors"]["lightblue"], alpha=0.9, fmt='none', linestyle = "")
+        plt.bar(bins_centre, hist_main_galaxy, width = bins_width, color = config["Colors"]["black"], ecolor = config["Colors"]["grey_2"], edgecolor = config["Plots"]["bar_edge_color"], linewidth = config["Plots"]["bar_edge_width"], alpha = 1, label = "M")
+        plt.errorbar(bins_centre, hist_main_galaxy, yerr=hist_err_main_galaxy, ecolor=config["Colors"]["grey_2"], alpha=0.9, fmt='none', linestyle = "")
+        plt.bar(bins_centre, hist_total, width = bins_width, color = config["Colors"]["darkblue"], ecolor = config["Colors"]["lightblue"], edgecolor = config["Plots"]["bar_edge_color"], linewidth = config["Plots"]["bar_edge_width"], alpha = 0.7 , label = "M+S")
+        plt.errorbar(bins_centre, hist_total, yerr=hist_err_total, ecolor=config["Colors"]["lightblue"], alpha=0.7, fmt='none', linestyle = "")
         # plt.bar(bins_centre, hist_main_galaxy, width = bins_width, color = config["Colors"]["darkblue_2"], yerr = hist_err_main_galaxy, ecolor = config["Colors"]["lightblue_2"], edgecolor = config["Plots"]["bar_edge_color"], linewidth = config["Plots"]["bar_edge_width"], alpha = 1)
-        plt.bar(bins_centre, hist_main_galaxy, width = bins_width, color = config["Colors"]["darkblue"], ecolor = config["Colors"]["lightblue"], edgecolor = config["Plots"]["bar_edge_color"], linewidth = config["Plots"]["bar_edge_width"], alpha = 0.3, label = "M")
-        plt.errorbar(bins_centre, hist_main_galaxy, yerr=hist_err_main_galaxy, ecolor=config["Colors"]["lightblue"], alpha=0.5, fmt='none', linestyle = "")
         x_min, x_max = plt.xlim()
         if out_lognorm_total is not None:
             if "convergence" in out_lognorm_total.stopreason[0]:
                 plt.plot(x_fit_total, y_fit_lognorm_total, color = config["Colors"]["black"], linestyle = "solid", label = label_fit)
+                label_order = [0, 2, 3, 1]
+        else:
+            label_order = [0, 2, 1]
         ymin, ymax = plt.ylim()
         plt.vlines(n_bh_total_median, ymin = ymin, ymax = ymax, color = config["Colors"]["red"], linestyle = "solid", label = label_median_total)
         plt.axvspan(n_bh_total_lower_percentile, n_bh_total_upper_percentile, alpha = 0.25, facecolor = config["Colors"]["red"], edgecolor = "None")
@@ -1565,10 +1570,88 @@ class BlackHolePlotter:
         plt.ylabel(r"$N_\mathrm{g}$")
         plt.ylim(ymin, ymax)
         plt.xlim(x_min, x_max)
-        plt.legend(handlelength = 1, loc = "upper right")
+        handles, labels = plt.gca().get_legend_handles_labels()
+        plt.legend([handles[idx] for idx in label_order],[labels[idx] for idx in label_order], handlelength = 1, loc = "upper right")
         plt.tight_layout()
         plt.savefig(path, dpi = 500)
         plt.close()
+
+    # def plot_number_dist(self, path, table_galaxy):
+    #     # get the table with all BHs
+    #     table_bh_total = self.table_bh
+    #     # get the table with BHs part of the main galaxy only
+    #     table_bh_main_galaxy = self.table_bh[self.table_bh["satellite"] == False].reset_index(drop = True)
+
+    #     # create bins for the number distribution base on table_bh
+    #     bins = np.linspace(0, np.max(table_bh_total["main_galaxy_id"].value_counts()), config["Plots"]["number_bins"] + 1)
+    #     bins_width = bins[1:] - bins[:-1]
+    #     bins_centre = (bins[1:] + bins[:-1]) / 2
+
+    #     # get the number distribution for all BHs
+    #     n_bh_total, hist_total, hist_err_total = self.get_number_dist(table_bh_total, table_galaxy, bins = bins)
+    #     # get the number distribution for BHs part of the main galaxy only
+    #     n_bh_main_galaxy, hist_main_galaxy, hist_err_main_galaxy = self.get_number_dist(table_bh_main_galaxy, table_galaxy, bins = bins)
+
+    #     print("Minimum/maximum number of BHs per galaxy (all):", np.min(n_bh_total), "/", np.max(n_bh_total))
+    #     print("Minimum/maximum number of BHs per galaxy (main galaxy only):", np.min(n_bh_main_galaxy), "/", np.max(n_bh_main_galaxy))
+
+    #     # get the median number of BHs per galaxy
+    #     n_bh_total_median, n_bh_total_median_lower_error, n_bh_total_median_upper_error = median_error(n_bh_total)
+    #     n_bh_total_lower_percentile = n_bh_total_median - n_bh_total_median_lower_error
+    #     n_bh_total_upper_percentile = n_bh_total_median + n_bh_total_median_upper_error
+
+    #     print("Median number of BHs per galaxy (all): {0:.0f} + {1:.0f} - {2:.0f}".format(n_bh_total_median, n_bh_total_median_upper_error, n_bh_total_median_lower_error))
+
+    #     n_bh_main_galaxy_median, n_bh_main_galaxy_median_lower_error, n_bh_main_galaxy_median_upper_error = median_error(n_bh_main_galaxy)
+    #     n_bh_main_galaxy_lower_percentile = n_bh_main_galaxy_median - n_bh_main_galaxy_median_lower_error
+    #     n_bh_main_galaxy_upper_percentile = n_bh_main_galaxy_median + n_bh_main_galaxy_median_upper_error
+
+    #     print("Median number of BHs per galaxy (main galaxy only): {0:.0f} + {1:.0f} - {2:.0f}".format(n_bh_main_galaxy_median, n_bh_main_galaxy_median_upper_error, n_bh_main_galaxy_median_lower_error))
+
+    #     # fit lognormal pdf to the distribution
+    #     out_lognorm_total, x_fit_total, y_fit_lognorm_total = self.fit_lognorm(n_bh_total, bins_centre, hist_total, hist_err_total)
+    #     # out_lognorm_main_galaxy, x_fit_main_galaxy, y_fit_lognorm_main_galaxy = self.fit_lognorm(n_bh_main_galaxy, bins_centre, hist_main_galaxy, hist_err_main_galaxy)
+
+    #     # Format the values for display
+    #     formatted_median_total = "{:.0f}".format(n_bh_total_median)
+    #     formatted_upper_error_total = "{:.0f}".format(n_bh_total_median_upper_error)
+    #     formatted_lower_error_total = "{:.0f}".format(n_bh_total_median_lower_error)
+
+    #     # formatted_median_main_galaxy = "{:.0f}".format(n_bh_main_galaxy_median)
+    #     # formatted_upper_error_main_galaxy = "{:.0f}".format(n_bh_main_galaxy_median_upper_error)
+    #     # formatted_lower_error_main_galaxy = "{:.0f}".format(n_bh_main_galaxy_median_lower_error)
+
+    #     label_median_total = r"$\tilde{{N}}_\mathrm{{BH}} = {0}^{{+{1}}}_{{-{2}}}$".format(formatted_median_total, formatted_upper_error_total, formatted_lower_error_total)
+    #     # label_median_main_galaxy = r"$\tilde{{\mu}} = {0}^{{+{1}}}_{{-{2}}}$".format(formatted_median_main_galaxy, formatted_upper_error_main_galaxy, formatted_lower_error_main_galaxy)
+    #     label_fit = r"$f^0_\mathrm{ln}(N_\mathrm{BH})$"
+
+    #     plt.figure(figsize = config["Figure_size"]["single_column"])
+    #     # plt.bar(bins_centre, hist_main_galaxy, width = bins_width, color = config["Colors"]["darkblue_2"], yerr = hist_err_main_galaxy, ecolor = config["Colors"]["lightblue_2"], edgecolor = config["Plots"]["bar_edge_color"], linewidth = config["Plots"]["bar_edge_width"], alpha = 1)
+    #     plt.bar(bins_centre, hist_main_galaxy, width = bins_width, color = config["Colors"]["red"], ecolor = config["Colors"]["darkred"], edgecolor = config["Plots"]["bar_edge_color"], linewidth = config["Plots"]["bar_edge_width"], alpha = 0.7, label = "M")
+    #     plt.errorbar(bins_centre, hist_main_galaxy, yerr=hist_err_main_galaxy, ecolor=config["Colors"]["darkred"], alpha=0.7, fmt='none', linestyle = "")
+    #     plt.bar(bins_centre, hist_total, width = bins_width, color = config["Colors"]["darkblue"], ecolor = config["Colors"]["lightblue"], edgecolor = config["Plots"]["bar_edge_color"], linewidth = config["Plots"]["bar_edge_width"], alpha = 0.7, label = "M+S")
+    #     plt.errorbar(bins_centre, hist_total, yerr=hist_err_total, ecolor=config["Colors"]["lightblue"], alpha=0.7, fmt='none', linestyle = "")
+    #     x_min, x_max = plt.xlim()
+    #     if out_lognorm_total is not None:
+    #         if "convergence" in out_lognorm_total.stopreason[0]:
+    #             plt.plot(x_fit_total, y_fit_lognorm_total, color = config["Colors"]["black"], linestyle = "solid", label = label_fit)
+    #             label_order = [0, 2, 3, 1]
+    #     else:
+    #         label_order = [0, 2, 1]
+    #     ymin, ymax = plt.ylim()
+    #     plt.vlines(n_bh_total_median, ymin = ymin, ymax = ymax, color = config["Colors"]["black"], linestyle = "solid", label = label_median_total)
+    #     plt.axvspan(n_bh_total_lower_percentile, n_bh_total_upper_percentile, alpha = 0.25, facecolor = config["Colors"]["black"], edgecolor = "None")
+    #     plt.xlabel(r"$N_\mathrm{BH}$")
+    #     plt.ylabel(r"$N_\mathrm{g}$")
+    #     plt.ylim(ymin, ymax)
+    #     plt.xlim(x_min, x_max)
+    #     # change the label order in the legend
+    #     handles, labels = plt.gca().get_legend_handles_labels()
+    #     plt.legend([handles[idx] for idx in label_order],[labels[idx] for idx in label_order], handlelength = 1, loc = "upper right")
+    #     # plt.legend(handlelength = 1, loc = "upper right")
+    #     plt.tight_layout()
+    #     plt.savefig(path, dpi = 500)
+    #     plt.close()
 
     # def plot_number_dist(self, path):
     #     galaxy_ids, n_bh = np.unique(self.table_bh["main_galaxy_id"].values, return_counts = True)
@@ -1702,7 +1785,7 @@ class BlackHolePlotter:
         n_bh = []
         for galaxy_id in galalaxy_ids:
             n_bh_galaxy = len(self.table_bh[self.table_bh["main_galaxy_id"] == galaxy_id])
-            n_satellites_galaxy_unique = np.unique(self.table_bh[self.table_bh["main_galaxy_id"] == galaxy_id]["n_satellites"].values)
+            n_satellites_galaxy_unique = np.unique(self.table_bh[self.table_bh["main_galaxy_id"] == galaxy_id]["n_sat"].values)
             if len(n_satellites_galaxy_unique) != 1:
                 print(f"WARNING: More than one number of satellites for galaxy {galaxy_id}! This should not be possible! Check catalogue!")
             else:
@@ -1714,7 +1797,7 @@ class BlackHolePlotter:
         n_bh_with_stars = []
         for galaxy_id in galalaxy_ids:
             n_bh_with_stars_galaxy = len(self.table_bh[self.table_bh["main_galaxy_id"] == galaxy_id])
-            n_satellites_with_stars_galaxy_unique = np.unique(self.table_bh[self.table_bh["main_galaxy_id"] == galaxy_id]["n_satellites_with_stars"].values)
+            n_satellites_with_stars_galaxy_unique = np.unique(self.table_bh[self.table_bh["main_galaxy_id"] == galaxy_id]["n_sat_stars"].values)
             if len(n_satellites_with_stars_galaxy_unique) != 1:
                 print(f"WARNING: More than one number of satellites for galaxy {galaxy_id}! This should not be possible! Check catalogue!")
             else:
