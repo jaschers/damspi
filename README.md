@@ -91,9 +91,9 @@ The catalogue contains the following information for each IMBH:
 | `long_Sun`           | rad               | Galactic longitude of the black hole with the Sun being the origin of the coordinate system     |
 | `m_main_galaxy`      | $\mathrm{M}_\odot$| Total mass of the main galaxy                                                                   |
 | `m200_main_galaxy`   | $\mathrm{M}_\odot$ | $M_{200}$ of the main galaxy                                                                    |
-| `fdisk_main_galaxy`  | -                 | Stellar disk-to-total mass ratio of the main galaxy (values from Proctor 2024)                  |
-| `fbulge_main_galaxy` | -                 | Stellar bulge-to-total mass ratio of the main galaxy (values from Proctor 2024)                 |
-| `fihl_main_galaxy`   | -                 | Stellar IHL-to-total mass ratio of the main galaxy (values from Proctor 2024)                   |
+| `fdisk_main_galaxy`  | -                 | Stellar disk-to-total mass ratio of the main galaxy (values from Proctor et al. 2024)                  |
+| `fbulge_main_galaxy` | -                 | Stellar bulge-to-total mass ratio of the main galaxy (values from Proctor et al. 2024)                 |
+| `fihl_main_galaxy`   | -                 | Stellar IHL-to-total mass ratio of the main galaxy (values from Proctor et al. 2024)                   |
 | `m_host_galaxy`      | $\mathrm{M}_\odot$| Total mass of the host galaxy                                                                   |
 | `m_star_host_galaxy` | $\mathrm{M}_\odot$| Stellar mass of the host galaxy                                                                 |
 | `m_gas_host_galaxy`  | $\mathrm{M}_\odot$| Gas mass of the host galaxy                                                                     |
