@@ -95,6 +95,24 @@ The catalogue contains the following information for each IMBH:
 | `no_host`       | -            | `True` if black hole was not assigned to any host at its formation redshift                                                                                                  |
 | `r_c`           | kpc            | Core radius (only available for cored dark matter profile)                                                                                                                   |
 
+We also provide the catalogue for our selection of Milky Way-like galaxies within EAGLE. This catalogue contains the following information for each galaxy:
+
+| Field            | Unit              | Description                                                                                 |
+|------------------|-------------------|---------------------------------------------------------------------------------------------|
+| `galaxy_id`      | -                 | Unique identifier of the galaxy                                                            |
+| `group_number`   | -                 | Integer identifier of the Friends-of-Friend (FoF) halo hosting this galaxy at $z=0$        |
+| `subgroup_number`| -                 | Integer identifier of this galaxy within its FoF halo at $z=0$. The condition `subgroup_number = 0` selects central galaxies. |
+| `m`              | $\mathrm{M}_\odot$| Total mass of the galaxy                                                                    |
+| `m200`           | $\mathrm{M}_\odot$| $M_{200}$ of the galaxy                                                                     |
+| `m_star`         | $\mathrm{M}_\odot$| Stellar mass of the galaxy                                                                  |
+| `m_gas`          | $\mathrm{M}_\odot$| Gas mass of the galaxy                                                                      |
+| `sfr`            | $\SI{}{\Msun \per \yr}$| Star formation rate of the galaxy                                                         |
+| `fdisk`          | -                 | Stellar disk-to-total mass ratio of the galaxy (values from Proctor et al. 2024)                   |
+| `fbulge`         | -                 | Stellar bulge-to-total mass ratio of the galaxy (values from Proctor et al. 2024)                  |
+| `fihl`           | -                 | Stellar IHL-to-total mass ratio of the galaxy (values from Proctor et al. 2024)                    |
+| `n_sat`          | -                 | Number of satellite galaxies associated with the galaxy                                     |
+| `n_sat_stars`    | -                 | Number of satellite galaxies with at least one star particle associated with the galaxy     |
+
 ## Create plots for IMBH catalogue
 A bunch of usueful plots for the IMBH catalogue can be created with the following command:
 ```
