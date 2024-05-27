@@ -1764,7 +1764,7 @@ class DMMiniSpikesCalculator:
             gamma = self.gamma_c
             gamma_sp = (9 - 2 * gamma) / (4 - gamma)
         elif self.dm_profile == "cored" and self.gamma_c == 0:
-            gamma_sp = 1.5
+            gamma_sp = 2.0
         return(gamma_sp)
 
     def plot_nfw(self, path):
