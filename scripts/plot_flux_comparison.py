@@ -102,7 +102,7 @@ if __name__ == "__main__":
         flux_plotter.plot_integrated_luminosity_comparison(flux_th, label, color, marker, marker_size)
     plt.xlabel(f"$\Phi (E > {int(np.rint(args.E_th.value))}$ GeV) [cm$^{{-2}}$ s$^{{-1}}$]")
     plt.ylabel(r"$N_{{\mathrm{BH}}}(>\Phi)$")
-    ymin, ymax = 1, 30 #TODO: set automatically
+    ymin, ymax = 1, 21 #TODO: set automatically
     plt.vlines(hess_flux_sensitivity.value, ymin, ymax, color = "grey", linestyle = "dashed")
     plt.xscale("log")
     plt.yscale("log")

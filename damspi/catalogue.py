@@ -23,7 +23,8 @@ from damspi.utils import (
     cored_profile,
     cored_integral,
     M_bh_2,
-    rescaled_distance
+    rescaled_distance,
+    rescaled_distance_inverse
     )
 from scipy.spatial.transform import Rotation as R
 from astropy.coordinates import cartesian_to_spherical
@@ -142,10 +143,10 @@ class DataCollector:
         data_bh = np.dstack((bh_id, bh_group_number, bh_subgroup_number, bh_subgrid_mass, bh_coordinates[:,0], bh_coordinates[:,1], bh_coordinates[:,2], bh_formation_redshift, z_closest, nsnap_closest, bh_n_merger))[0]
 
         # put data into pandas DataFrame
-        table_bh = pd.DataFrame(data_bh, columns = ["bh_id", "group number", "subgroup number", "m", "coord x", "coord y", "coord z", "z_f", "z_c", "nsnap_c", "n merger"]).reset_index(drop = True)
+        table_bh = pd.DataFrame(data_bh, columns = ["bh_id", "group_number", "subgroup_number", "m", "coord_x", "coord_y", "coord_z", "z_f", "z_c", "nsnap_c", "n_merger"]).reset_index(drop = True)
 
         # select only BHs that did not merge
-        table_bh = table_bh[table_bh["n merger"] == 1].reset_index(drop = True)
+        table_bh = table_bh[table_bh["n_merger"] == 1].reset_index(drop = True)
 
         # select only BHs that are in the IMBH mass range, i.e. < 10^6 M_solar
         table_bh = table_bh[table_bh["m"] < self.bh_mass_limit.to(u.Msun).value].reset_index(drop = True)
@@ -191,7 +192,23 @@ class DataCollector:
                         smallest_key = dict_key
             smallest_values.append(smallest_value)
             smallest_keys.append(smallest_key)
-        return(smallest_keys, smallest_values)
+        return(smallest_keys, smallest_values)    
+    
+    def load_proctor_data(self):
+        filename = f"data/morphology/{self.sim_name}_decomp_summary.txt"
+        table = pd.read_csv(filename, sep='\s+')
+        return(table)
+
+    def combine_with_proctor_data(self, table_galaxy):
+        table_proctor = self.load_proctor_data()
+        table_combined = pd.merge(table_proctor, table_galaxy, left_on='GroupNumber', right_on='group_number', how='inner')
+
+        columns_galaxy = table_galaxy.columns
+        columns_to_keep_proctor = ["fdisk", "fbulge", "fihl"]
+        columns_to_keep = columns_galaxy.tolist() + columns_to_keep_proctor
+        table_combined = table_combined[columns_to_keep]
+
+        return(table_combined)
 
     def galaxy_data(self, nsnap):
         """
@@ -250,13 +267,14 @@ class DataCollector:
                     and sqrt(square(MH.CentreOfMass_x - MH.CentreOfPotential_x) + square(MH.CentreOfMass_y - MH.CentreOfPotential_y) + square(MH.CentreOfMass_z - MH.CentreOfPotential_z)) < 0.07*FOF.Group_R_Crit200 * 1e-3 \
                     and AP.ApertureSize = 30 \
                     and AP.Mass_Star between {self.stellar_mass_range[0].value} and {self.stellar_mass_range[1].value} \
+                    and MH.StarFormationRate between 0.1 and 3 \
                     and AP.GalaxyID = MH.GalaxyID \
                     and FOF.GroupID = SH.GroupID \
                     and MH.Snapnum = SH.Snapnum \
                     and MH.GroupID = SH.GroupID \
                     and SH.Spurious = 0 \
                     and MH.Spurious = 0'
-
+        
         # Execute query.
         con = sql.connect(username, password=password) # username, password
         # load galaxy data
@@ -291,12 +309,19 @@ class DataCollector:
         # remove main galaxies that have satellite galaxies with mass greater than 10% of the main galaxy m200
         main_galaxies = main_galaxies[main_galaxies['m_sat'] < 0.1 * main_galaxies['m200']].reset_index(drop = True)
 
+        # combine with Proctor data to get morphology data, i.e. disk fraction, bulge fraction and IHL fraction
+        main_galaxies = self.combine_with_proctor_data(main_galaxies)
+
+        # select only main galaxies with fdisk > 0.4
+        main_galaxies = main_galaxies[main_galaxies['fdisk'] > 0.4].reset_index(drop = True)
+
         # get the group numbers of the main galaxies
         group_number_main_galaxies = main_galaxies['group_number'].values
 
         # get the satellite galaxies that are part of the host galaxies
         satellite_galaxies = table_galaxy[table_galaxy['group_number'].isin(group_number_main_galaxies)].reset_index(drop = True)
         satellite_galaxies = satellite_galaxies[satellite_galaxies["subgroup_number"] != 0].reset_index(drop = True)
+        satellite_galaxues_with_stars = satellite_galaxies[satellite_galaxies["m_star"] > 0].reset_index(drop = True)
 
         # for each satellite galaxy, find the host galaxy and calculate the distance to the host galaxy
         for index, row in satellite_galaxies.iterrows():
@@ -312,22 +337,21 @@ class DataCollector:
         # select only satellite galaxies that are within the distance limit
         r_min, r_max = config["Milky_way"]["satellite_rescaled_distance_range"] # kpc
         satellite_galaxies = satellite_galaxies[(satellite_galaxies['r_rescaled'] > r_min) & (satellite_galaxies['r_rescaled'] < r_max)].reset_index(drop = True)
-        satellite_galaxues_with_stars = satellite_galaxies[satellite_galaxies["m_star"] > 0].reset_index(drop = True)
 
         # determine how many satellite galaxies each host galaxy has
         grouped_satellites = satellite_galaxies.groupby('group_number')['subgroup_number'].count().reset_index()
         grouped_satellites_with_stars = satellite_galaxues_with_stars.groupby('group_number')['subgroup_number'].count().reset_index()
-
+        
         # add the number of satellite galaxies to the host galaxies
         main_galaxies = main_galaxies.merge(grouped_satellites, on='group_number', suffixes=('', '_count'))
         main_galaxies = main_galaxies.merge(grouped_satellites_with_stars, on='group_number', suffixes=('', '_count_stars'))
 
         # rename the column
-        main_galaxies = main_galaxies.rename(columns = {'subgroup_number_count': 'n_satellites'})
-        main_galaxies = main_galaxies.rename(columns = {'subgroup_number_count_stars': 'n_satellites_with_stars'})
+        main_galaxies = main_galaxies.rename(columns = {'subgroup_number_count': 'n_sat'})
+        main_galaxies = main_galaxies.rename(columns = {'subgroup_number_count_stars': 'n_sat_stars'})
 
-        # combine with Proctor data to get morphology data, i.e. disk fraction, bulge fraction and IHL fraction
-        main_galaxies = self.combine_with_proctor_data(main_galaxies)
+        print("Total number of Milky Way-like galaxies: ", len(main_galaxies))
+        print("Total number of satellite galaxies within Milky Way-like galaxies: ", len(satellite_galaxies))
 
         return(main_galaxies, satellite_galaxies)
 
@@ -408,9 +432,9 @@ class CoordinateTransformer:
     Parameters
     ----------
     table_galaxy: pandas.DataFrame
-        The galaxy data of a single galaxy. Required columns are: "group number", "subgroup number", "z_f", "z_c", "nsnap_c", "cop_x", "cop_y", "cop_z", "spin_x", "spin_y", "spin_z".
+        The galaxy data of a single galaxy. Required columns are: "group_number", "subgroup_number", "z_f", "z_c", "nsnap_c", "cop_x", "cop_y", "cop_z", "spin_x", "spin_y", "spin_z".
     table_bh: pandas.DataFrame
-        The black hole data of a single black hole. Required columns are: "group number", "subgroup number", "z_f", "z_c", "nsnap_c", "coord x", "coord y", "coord z".
+        The black hole data of a single black hole. Required columns are: "group_number", "subgroup_number", "z_f", "z_c", "nsnap_c", "coord_x", "coord_y", "coord_z".
     box_size: astropy.units.quantity.Quantity
         The size of the EAGLE box.
 
@@ -468,9 +492,9 @@ class CoordinateTransformer:
     """
 
     def __init__(self, table_galaxy, table_bh, box_size):
-        # shift coorindates system to position of the sun (8.33 kpc), https://iopscience.iop.org/article/10.1088/1475-7516/2011/03/051/pdf
-        self.distance_sun = config["Milky_way"]["distance_sun"] # 8.33 # kpc
+    
         self.box_size = box_size.to(u.kpc).value
+        self.distance_sun_mw = config["Milky_way"]["distance_sun"] # 8.33 # kpc
 
         self.table_galaxy = table_galaxy
         self.galaxy_id = self.table_galaxy["galaxy_id"].values[0]
@@ -480,8 +504,12 @@ class CoordinateTransformer:
         self.rot_matrix_x, self.rot_matrix_y = self.rot_matrices_x_y(self.galaxy_spin)
         self.galaxy_spin_rot = self.rotate_x_y(self.galaxy_spin, self.rot_matrix_x, self.rot_matrix_y)
 
+        # rescale the distance of the Sun to the GC based on the mass of the galaxy. The larger the mass, the larger is the distance of the Sun to the GC.
+        self.galaxy_m200 = self.table_galaxy["m200"].values[0] * u.Msun
+        self.distance_sun = rescaled_distance_inverse(self.distance_sun_mw, self.galaxy_m200).value # kpc
+
         self.table_bh = table_bh
-        self.bh_coord = self.table_bh[["coord x", "coord y", "coord z"]].values
+        self.bh_coord = self.table_bh[["coord_x", "coord_y", "coord_z"]].values
     
     @property
     def bh_coord_gc(self):
@@ -766,7 +794,7 @@ class DMMiniSpikesCalculator:
     core_index: float
         The core index of the dark matter profile.
     table_bh: pandas.DataFrame
-        The black hole data of a single black hole. Required columns are: "group number", "subgroup number", "z_f", "z_c", "nsnap_c", "coord x", "coord y", "coord z", "m".
+        The black hole data of a single black hole. Required columns are: "group_number", "subgroup_number", "z_f", "z_c", "nsnap_c", "coord_x", "coord_y", "coord_z", "m".
 
     Attributes
     ----------
@@ -869,12 +897,12 @@ class DMMiniSpikesCalculator:
         self.core_index = core_index
         self.table_bh = table_bh
         self.bh_id = self.table_bh["bh_id"].values[0]
-        self.group_number = self.table_bh["group number"].values[0]
-        self.subgroup_number = self.table_bh["subgroup number"].values[0]
+        self.group_number = self.table_bh["group_number"].values[0]
+        self.subgroup_number = self.table_bh["subgroup_number"].values[0]
         self.z_formation = table_bh["z_f"].values[0]
         self.z_closest = table_bh["z_c"].values[0]
         self.nsnap_closest = table_bh["nsnap_c"].values[0]
-        self.bh_coord = table_bh[["coord x", "coord y", "coord z"]].values[0]
+        self.bh_coord = table_bh[["coord_x", "coord_y", "coord_z"]].values[0]
         self.bh_mass = table_bh["m"].values[0] * u.Msun
         self.no_host = (self.group_number == 2**30) or (self.subgroup_number == 2**30)
         self.hubble_constant = cosmo.H0.value / 100
@@ -1588,9 +1616,12 @@ class DMMiniSpikesCalculator:
         """
         if self.dm_profile == "nfw":
             gamma = 1
-        elif self.dm_profile == "cored":
+            gamma_sp = (9 - 2 * gamma) / (4 - gamma)
+        elif self.dm_profile == "cored" and self.gamma_c != 0:
             gamma = self.gamma_c
-        gamma_sp = (9 - 2 * gamma) / (4 - gamma)
+            gamma_sp = (9 - 2 * gamma) / (4 - gamma)
+        elif self.dm_profile == "cored" and self.gamma_c == 0:
+            gamma_sp = 2.0
         return(gamma_sp)
 
     def plot_nfw(self, path):
