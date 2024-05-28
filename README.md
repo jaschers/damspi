@@ -74,33 +74,63 @@ By default, this will create the IMBH catalogue for the reference dataset ``RefL
 
 The catalogue contains the following information for each IMBH:
 
-| Field           | Unit         | Description                                                                                                                                                                  |
-|-----------------|--------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `galaxy_id`     | -            | Unique identifier of a galaxy                                                                                                                                                |
-| `bh_id`         | -            | Unique identifier of a black hole                                                                                                                                            |
-| `m`             | M☉           | Black hole mass                                                                                                                                                              |
-| `z_f`           | -            | Black hole formation redshift                                                                                                                                                |
-| `z_c`           | -            | Closest redshift for which a snapshot in the EAGLE simulations is available (see text for details)                                                                            |
-| `nsnap_c`       | -            | Closest snapshot for which a snapshot in the EAGLE simulations is available (see text for details)                                                                            |
-| `d_GC`          | kpc          | Distance of the black hole to the centre of potential of the host galaxy                                                                                                     |
-| `lat_GC`        | rad          | Galactic latitude of the black hole with the centre of potential of the host galaxy being the origin of the coordinate system                                                |
-| `long_GC`       | rad          | Galactic longitude of the black hole with the centre of potential of the host galaxy being the origin of the coordinate system                                               |
-| `d_Sun`         | kpc          | Distance of the black hole to the Sun                                                                                                                                        |
-| `lat_Sun`       | rad          | Galactic latitude of the black hole with the Sun being the origin of the coordinate system                                                                                   |
-| `long_Sun`      | rad          | Galactic longitude of the black hole with the Sun being the origin of the coordinate system                                                                                  |
-| `gamma_sp`      | -            | Spike index                                                                                                                                                                  |
-| `r_sp`          | pc           | Spike radius                                                                                                                                                                 |
-| `rho(r_sp)`     | GeV/cm³      | Dark matter density at the spike radius                                                                                                                                      |
-| `satellite`     | -            | `True` if the black hole is located in one of the satellite galaxies of the host galaxy                                                                                      |
-| `no_host`       | -            | `True` if black hole was not assigned to any host at its formation redshift                                                                                                  |
-| `r_c`           | kpc            | Core radius (only available for cored dark matter profile)                                                                                                                   |
+| Field                | Unit              | Description                                                                                     |
+|----------------------|-------------------|-------------------------------------------------------------------------------------------------|
+| `main_galaxy_id`     | -                 | Unique identifier of the main galaxy                                                            |
+| `host_galaxy_id`     | -                 | Unique identifier of the host galaxy (differs only from `main_galaxy_id` if the IMBH is located in a satellite galaxy) |
+| `bh_id`              | -                 | Unique identifier of the black hole                                                             |
+| `m`                  | $\mathrm{M}_\odot$| Black hole mass                                                                                 |
+| `z_f`                | -                 | Black hole formation redshift                                                                   |
+| `z_c`                | -                 | Closest redshift for which a snapshot in the EAGLE simulations is available (see text for details) |
+| `nsnap_c`            | -                 | Closest snapshot for which a snapshot in the EAGLE simulations is available (see text for details) |
+| `d_GC`               | kpc               | Distance of the black hole to the centre of potential of the host galaxy                        |
+| `lat_GC`             | rad               | Galactic latitude of the black hole with the centre of potential of the host galaxy being the origin of the coordinate system |
+| `long_GC`            | rad               | Galactic longitude of the black hole with the centre of potential of the host galaxy being the origin of the coordinate system |
+| `d_Sun`              | kpc               | Distance of the black hole to the Sun                                                           |
+| `lat_Sun`            | rad               | Galactic latitude of the black hole with the Sun being the origin of the coordinate system      |
+| `long_Sun`           | rad               | Galactic longitude of the black hole with the Sun being the origin of the coordinate system     |
+| `m_main_galaxy`      | $\mathrm{M}_\odot$| Total mass of the main galaxy                                                                   |
+| `m200_main_galaxy`   | $\mathrm{M}_\odot$ | $M_{200}$ of the main galaxy                                                                    |
+| `fdisk_main_galaxy`  | -                 | Stellar disk-to-total mass ratio of the main galaxy (values from Proctor et al. 2024)                  |
+| `fbulge_main_galaxy` | -                 | Stellar bulge-to-total mass ratio of the main galaxy (values from Proctor et al. 2024)                 |
+| `fihl_main_galaxy`   | -                 | Stellar IHL-to-total mass ratio of the main galaxy (values from Proctor et al. 2024)                   |
+| `m_host_galaxy`      | $\mathrm{M}_\odot$| Total mass of the host galaxy                                                                   |
+| `m_star_host_galaxy` | $\mathrm{M}_\odot$| Stellar mass of the host galaxy                                                                 |
+| `m_gas_host_galaxy`  | $\mathrm{M}_\odot$| Gas mass of the host galaxy                                                                     |
+| `sfr_host_galaxy`    | -                 | Star formation rate of the host galaxy                                                          |
+| `gamma_sp`        | -          | Spike index                                                                                          |
+| `r_sp`            | pc         | Spike radius                                                                                         |
+| `rho(r_sp)`       | GeV/cm³    | Dark matter density at the spike radius                                                              |
+| `satellite`       | -          | `True` if the black hole is located in one of the satellite galaxies of the host galaxy              |
+| `n_sat`           | -          | Number of satellite galaxies associated with the main galaxy of the IMBH                             |
+| `n_sat_stars`     | -          | Number of satellite galaxies with at least one star particle associated with the main galaxy of the IMBH |
+| `no_host`         | -          | `True` if black hole was not assigned to any host at its formation redshift                          |
+| `r_c`             | -          | Core radius (only available for cored dark matter profile)        
+
+We also provide the catalogue for our selection of Milky Way-like galaxies within EAGLE. This catalogue contains the following information for each galaxy:
+
+| Field            | Unit              | Description                                                                                 |
+|------------------|-------------------|---------------------------------------------------------------------------------------------|
+| `galaxy_id`      | -                 | Unique identifier of the galaxy                                                            |
+| `group_number`   | -                 | Integer identifier of the Friends-of-Friend (FoF) halo hosting this galaxy at $z=0$        |
+| `subgroup_number`| -                 | Integer identifier of this galaxy within its FoF halo at $z=0$. The condition `subgroup_number = 0` selects central galaxies. |
+| `m`              | $\mathrm{M}_\odot$| Total mass of the galaxy                                                                    |
+| `m200`           | $\mathrm{M}_\odot$| $M_{200}$ of the galaxy                                                                     |
+| `m_star`         | $\mathrm{M}_\odot$| Stellar mass of the galaxy                                                                  |
+| `m_gas`          | $\mathrm{M}_\odot$| Gas mass of the galaxy                                                                      |
+| `sfr`            | $\mathrm{M}_\odot$ $\mathrm{yr}^{-1}$| Star formation rate of the galaxy                                        |
+| `fdisk`          | -                 | Stellar disk-to-total mass ratio of the galaxy (values from Proctor et al. 2024)            |
+| `fbulge`         | -                 | Stellar bulge-to-total mass ratio of the galaxy (values from Proctor et al. 2024)           |
+| `fihl`           | -                 | Stellar IHL-to-total mass ratio of the galaxy (values from Proctor et al. 2024)             |
+| `n_sat`          | -                 | Number of satellite galaxies associated with the galaxy                                     |
+| `n_sat_stars`    | -                 | Number of satellite galaxies with at least one star particle associated with the galaxy     |
 
 ## Create plots for IMBH catalogue
 A bunch of usueful plots for the IMBH catalogue can be created with the following command:
 ```
 python scripts/plot_catalogue.py -n nfw
 ```
-The ``--name`` option should be the same as for the IMBH catalogue. The plots are stored in ``plots/<sim_name>/black_hole_dist/<name>``. The following plots are created:
+The ``--name`` option should be the same as for the IMBH catalogue. The plots are stored in ``plots/<sim_name>/black_hole_dist/<name>``. Among others, the following plots are created:
 * black hole number distribution
 * 2D map of the black holes in galactic coordinates
 * latitude and longitude distribution of the black holes
@@ -141,7 +171,7 @@ Each catalogue is extracted for a designated dark matter mass.
 
 | Field       | Unit               | Description                                                                                         |
 |-------------|--------------------|-----------------------------------------------------------------------------------------------------|
-| `galaxy_id` | -                  | Unique identifier of a galaxy                                                                       |
+| `main_galaxy_id` | -                  | Unique identifier of a galaxy                                                                       |
 | `bh_id`     | -                  | Unique identifier of a black hole                                                                   |
 | `sigma_v`   | cm³/s              | Dark matter cross section times the relative velocity                                               |
 | `r_cut`     | pc                 | Cutoff radius                                                                                       |
@@ -169,3 +199,6 @@ The gamma-ray flux under the assumption of different dark matter profiles can be
 plot_flux_comparison.py -n nfw cored -mdm 500 -sv 1e-28 -c tau -l nfw cored
 ```
 It is mandotary to run the ``create_catalogue.py`` and ``calculate_flux.py`` scripts for the different dark matter profiles before running this script. The plots are stored in ``plots/<name>/flux/comparison/<channel>_channel/``.
+
+### References
+Proctor, Katy L., et al. "Identifying the discs, bulges, and intra-halo light of simulated galaxies through structural decomposition." Monthly Notices of the Royal Astronomical Society 527.2 (2024): 2624-2638.
