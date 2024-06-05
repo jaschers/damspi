@@ -175,7 +175,7 @@ Each catalogue is extracted for a designated dark matter mass.
 | `bh_id`     | -                  | Unique identifier of a black hole                                                                   |
 | `sigma_v`   | cm³/s              | Dark matter cross section times the relative velocity                                               |
 | `r_cut`     | pc                 | Cutoff radius                                                                                       |
-| `flux`      | 1/cm²/s            | Gamma-ray flux                                                                                      |
+| `flux`      | 1/cm²/s            | Integrated gamma-ray flux for a given energy threshold $E_\mathrm{th}$, dark matter mass $m_\chi$, velocity weighted cross section $\langle \sigma v \rangle$ and annihilation channel                                                                                      |
 
 # Other useful scripts
 
