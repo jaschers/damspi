@@ -8,7 +8,7 @@ DArk Matter SPIkes (DAMSPI) is a fully Python-based software for the analysis of
 
 The IMBH catalogue can be downloaded here:
 
-[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.10491705.svg)](https://doi.org/10.5281/zenodo.10491705)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.11486911.svg)](https://doi.org/10.5281/zenodo.11486911)
 
 # Installation
 Clone the repository to your prefered directory:
