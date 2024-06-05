@@ -25,19 +25,6 @@ if __name__ == '__main__':
     bh_catalogue_main_galaxy = bh_catalogue[bh_catalogue['satellite'] == False].reset_index(drop = True)
     galaxy_catalogue = pd.read_hdf(filename_galaxy, key = "table")
 
-    
-    print("bh_catalogue:")
-    print(bh_catalogue)
-    print(bh_catalogue.columns)
-
-    print("bh_catalogue_main_galaxy:")
-    print(bh_catalogue_main_galaxy)
-    print(bh_catalogue_main_galaxy.columns)
-
-    print("galaxy_catalogue:")
-    print(galaxy_catalogue)
-    print(galaxy_catalogue.columns)
-
     print("Total number of BHs:", len(bh_catalogue))
     print("Number of BHs within the main galaxy:", len(bh_catalogue_main_galaxy))
     print("Number of BHs in satellites:", len(bh_catalogue) - len(bh_catalogue_main_galaxy))
