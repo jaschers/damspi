@@ -105,7 +105,7 @@ The catalogue contains the following information for each IMBH:
 | `n_sat`           | -          | Number of satellite galaxies associated with the main galaxy of the IMBH                             |
 | `n_sat_stars`     | -          | Number of satellite galaxies with at least one star particle associated with the main galaxy of the IMBH |
 | `no_host`         | -          | `True` if black hole was not assigned to any host at its formation redshift                          |
-| `r_c`             | -          | Core radius (only available for cored dark matter profile)        
+| `r_c`             | kpc          | Core radius (only available for cored dark matter profile)        
 
 We also provide the catalogue for our selection of Milky Way-like galaxies within EAGLE. This catalogue contains the following information for each galaxy:
 
